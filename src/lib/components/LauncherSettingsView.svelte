@@ -1,8 +1,10 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import RestartBanner from "./RestartBanner.svelte";
   import SettingRow from "./SettingRow.svelte";
   import { loadLauncherSettings, setLauncherSetting } from "../launcher/api";
   import { errorMessage } from "../settings/api";
+  import { restartNeeded } from "../launcher/restart.svelte";
   import { sectionsOf } from "../settings/sections";
   import type { SettingInput, SettingView, SettingsView } from "../settings/types";
 
@@ -36,6 +38,8 @@
 
 <section class="settings">
   <h1>Launcher settings</h1>
+
+  {#if restartNeeded.needed}<RestartBanner />{/if}
 
   {#if actionError}
     <div class="error" role="alert">

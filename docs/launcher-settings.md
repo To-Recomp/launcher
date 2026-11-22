@@ -13,5 +13,12 @@ a game in the sidebar goes back to Home.
 - **Commands:** `load_launcher_settings` and `set_launcher_setting` (`{ id, input }`), returning
   the refreshed view like `load_settings` and `set_setting`.
 - **Adding a setting:** add it to the built-in manifest; whatever it controls reads
-  `launcher.json`. Settings the engine has no control for (folder picker, action button) get a
-  dedicated component with the ticket that needs it.
+  `launcher.json`. What the engine has no control for uses the dedicated rows, placed in
+  `LauncherSettingsView` next to the manifest's sections:
+  - `FolderRow`: shows a path (or "Default") and a "Choose…" button opening the folder dialog.
+  - `ActionRow`: a button that runs an async action, disabled while it runs, with its result
+    or failure next to it.
+  - `Row`: the shared layout (label, help, control) that `SettingRow` also uses.
+- **Restart to apply:** a setting that only applies on the next start calls
+  `restartNeeded.mark()` (`src/lib/launcher/restart.svelte.ts`); the page then shows a banner
+  with "Restart now" (`restart_launcher` command).

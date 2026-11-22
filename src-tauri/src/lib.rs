@@ -42,6 +42,7 @@ pub fn run() {
             settings::settings_launch_args,
             launcher_settings::load_launcher_settings,
             launcher_settings::set_launcher_setting,
+            launcher_settings::restart_launcher,
             updater::updater_available,
             updater::update_launcher
         ])

@@ -42,5 +42,11 @@ pub fn set_launcher_setting(
     settings::apply_with(&instance(&config_dir(&app)?), &manifest()?, &id, input)
 }
 
+/// For the settings that apply on the next start (see `RestartBanner`).
+#[tauri::command]
+pub fn restart_launcher(app: tauri::AppHandle) {
+    app.restart()
+}
+
 #[cfg(test)]
 mod tests;
