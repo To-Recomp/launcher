@@ -75,3 +75,70 @@ fn an_invalid_change_is_rejected_and_writes_nothing() {
     assert!(err.contains("Unknown setting"), "{err}");
     assert!(!dir.path().join("launcher.json").exists());
 }
+
+mod games_folder {
+    use std::fs;
+
+    use tempfile::TempDir;
+
+    use super::super::folders;
+
+    #[test]
+    fn the_choice_is_kept_beside_other_settings_and_reset_to_the_default() {
+        let config = TempDir::new().unwrap();
+        let games = TempDir::new().unwrap();
+        fs::write(
+            config.path().join("launcher.json"),
+            r#"{ "updates": { "auto": false }, "library": { "other": 1 } }"#,
+        )
+        .unwrap();
+        assert_eq!(folders::configured(config.path()).unwrap(), None);
+
+        let chosen = games.path().to_str().unwrap();
+        folders::set(config.path(), Some(chosen)).unwrap();
+        assert_eq!(
+            folders::configured(config.path()).unwrap(),
+            Some(games.path().to_path_buf())
+        );
+        let saved: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(config.path().join("launcher.json")).unwrap())
+                .unwrap();
+        assert_eq!(saved["updates"]["auto"], false);
+        assert_eq!(saved["library"]["other"], 1);
+
+        folders::set(config.path(), None).unwrap();
+        assert_eq!(folders::configured(config.path()).unwrap(), None);
+        assert!(
+            games.path().read_dir().unwrap().next().is_none(),
+            "no probe file is left behind"
+        );
+    }
+
+    #[test]
+    fn a_folder_that_can_not_hold_games_is_refused_and_nothing_is_saved() {
+        let config = TempDir::new().unwrap();
+        let file = config.path().join("a-file");
+        fs::write(&file, "x").unwrap();
+        for bad in [
+            "relative/folder",
+            "/no/such/folder/anywhere",
+            file.to_str().unwrap(),
+        ] {
+            assert!(folders::set(config.path(), Some(bad)).is_err(), "{bad}");
+        }
+        assert!(!config.path().join("launcher.json").exists());
+    }
+
+    #[test]
+    fn a_broken_launcher_json_is_reported_not_overwritten() {
+        let config = TempDir::new().unwrap();
+        let games = TempDir::new().unwrap();
+        fs::write(config.path().join("launcher.json"), "{ not json").unwrap();
+        let err = folders::set(config.path(), Some(games.path().to_str().unwrap())).unwrap_err();
+        assert!(err.contains("isn't valid JSON"), "{err}");
+        assert_eq!(
+            fs::read_to_string(config.path().join("launcher.json")).unwrap(),
+            "{ not json"
+        );
+    }
+}

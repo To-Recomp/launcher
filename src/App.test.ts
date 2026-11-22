@@ -26,7 +26,7 @@ const diagnostics = vi.hoisted(() => ({
 }));
 vi.mock("./lib/diagnostics/api", () => diagnostics);
 
-const launcher = vi.hoisted(() => ({ loadLauncherSettings: vi.fn(), setLauncherSetting: vi.fn() }));
+const launcher = vi.hoisted(() => ({ loadLauncherSettings: vi.fn(), setLauncherSetting: vi.fn(), launcherFolders: vi.fn(), setGamesFolder: vi.fn() }));
 vi.mock("./lib/launcher/api", () => launcher);
 
 import App from "./App.svelte";
@@ -148,6 +148,7 @@ describe("App", () => {
   it("opens the launcher's own settings from the gear, even before the game list loads, and leaves them when a game is picked", async () => {
     api.refreshCatalog.mockResolvedValue({ catalog: null, updated: false, error: "Can't reach the game catalog: offline" });
     launcher.loadLauncherSettings.mockResolvedValue({ settings: [] });
+    launcher.launcherFolders.mockResolvedValue({ configured: null, default: "/data/games", inUse: "/data/games" });
     render(App);
     const gear = await screen.findByRole("button", { name: "Launcher settings" });
     await fireEvent.click(gear);

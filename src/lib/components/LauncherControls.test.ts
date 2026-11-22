@@ -6,6 +6,8 @@ const api = vi.hoisted(() => ({
   restartLauncher: vi.fn(),
   loadLauncherSettings: vi.fn(),
   setLauncherSetting: vi.fn(),
+  launcherFolders: vi.fn(),
+  setGamesFolder: vi.fn(),
 }));
 vi.mock("../launcher/api", () => api);
 vi.mock("../settings/api", () => ({ errorMessage: (e: unknown) => String(e) }));
@@ -20,6 +22,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   restartNeeded.needed = false;
   api.loadLauncherSettings.mockResolvedValue({ settings: [] });
+  api.launcherFolders.mockResolvedValue({ configured: null, default: "/data/games", inUse: "/data/games" });
 });
 
 describe("FolderRow", () => {

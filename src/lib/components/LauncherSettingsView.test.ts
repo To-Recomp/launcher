@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SettingView, SettingsView as View } from "../settings/types";
 
-const api = vi.hoisted(() => ({ loadLauncherSettings: vi.fn(), setLauncherSetting: vi.fn() }));
+const api = vi.hoisted(() => ({ loadLauncherSettings: vi.fn(), setLauncherSetting: vi.fn(), launcherFolders: vi.fn(), setGamesFolder: vi.fn() }));
 vi.mock("../launcher/api", () => api);
 vi.mock("../settings/api", () => ({ errorMessage: (e: unknown) => String(e) }));
 
@@ -19,6 +19,7 @@ const onreportbug = vi.fn();
 beforeEach(() => {
   vi.clearAllMocks();
   api.loadLauncherSettings.mockResolvedValue(view(toggle(1)));
+  api.launcherFolders.mockResolvedValue({ configured: null, default: "/data/games", inUse: "/data/games" });
 });
 
 describe("LauncherSettingsView", () => {

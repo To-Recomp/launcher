@@ -35,3 +35,16 @@ a game in the sidebar goes back to Home.
   yet: it then shows no folders.
 - Links open github.com pages only (`opener:allow-open-url` scope in `capabilities/default.json`),
   plus steamgriddb.com for the artwork credit.
+
+## Storage
+
+- **Games folder** (`library.folder` in `launcher.json`): where installations and each
+  instance's data live; the default is `games/` in the app data folder. Chosen with a folder
+  dialog and checked (absolute, existing, writable) before it is saved; "Use default" removes it.
+- It is read once at startup (`library::LibraryRoot`), so a change applies after a restart (the
+  banner offers it). Games already installed are **not** moved: after a change they are no
+  longer listed, and moving their folder by hand puts them back. If the chosen folder can't be
+  used at startup (a drive that is gone), the library says why instead of falling back to the
+  default, so games never look uninstalled by accident.
+- The launcher's own data (catalog copy, logs, settings) stays in the usual app folders.
+- `TO_RECOMP_LIBRARY` still overrides everything, for development and tests.

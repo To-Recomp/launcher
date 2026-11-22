@@ -529,15 +529,50 @@ impl Drop for JobGuard {
     }
 }
 
+/// The folder the games live in for this session, found once at startup: a change of the
+/// setting applies on the next start, and jobs never see the folder move under them.
+pub struct LibraryRoot(Result<PathBuf, String>);
+
+impl LibraryRoot {
+    pub fn resolve(app: &tauri::AppHandle) -> LibraryRoot {
+        LibraryRoot(find_root(app))
+    }
+}
+
+pub(crate) fn default_root(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    Ok(app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("No place to keep the games: {e}"))?
+        .join("games"))
+}
+
+fn find_root(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    if let Some(root) = std::env::var_os(LIBRARY_ENV) {
+        return Ok(PathBuf::from(root));
+    }
+    let chosen = crate::launcher_settings::config_dir(app)
+        .and_then(|dir| crate::launcher_settings::folders::configured(&dir))?;
+    match chosen {
+        Some(folder) => {
+            crate::launcher_settings::folders::validate(&folder).map_err(|e| {
+                format!(
+                    "The games folder can't be used. {e} Choose another in the launcher settings."
+                )
+            })?;
+            Ok(folder)
+        }
+        None => default_root(app),
+    }
+}
+
+/// The games folder of this session, `None` when it couldn't be opened.
+pub(crate) fn root_in_use(app: &tauri::AppHandle) -> Option<PathBuf> {
+    app.state::<LibraryRoot>().0.clone().ok()
+}
+
 pub(crate) fn app_env(app: &tauri::AppHandle) -> Result<Env, String> {
-    let root = match std::env::var_os(LIBRARY_ENV) {
-        Some(root) => PathBuf::from(root),
-        None => app
-            .path()
-            .app_data_dir()
-            .map_err(|e| format!("No place to keep the games: {e}"))?
-            .join("games"),
-    };
+    let root = app.state::<LibraryRoot>().0.clone()?;
     let api = std::env::var(API_ENV).unwrap_or_else(|_| DEFAULT_API.to_string());
     Ok(Env::new(root, api))
 }

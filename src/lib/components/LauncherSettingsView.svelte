@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import LauncherAbout from "./LauncherAbout.svelte";
+  import LauncherFolders from "./LauncherFolders.svelte";
   import RestartBanner from "./RestartBanner.svelte";
   import SettingRow from "./SettingRow.svelte";
   import { loadLauncherSettings, setLauncherSetting } from "../launcher/api";
@@ -65,6 +66,8 @@
       </div>
     {/each}
   {/if}
+
+  <LauncherFolders />
 
   <LauncherAbout {onreportbug} />
 </section>

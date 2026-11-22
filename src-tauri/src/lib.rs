@@ -11,6 +11,7 @@ pub fn run() {
     let builder = tauri::Builder::default()
         .setup(|app| {
             use tauri::Manager;
+            app.manage(library::LibraryRoot::resolve(app.handle()));
             if let Ok(dir) = app.path().app_log_dir() {
                 diagnostics::panic::arm(dir, diagnostics::app_scrub(app));
             }
@@ -44,6 +45,8 @@ pub fn run() {
             launcher_settings::load_launcher_settings,
             launcher_settings::set_launcher_setting,
             launcher_settings::restart_launcher,
+            launcher_settings::launcher_folders,
+            launcher_settings::set_games_folder,
             updater::updater_available,
             updater::update_launcher
         ])
