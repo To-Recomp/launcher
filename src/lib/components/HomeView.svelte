@@ -223,7 +223,7 @@
     padding: var(--space-4) var(--space-5);
     border: 1px solid color-mix(in srgb, var(--color-info) 50%, transparent);
     border-radius: var(--radius-md);
-    background: color-mix(in srgb, var(--game-bg-mid, #1f2b42) 60%, transparent);
+    background: color-mix(in srgb, var(--game-bg-mid, var(--panel)) 60%, transparent);
   }
   .status.error { border-color: rgb(200 48 44 / 0.7); background: rgb(200 48 44 / 0.12); }
   .status-icon { color: var(--color-info); }

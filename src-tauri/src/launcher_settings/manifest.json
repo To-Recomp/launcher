@@ -126,6 +126,57 @@
       "defaults": {
         "behavior/closeOnLaunch": "false"
       }
+    },
+    {
+      "id": "theme",
+      "label": "Theme",
+      "group": "Appearance",
+      "choices": [
+        {
+          "label": "Dark",
+          "set": {
+            "appearance/theme": "\"dark\""
+          }
+        },
+        {
+          "label": "Light",
+          "set": {
+            "appearance/theme": "\"light\""
+          }
+        },
+        {
+          "label": "System",
+          "set": {
+            "appearance/theme": "\"system\""
+          }
+        }
+      ],
+      "defaults": {
+        "appearance/theme": "\"dark\""
+      }
+    },
+    {
+      "id": "gamePalette",
+      "label": "Game colors",
+      "help": "Tints the pages with colors taken from the game's logo. Dark theme only.",
+      "group": "Appearance",
+      "choices": [
+        {
+          "label": "Off",
+          "set": {
+            "appearance/gamePalette": "false"
+          }
+        },
+        {
+          "label": "On",
+          "set": {
+            "appearance/gamePalette": "true"
+          }
+        }
+      ],
+      "defaults": {
+        "appearance/gamePalette": "true"
+      }
     }
   ]
 }

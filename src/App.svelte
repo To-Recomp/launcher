@@ -15,6 +15,7 @@
   import { nonAffiliation, type TabId } from "./lib/data";
   import { t } from "./lib/i18n/index.svelte";
   import { instanceLocation } from "./lib/library/api";
+  import { appearance } from "./lib/launcher/appearance.svelte";
   import { syncTray } from "./lib/launcher/tray";
   import { launcherUpdates } from "./lib/launcher/updates.svelte";
   import { LibraryStore } from "./lib/library/store.svelte";
@@ -100,7 +101,7 @@
   });
 </script>
 
-<div class="app" style={paletteStyle(tab === "launcher" ? null : palette)}>
+<div class="app" style={paletteStyle(tab === "launcher" || !appearance.usesGamePalette ? null : palette)}>
   <Sidebar
     {games}
     selectedId={tab === "launcher" ? "" : (game?.id ?? "")}
@@ -161,7 +162,7 @@
     min-width: 0;
     background:
       radial-gradient(720px 420px at 100% 0, var(--game-glow, transparent), transparent),
-      linear-gradient(180deg, var(--game-bg-top, #1d2a40) 0%, var(--game-bg-mid, #171a2b) 60%, var(--color-bg) 100%);
+      linear-gradient(180deg, var(--game-bg-top, var(--page-top)) 0%, var(--game-bg-mid, var(--page-mid)) 60%, var(--color-bg) 100%);
   }
   main { flex: 1; overflow-y: auto; }
   .empty { padding: var(--space-6); color: var(--color-text-muted); }
