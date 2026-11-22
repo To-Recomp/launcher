@@ -37,7 +37,8 @@ pub fn install() {
         previous(info);
         if let Some(armed) = ARMED.get() {
             if !WRITTEN.swap(true, Ordering::SeqCst) {
-                let _ = record(&armed.dir, &armed.known, &message(info), SystemTime::now());
+                let known = super::with_proxy_names(armed.known.clone());
+                let _ = record(&armed.dir, &known, &message(info), SystemTime::now());
             }
         }
     }));

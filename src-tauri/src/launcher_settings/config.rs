@@ -20,3 +20,18 @@ pub fn read(config_dir: &Path) -> Result<Value, String> {
         Err(e) => Err(format!("Can't read {}: {e}", path.display())),
     }
 }
+
+/// Reads the file, lets `change` edit its top-level object, and writes it back, keeping every
+/// other key as it was.
+pub fn update(
+    config_dir: &Path,
+    change: impl FnOnce(&mut Map<String, Value>) -> Result<(), String>,
+) -> Result<(), String> {
+    let mut config = read(config_dir)?;
+    let root = config
+        .as_object_mut()
+        .ok_or_else(|| format!("{} isn't a JSON object.", file(config_dir).display()))?;
+    change(root)?;
+    let text = serde_json::to_string_pretty(&config).map_err(|e| e.to_string())? + "\n";
+    crate::fs_util::write_atomically(&file(config_dir), &text)
+}

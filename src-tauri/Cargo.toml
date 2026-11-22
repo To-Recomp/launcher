@@ -16,7 +16,7 @@ tauri-build = { version = "2", features = [] }
 [features]
 # Self-update; only the release workflow enables it, because it needs the maintainer's
 # signing public key (see docs/releasing.md).
-updater = ["dep:tauri-plugin-updater"]
+updater = ["dep:tauri-plugin-updater", "dep:reqwest"]
 
 [dependencies]
 dirs = "7.0.0"
@@ -34,8 +34,10 @@ tauri-plugin-clipboard-manager = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-opener = "2"
 tauri-plugin-updater = { version = "2", optional = true }
+reqwest = { version = "0.13", default-features = false, features = ["socks"], optional = true }
 toml_edit = "0.25.5"
-ureq = { version = "3", features = ["json"] }
+ureq = { version = "3", features = ["json", "socks-proxy", "win-system-proxy"] }
+keyring = { version = "3", default-features = false, features = ["apple-native", "windows-native", "async-secret-service", "crypto-rust", "async-io"] }
 zip = { version = "9", default-features = false, features = ["deflate"] }
 
 [dev-dependencies]

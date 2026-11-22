@@ -89,18 +89,19 @@ async fn updater_for(app: &tauri::AppHandle) -> Result<tauri_plugin_updater::Upd
         let api = std::env::var(API_ENV).unwrap_or_else(|_| DEFAULT_API.to_string());
         let found =
             tauri::async_runtime::spawn_blocking(move || -> Result<Option<String>, String> {
-                let releases: Vec<ApiRelease> =
-                    ureq::get(&format!("{api}/repos/{REPOSITORY}/releases?per_page=10"))
-                        .header("Accept", "application/vnd.github+json")
-                        .header(
-                            "User-Agent",
-                            concat!("to-recomp-launcher/", env!("CARGO_PKG_VERSION")),
-                        )
-                        .call()
-                        .map_err(|e| format!("Can't look for pre-releases: {e}"))?
-                        .body_mut()
-                        .read_json()
-                        .map_err(|e| format!("GitHub's answer is unreadable: {e}"))?;
+                let agent: ureq::Agent = crate::net::agent_builder()?.build().into();
+                let releases: Vec<ApiRelease> = agent
+                    .get(&format!("{api}/repos/{REPOSITORY}/releases?per_page=10"))
+                    .header("Accept", "application/vnd.github+json")
+                    .header(
+                        "User-Agent",
+                        concat!("to-recomp-launcher/", env!("CARGO_PKG_VERSION")),
+                    )
+                    .call()
+                    .map_err(|e| format!("Can't look for pre-releases: {e}"))?
+                    .body_mut()
+                    .read_json()
+                    .map_err(|e| format!("GitHub's answer is unreadable: {e}"))?;
                 Ok(newest_latest_json(&releases).map(str::to_string))
             })
             .await
@@ -115,6 +116,23 @@ async fn updater_for(app: &tauri::AppHandle) -> Result<tauri_plugin_updater::Upd
                 .map_err(|e| format!("Not a usable update address: {e}"))?;
         }
     }
+    builder = match crate::net::updater_proxy() {
+        crate::net::UpdaterProxy::System => builder,
+        crate::net::UpdaterProxy::Direct => builder.no_proxy(),
+        crate::net::UpdaterProxy::Proxy { url, no_proxy } => {
+            builder.configure_client(move |client| {
+                match reqwest::Proxy::all(&url) {
+                    Ok(proxy) => {
+                        client.proxy(proxy.no_proxy(reqwest::NoProxy::from_string(&no_proxy)))
+                    }
+                    // Never fall back to a direct connection when the proxy can't be used.
+                    Err(_) => {
+                        client.proxy(reqwest::Proxy::all("http://127.0.0.1:9").expect("valid"))
+                    }
+                }
+            })
+        }
+    };
     builder
         .build()
         .map_err(|e| format!("Update check failed: {e}"))

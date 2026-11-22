@@ -344,6 +344,14 @@ pub fn app_scrub<R: tauri::Runtime>(app: &impl Manager<R>) -> Scrub {
             .paths
             .push((dir.to_string_lossy().into_owned(), "{app}".to_string()));
     }
+    with_proxy_names(known)
+}
+
+/// Adds the proxy's host and user name, as the settings have them now.
+pub fn with_proxy_names(mut known: Scrub) -> Scrub {
+    let (host, user) = crate::net::scrub_names();
+    known.hosts.extend(host);
+    known.users.extend(user);
     known
 }
 

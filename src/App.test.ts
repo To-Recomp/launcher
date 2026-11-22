@@ -26,7 +26,7 @@ const diagnostics = vi.hoisted(() => ({
 }));
 vi.mock("./lib/diagnostics/api", () => diagnostics);
 
-const launcher = vi.hoisted(() => ({ loadLauncherSettings: vi.fn(), setLauncherSetting: vi.fn(), launcherFolders: vi.fn(), setGamesFolder: vi.fn(), applyBehavior: vi.fn().mockResolvedValue(undefined), autostartSupported: vi.fn().mockResolvedValue(false), autostartEnabled: vi.fn(), setAutostart: vi.fn() }));
+const launcher = vi.hoisted(() => ({ loadLauncherSettings: vi.fn(), setLauncherSetting: vi.fn(), launcherFolders: vi.fn(), setGamesFolder: vi.fn(), applyBehavior: vi.fn().mockResolvedValue(undefined), proxySettings: vi.fn().mockResolvedValue({ settings: { mode: "system", protocol: "http", host: "", port: 8080, username: "", noProxy: "" }, hasPassword: false, keychainError: null }), setProxy: vi.fn(), testProxy: vi.fn(), autostartSupported: vi.fn().mockResolvedValue(false), autostartEnabled: vi.fn(), setAutostart: vi.fn() }));
 vi.mock("./lib/launcher/api", () => launcher);
 
 import App from "./App.svelte";

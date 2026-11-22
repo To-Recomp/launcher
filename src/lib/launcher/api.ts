@@ -60,3 +60,32 @@ export interface Appearance {
 }
 
 export const launcherAppearance = () => invoke<Appearance>("launcher_appearance");
+
+/** The proxy every request of the launcher goes through (src-tauri/src/net). */
+export interface ProxySettings {
+  mode: "system" | "none" | "manual";
+  protocol: "http" | "https" | "socks5";
+  host: string;
+  port: number;
+  username: string;
+  /** Hosts that bypass the proxy, separated by commas or spaces. */
+  noProxy: string;
+}
+
+export interface ProxyView {
+  settings: ProxySettings;
+  /** The password is in the system keychain (it is never in a file). */
+  hasPassword: boolean;
+  /** Why the keychain can't be used, if it can't. */
+  keychainError: string | null;
+}
+
+export const proxySettings = () => invoke<ProxyView>("proxy_settings");
+
+/** `password`: `null` keeps the saved one, `""` forgets it. Rejects with why nothing was saved. */
+export const setProxy = (settings: ProxySettings, password: string | null) =>
+  invoke<ProxyView>("set_proxy", { settings, password });
+
+/** Tries these values (not saved) against GitHub; resolves with what worked, rejects with what didn't. */
+export const testProxy = (settings: ProxySettings, password: string | null) =>
+  invoke<string>("test_proxy", { settings, password });

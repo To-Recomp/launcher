@@ -173,7 +173,7 @@ pub fn refresh(dir: &Path, url: &str) -> Refresh {
 /// `Ok(None)`: the server says our copy is current.
 fn fetch(dir: &Path, url: &str, have_valid_copy: bool) -> Result<Option<Catalog>, String> {
     let etag_path = dir.join("etag");
-    let agent: ureq::Agent = ureq::Agent::config_builder()
+    let agent: ureq::Agent = crate::net::agent_builder()?
         .timeout_global(Some(TIMEOUT))
         .http_status_as_error(false)
         .build()

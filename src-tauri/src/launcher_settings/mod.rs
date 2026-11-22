@@ -4,7 +4,7 @@
 //! built into the launcher instead of one read from a release. Values live in `launcher.json`
 //! in the app's config folder. `args` settings don't apply here: nothing is launched with them.
 
-mod config;
+pub(crate) mod config;
 pub mod folders;
 
 use std::path::{Path, PathBuf};
