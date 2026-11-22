@@ -34,6 +34,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             catalog::cached_catalog,
             diagnostics::build_report,
+            diagnostics::diagnostics_folder,
+            diagnostics::clean_diagnostics,
             diagnostics::panic::pending_panic,
             diagnostics::panic::dismiss_panic,
             library::library_snapshot,

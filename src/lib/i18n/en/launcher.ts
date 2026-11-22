@@ -40,6 +40,17 @@ export const launcher = {
   "launcher.updates.restartHelp": "The launcher restarts when it is installed.",
   "launcher.updates.install": "Install and restart",
 
+  "launcher.diagnostics.heading": "Diagnostics",
+  "launcher.diagnostics.folderLabel": "Reports folder",
+  "launcher.diagnostics.folderHelp": "Where the files made by Report a bug and by crashes are kept.",
+  "launcher.diagnostics.open": "Open",
+  "launcher.diagnostics.cleanLabel": "Saved reports",
+  "launcher.diagnostics.cleanHelp": "Deletes the saved diagnostic files. Nothing outside the reports folder is touched.",
+  "launcher.diagnostics.clean": "Delete…",
+  "launcher.diagnostics.confirm": "Delete them",
+  "launcher.diagnostics.nothing": "No reports to delete.",
+  "launcher.diagnostics.removedOne": "Deleted 1 file ({size}).",
+  "launcher.diagnostics.removed": "Deleted {count} files ({size}).",
   // The launcher's own settings come from a manifest built into the launcher (Rust), in English:
   // what they show is looked up here by setting id, group and option (see launcher/localize.ts).
   "launcher.group.Interface": "Interface",

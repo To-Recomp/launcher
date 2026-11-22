@@ -98,3 +98,12 @@ development switch, see `docs/catalog.md`).
 - **Game colors** (`appearance.gamePalette`, default on): the palette taken from the game's logo
   tints the page and the sidebar. It is made for the dark theme, so a light theme never uses it
   whatever this says.
+
+## Diagnostics
+
+- **Reports folder:** opens the folder where "Report a bug" and crash files are kept (created if it
+  doesn't exist yet). "Report a bug" itself stays in About, for the launcher and for each game.
+- **Saved reports:** deletes every `*-diagnostic-*.md` of that folder after a second click. Only
+  regular files with that name directly in the folder: other files, subfolders and links (which are
+  never followed) are left alone, and so are the games' own logs, which live with their instance.
+  A crash banner that offered one of the deleted files goes away.

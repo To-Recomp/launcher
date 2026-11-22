@@ -19,7 +19,7 @@ const toggle = (value: number): SettingView => ({
 const view = (...settings: SettingView[]): View => ({ settings });
 
 const onreportbug = vi.fn();
-const props = { catalogStatus: null, refreshingCatalog: false, onrefreshcatalog: vi.fn(), onreportbug };
+const props = { catalogStatus: null, refreshingCatalog: false, onrefreshcatalog: vi.fn(), oncleaned: vi.fn(), onreportbug };
 
 beforeEach(() => {
   vi.clearAllMocks();

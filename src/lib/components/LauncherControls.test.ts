@@ -22,7 +22,7 @@ import FolderRow from "./FolderRow.svelte";
 import LauncherSettingsView from "./LauncherSettingsView.svelte";
 import RestartBanner from "./RestartBanner.svelte";
 
-const props = { catalogStatus: null, refreshingCatalog: false, onrefreshcatalog: vi.fn(), onreportbug: vi.fn() };
+const props = { catalogStatus: null, refreshingCatalog: false, onrefreshcatalog: vi.fn(), oncleaned: vi.fn(), onreportbug: vi.fn() };
 
 beforeEach(() => {
   vi.clearAllMocks();

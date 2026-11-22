@@ -51,3 +51,15 @@ export const repositoryUrl = (repository: string) => `https://github.com/${repos
 
 /** Opens a page of github.com in the browser (the opener's permission is limited to it). */
 export const openLink = (url: string) => openUrl(url);
+
+/** The folder the diagnostic files are kept in, created if needed. */
+export const diagnosticsFolder = () => invoke<string>("diagnostics_folder");
+
+/** What cleaning removed. */
+export interface Cleaned {
+  files: number;
+  bytes: number;
+}
+
+/** Deletes the saved diagnostic files, and nothing else. */
+export const cleanDiagnostics = () => invoke<Cleaned>("clean_diagnostics");
