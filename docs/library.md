@@ -7,7 +7,7 @@
   refused), unpacks it (paths leaving the folder and links are refused) and keeps it only if its
   `recomplauncher.json` is valid and has a `start` command. Installing the same tag again
   downloads nothing.
-- **Instance**: one per platform and region of an installed game, with its own data folder
+- **Instance**: one per platform of an installed game, with its own data folder
   (`{data}`: settings, saves, the prepared game), the player's files and a log.
 - **Prepare**: the release's `prepare` command, run once with the player's files (`inputs` of the
   manifest, asked with a file or folder dialog). The launcher passes `{input:<id>}`, `{data}`,
@@ -31,7 +31,7 @@ installed, ready.
                           release/                 {install}
                           instances/<id>/instance.json, data/, prepare.log, game.log
 ```
-`<id>` is `<platform>-<region>` lowercased (`gamecube-france-pal`).
+`<id>` is the platform lowercased (`gamecube`, `xbox-series-x-s`).
 
 Development: `TO_RECOMP_LIBRARY` moves the library, `TO_RECOMP_GITHUB_API` points at another
 GitHub API (a fake release server). Not done: the manifest's `check` (the game's own `prepare`

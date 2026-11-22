@@ -16,18 +16,20 @@ describe("initials", () => {
 });
 
 describe("toGames", () => {
-  it("keeps the catalog's order and labels each platform with its region", () => {
+  it("keeps the catalog's order and lists one entry per console", () => {
     const games = toGames({
       games: [
         {
-          id: "tos", name: "Tales of Symphonia", japanReleaseYear: 2003, repository: "To-Recomp/tos-recomp", manifest: null,
-          platforms: [{ platform: "GameCube", region: "France (PAL)", status: "unsupported", tested: false }],
+          id: "tos", name: "Tales of Symphonia", japanReleaseYear: 2003, repository: "To-Recomp/tos-recomp",
+          platforms: [{ platform: "GameCube", regions: ["France (PAL)", "Japan"], state: "playable", maturity: "beta" }],
         },
-        { id: "tov", name: "Tales of Vesperia", japanReleaseYear: 2008, repository: "To-Recomp/tov", manifest: null, platforms: [] },
+        { id: "tov", name: "Tales of Vesperia", japanReleaseYear: 2008, repository: "To-Recomp/tov", platforms: [] },
       ],
     });
     expect(games.map((g) => g.id)).toEqual(["tos", "tov"]);
     expect(games[0]).toMatchObject({ icon: "S", year: 2003, state: "not-installed" });
-    expect(games[0].platforms[0]).toMatchObject({ label: "GameCube · France (PAL)", status: "unsupported" });
+    expect(games[0].platforms).toEqual([
+      { platform: "GameCube", regions: ["France (PAL)", "Japan"], state: "playable", maturity: "beta" },
+    ]);
   });
 });

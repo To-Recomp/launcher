@@ -22,7 +22,7 @@
 
   const installation = $derived(library.installationOf(game.id));
   const instanceState = $derived(platform ? library.instanceState(game.id, platform) : "notPrepared");
-  const instance = $derived(platform ? instanceId(platform.platform, platform.region) : "");
+  const instance = $derived(platform ? instanceId(platform.platform) : "");
   const jobs = $derived({
     install: installJob(game.id),
     prepare: prepareJob(game.id, instance),
@@ -52,14 +52,26 @@
     return { label: chooseLabel(), icon: "folder", run: () => library.prepare(game, platform) };
   });
 
+  /** Why the selected console can't be installed or prepared, if it can't. */
+  const unavailable = $derived(
+    platform?.state === "planned"
+      ? "This console is planned: nothing to install yet."
+      : platform?.state === "in-progress"
+        ? "This console is in progress: there is nothing to install yet."
+        : platform?.state === "unsupported"
+          ? "This console isn't supported."
+          : null,
+  );
+
   const hint = $derived(
-    !installation
-      ? "Install the game to get started."
-      : instanceState === "ready"
-        ? "Ready to play."
-        : instanceState === "needsRebuild"
-          ? "The game needs a new build after the update."
-          : "Choose your game files to get started.",
+    unavailable ??
+      (!installation
+        ? "Install the game to get started."
+        : instanceState === "ready"
+          ? "Ready to play."
+          : instanceState === "needsRebuild"
+            ? "The game needs a new build after the update."
+            : "Choose your game files to get started."),
   );
 </script>
 
@@ -73,11 +85,11 @@
     <Dropdown
       caption="Platform"
       label="Platform"
-      options={game.platforms.map((p) => p.label)}
-      value={platform?.label ?? ""}
+      options={game.platforms.map((p) => p.platform)}
+      value={platform?.platform ?? ""}
       onchange={onplatform}
     />
-    <button class="primary" disabled={busy || !platform} onclick={primary.run}>
+    <button class="primary" disabled={busy || !platform || unavailable !== null} onclick={primary.run}>
       <Icon name={primary.icon} size={20} /> {primary.label}
     </button>
     {#if installation && instanceState === "ready" && required.length > 0 && platform}

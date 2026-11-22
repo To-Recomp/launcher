@@ -10,7 +10,6 @@ export interface DiagnosticRequest {
   context: DiagnosticContext;
   gameId?: string;
   platform?: string;
-  region?: string;
   error?: string;
 }
 

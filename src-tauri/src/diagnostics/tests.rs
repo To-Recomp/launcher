@@ -254,7 +254,6 @@ fn renders_the_fixed_template() {
         id: "tos".into(),
         release: Some("v1.2.0".into()),
         platform: "GameCube".into(),
-        region: "France (PAL)".into(),
         state: "ready".into(),
     };
     let system = linux();

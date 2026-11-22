@@ -44,17 +44,17 @@
   });
 
   let platformByGame = $state<Record<string, string>>({});
-  const platform = $derived(game?.platforms.find((p) => p.label === platformByGame[game.id]) ?? game?.platforms[0]);
+  const platform = $derived(game?.platforms.find((p) => p.platform === platformByGame[game.id]) ?? game?.platforms[0]);
 
   /** Where the selected instance keeps its settings, once its game is installed. */
   let location = $state<Location | null>(null);
   $effect(() => {
-    const current = game && platform ? { id: game.id, platform: platform.platform, region: platform.region } : null;
+    const current = game && platform ? { id: game.id, platform: platform.platform } : null;
     library.installationOf(current?.id ?? "")?.tag; // reload when the game gets (re)installed
     location = null;
     if (!current) return;
     let stale = false;
-    instanceLocation(current.id, current.platform, current.region)
+    instanceLocation(current.id, current.platform)
       .then((found) => !stale && (location = found))
       .catch(() => {});
     return () => (stale = true);

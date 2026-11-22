@@ -14,7 +14,7 @@ fn catalog_json(games: &[(&str, &str, u32)]) -> String {
             format!(
                 r#"{{"id":"{id}","name":"{name}","japan_release_year":{year},"repository":"To-Recomp/{id}",
                    "futureField":true,
-                   "platforms":[{{"platform":"GameCube","region":"France (PAL)","status":"beta","tested":false}}]}}"#
+                   "platforms":[{{"platform":"GameCube","regions":["France (PAL)"],"state":"playable","maturity":"beta"}}]}}"#
             )
         })
         .collect();
@@ -201,8 +201,20 @@ fn an_invalid_catalog_is_rejected_and_the_valid_copy_kept() {
             "format 1",
         ),
         (
-            r#"{"format":1,"generated":"2026-11-22T12:00:00Z","games":[{"id":"t","name":"T","japan_release_year":2003,"repository":"a/b","platforms":[{"platform":"GC","region":"EU","status":"working","tested":false}]}]}"#,
-            "/games/0/platforms/0/status",
+            r#"{"format":1,"generated":"2026-11-22T12:00:00Z","games":[{"id":"t","name":"T","japan_release_year":2003,"repository":"a/b","platforms":[{"platform":"GC","regions":["EU"],"state":"working"}]}]}"#,
+            "/games/0/platforms/0/state",
+        ),
+        (
+            r#"{"format":1,"generated":"2026-11-22T12:00:00Z","games":[{"id":"t","name":"T","japan_release_year":2003,"repository":"a/b","platforms":[{"platform":"GC","regions":["EU"],"state":"playable"}]}]}"#,
+            "maturity",
+        ),
+        (
+            r#"{"format":1,"generated":"2026-11-22T12:00:00Z","games":[{"id":"t","name":"T","japan_release_year":2003,"repository":"a/b","platforms":[{"platform":"GC","regions":["EU"],"state":"planned","maturity":"alpha"}]}]}"#,
+            "/games/0/platforms/0",
+        ),
+        (
+            r#"{"format":1,"generated":"2026-11-22T12:00:00Z","games":[{"id":"t","name":"T","japan_release_year":2003,"repository":"a/b","platforms":[{"platform":"GC","regions":[],"state":"planned"}]}]}"#,
+            "/games/0/platforms/0/regions",
         ),
         (
             &catalog_json(&[("tos", "Tales of Symphonia", 2003), ("tos", "Again", 2004)]),
@@ -211,7 +223,7 @@ fn an_invalid_catalog_is_rejected_and_the_valid_copy_kept() {
         (
             &format!(
                 r#"{{"format":1,"generated":"2026-11-22T12:00:00Z","games":[{{"id":"t","name":"T","japan_release_year":2003,"repository":"a/b","platforms":[{p},{p}]}}]}}"#,
-                p = r#"{"platform":"GC","region":"EU","status":"beta","tested":false}"#
+                p = r#"{"platform":"GC","regions":["EU"],"state":"planned"}"#
             ),
             "twice",
         ),
@@ -290,16 +302,28 @@ fn an_empty_catalog_is_valid_and_unknown_fields_are_ignored() {
             .is_empty()
     );
     let catalog = parse(&catalog_json(&[("tos", "Tales of Symphonia", 2003)])).unwrap();
-    assert_eq!(catalog.games[0].platforms[0].status, Status::Beta);
+    assert_eq!(catalog.games[0].platforms[0].state, State::Playable);
+    assert_eq!(catalog.games[0].platforms[0].maturity, Some(Maturity::Beta));
 }
 
 #[test]
-fn a_coming_soon_platform_is_valid_and_keeps_its_wire_name() {
-    let raw = r#"{"format":1,"generated":"2026-11-22T12:00:00Z","games":[{"id":"t","name":"T","japan_release_year":2003,"repository":"a/b","platforms":[{"platform":"PS2","region":"Japan","status":"coming-soon","tested":false}]}]}"#;
+fn the_other_states_are_valid_and_keep_their_wire_names() {
+    let raw = r#"{"format":1,"generated":"2026-11-22T12:00:00Z","games":[{"id":"t","name":"T","japan_release_year":2003,"repository":"a/b","platforms":[
+        {"platform":"PS2","regions":["Japan","USA"],"state":"planned"},
+        {"platform":"PS3","regions":["Japan"],"state":"in-progress"},
+        {"platform":"Wii","regions":["Japan"],"state":"unsupported"}]}]}"#;
     let catalog = parse(raw).unwrap();
-    assert_eq!(catalog.games[0].platforms[0].status, Status::ComingSoon);
+    let states: Vec<State> = catalog.games[0].platforms.iter().map(|p| p.state).collect();
+    assert_eq!(
+        states,
+        [State::Planned, State::InProgress, State::Unsupported]
+    );
+    assert_eq!(catalog.games[0].platforms[0].maturity, None);
     let json = serde_json::to_value(&catalog).unwrap();
-    assert_eq!(json["games"][0]["platforms"][0]["status"], "coming-soon");
+    let wire: Vec<&str> = (0..3)
+        .map(|i| json["games"][0]["platforms"][i]["state"].as_str().unwrap())
+        .collect();
+    assert_eq!(wire, ["planned", "in-progress", "unsupported"]);
 }
 
 #[test]
@@ -316,8 +340,8 @@ fn json_wire_format_matches_the_frontend_types() {
         serde_json::json!({
             "catalog": { "games": [{
                 "id": "tos", "name": "Tales of Symphonia", "japanReleaseYear": 2003,
-                "repository": "To-Recomp/tos", "manifest": null,
-                "platforms": [{ "platform": "GameCube", "region": "France (PAL)", "status": "beta", "tested": false }]
+                "repository": "To-Recomp/tos",
+                "platforms": [{ "platform": "GameCube", "regions": ["France (PAL)"], "state": "playable", "maturity": "beta" }]
             }] },
             "updated": true,
             "error": null

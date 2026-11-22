@@ -2,10 +2,8 @@ import type { Catalog, CatalogPlatform } from "./types";
 
 export type GameState = "not-installed" | "installed" | "ready";
 
-export interface Platform extends CatalogPlatform {
-  /** What the platform selector shows: the platform and the region it was tested for. */
-  label: string;
-}
+/** One console of a game: the selector lists these, and an instance is one of them. */
+export type Platform = CatalogPlatform;
 
 export interface Game {
   id: string;
@@ -36,6 +34,6 @@ export function toGames(catalog: Catalog): Game[] {
     repository: g.repository,
     year: g.japanReleaseYear,
     state: "not-installed",
-    platforms: g.platforms.map((p) => ({ ...p, label: `${p.platform} · ${p.region}` })),
+    platforms: g.platforms,
   }));
 }

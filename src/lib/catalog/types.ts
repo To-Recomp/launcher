@@ -1,12 +1,17 @@
 // Mirrors src-tauri/src/catalog/mod.rs (serde camelCase).
 
-export type Status = "stable" | "beta" | "alpha" | "unsupported" | "coming-soon";
+/** What the launcher can do with a console: only a `playable` one can be installed. */
+export type State = "planned" | "in-progress" | "playable" | "unsupported";
+
+export type Maturity = "alpha" | "beta" | "stable";
 
 export interface CatalogPlatform {
   platform: string;
-  region: string;
-  status: Status;
-  tested: boolean;
+  /** What the game covers on this console: information, never a choice. */
+  regions: string[];
+  state: State;
+  /** Only for a playable console. */
+  maturity: Maturity | null;
 }
 
 export interface CatalogGame {
@@ -14,7 +19,6 @@ export interface CatalogGame {
   name: string;
   japanReleaseYear: number;
   repository: string;
-  manifest: string | null;
   platforms: CatalogPlatform[];
 }
 

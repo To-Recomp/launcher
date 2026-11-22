@@ -237,15 +237,7 @@ fn discs(dir: &Path, one: &str, two: &str) -> BTreeMap<String, PathBuf> {
 }
 
 fn do_prepare(s: &Setup, picked: BTreeMap<String, PathBuf>) -> Result<InstanceView, String> {
-    prepare(
-        &s.env,
-        GAME,
-        "GameCube",
-        "France (PAL)",
-        picked,
-        &NO_CANCEL,
-        &mut |_| {},
-    )
+    prepare(&s.env, GAME, "GameCube", picked, &NO_CANCEL, &mut |_| {})
 }
 
 fn installed_and_published(s: &Setup) {
@@ -256,7 +248,7 @@ fn installed_and_published(s: &Setup) {
 fn instance_location(s: &Setup) -> Instance {
     s.env
         .library
-        .location(GAME, &store::instance_id("GameCube", "France (PAL)"))
+        .location(GAME, &store::instance_id("GameCube"))
         .unwrap()
 }
 
@@ -525,7 +517,6 @@ fn prepares_once_then_the_game_is_ready_without_the_discs() {
         &s.env,
         GAME,
         "GameCube",
-        "France (PAL)",
         discs(inputs_dir.path(), "one", "two"),
         &NO_CANCEL,
         &mut |p| events.push(p),
@@ -534,7 +525,7 @@ fn prepares_once_then_the_game_is_ready_without_the_discs() {
 
     assert_eq!(
         (view.id.as_str(), view.state),
-        ("gamecube-france-pal", InstanceState::Ready)
+        ("gamecube", InstanceState::Ready)
     );
     let location = instance_location(&s);
     assert_eq!(
@@ -560,7 +551,7 @@ fn prepares_once_then_the_game_is_ready_without_the_discs() {
         !location.install.join(".recomplauncher-tmp").exists(),
         "the temp folder is removed"
     );
-    let log = read_log(&s.env, GAME, "GameCube", "France (PAL)", "prepare", 50).unwrap();
+    let log = read_log(&s.env, GAME, "GameCube", "prepare", 50).unwrap();
     assert!(
         log.contains("progress 0.6 Compiling") && log.contains("-- finished"),
         "{log}"
@@ -571,10 +562,7 @@ fn prepares_once_then_the_game_is_ready_without_the_discs() {
     let snap = snapshot(&s.env);
     assert_eq!(snap[0].instances, vec![view]);
     let (tx, rx) = mpsc::channel();
-    start(&s.env, GAME, "GameCube", "France (PAL)", move |code| {
-        tx.send(code).unwrap()
-    })
-    .unwrap();
+    start(&s.env, GAME, "GameCube", move |code| tx.send(code).unwrap()).unwrap();
     assert_eq!(rx.recv_timeout(Duration::from_secs(20)).unwrap(), Some(0));
 }
 
@@ -621,11 +609,11 @@ fn a_failed_preparation_reports_why_and_leaves_the_instance_unprepared() {
     let dir = TempDir::new().unwrap();
     let err = do_prepare(&s, discs(dir.path(), "FAIL", "two")).unwrap_err();
     assert!(err.contains("exit code 7"), "{err}");
-    let log = read_log(&s.env, GAME, "GameCube", "France (PAL)", "prepare", 50).unwrap();
+    let log = read_log(&s.env, GAME, "GameCube", "prepare", 50).unwrap();
     assert!(log.contains("disc is unreadable"), "{log}");
     assert!(s.env.library.instances(GAME).unwrap().is_empty());
 
-    let err = start(&s.env, GAME, "GameCube", "France (PAL)", |_| {}).unwrap_err();
+    let err = start(&s.env, GAME, "GameCube", |_| {}).unwrap_err();
     assert!(err.contains("prepare it first"), "{err}");
 }
 
@@ -638,19 +626,11 @@ fn a_preparation_can_be_cancelled_and_stops_the_program() {
     let cancel = AtomicBool::new(false);
 
     let started = Instant::now();
-    let result = prepare(
-        &s.env,
-        GAME,
-        "GameCube",
-        "France (PAL)",
-        picked,
-        &cancel,
-        &mut |p| {
-            if p.message == "Working" {
-                cancel.store(true, Ordering::Relaxed);
-            }
-        },
-    );
+    let result = prepare(&s.env, GAME, "GameCube", picked, &cancel, &mut |p| {
+        if p.message == "Working" {
+            cancel.store(true, Ordering::Relaxed);
+        }
+    });
 
     assert_eq!(result.unwrap_err(), CANCELLED);
     assert!(started.elapsed() < Duration::from_secs(20));
@@ -659,11 +639,9 @@ fn a_preparation_can_be_cancelled_and_stops_the_program() {
         .install
         .join(".recomplauncher-tmp")
         .exists());
-    assert!(
-        read_log(&s.env, GAME, "GameCube", "France (PAL)", "prepare", 50)
-            .unwrap()
-            .contains("-- cancelled")
-    );
+    assert!(read_log(&s.env, GAME, "GameCube", "prepare", 50)
+        .unwrap()
+        .contains("-- cancelled"));
 }
 
 #[test]
@@ -689,13 +667,12 @@ fn a_release_that_runs_as_it_is_only_records_the_players_files() {
     let dir = TempDir::new().unwrap();
     // Started with the disc in its arguments: not ready until the player gave it.
     assert_eq!(snapshot(&s.env).len(), 1);
-    assert!(start(&s.env, GAME, "PS1", "USA", |_| {}).is_err());
+    assert!(start(&s.env, GAME, "PS1", |_| {}).is_err());
     let iso = file(dir.path(), "g.iso", "x");
     let view = prepare(
         &s.env,
         GAME,
         "PS1",
-        "USA",
         BTreeMap::from([("game".into(), iso.clone())]),
         &NO_CANCEL,
         &mut |_| {},
@@ -722,10 +699,7 @@ fn starts_the_game_with_its_settings_and_environment() {
     crate::settings::apply(&location, "fs", SettingInput::Choice { index: 1 }).unwrap();
 
     let (tx, rx) = mpsc::channel();
-    start(&s.env, GAME, "GameCube", "France (PAL)", move |code| {
-        tx.send(code).unwrap()
-    })
-    .unwrap();
+    start(&s.env, GAME, "GameCube", move |code| tx.send(code).unwrap()).unwrap();
     assert_eq!(rx.recv_timeout(Duration::from_secs(20)).unwrap(), Some(0));
 
     let played = fs::read_to_string(location.data.join("played.txt")).unwrap();
@@ -740,7 +714,7 @@ fn starts_the_game_with_its_settings_and_environment() {
         played.contains(&format!("data={}", location.data.display())),
         "{played}"
     );
-    let log = read_log(&s.env, GAME, "GameCube", "France (PAL)", "game", 50).unwrap();
+    let log = read_log(&s.env, GAME, "GameCube", "game", 50).unwrap();
     assert!(
         log.contains("playing") && log.contains("-- exited with code 0"),
         "{log}"
@@ -771,7 +745,7 @@ fn an_update_keeps_instances_and_rebuilds_from_what_was_kept() {
         "my save",
         "instances survive updates"
     );
-    assert!(start(&s.env, GAME, "GameCube", "France (PAL)", |_| {}).is_err());
+    assert!(start(&s.env, GAME, "GameCube", |_| {}).is_err());
 
     // The discs are gone; the rebuild starts from the extracted files the instance kept.
     fs::remove_dir_all(dir.path()).unwrap();
@@ -784,7 +758,7 @@ fn an_update_keeps_instances_and_rebuilds_from_what_was_kept() {
     let record = s
         .env
         .library
-        .instance_record(GAME, &rebuilt.id, "GameCube", "France (PAL)")
+        .instance_record(GAME, &rebuilt.id, "GameCube")
         .unwrap();
     assert_eq!(record.prepared_release.as_deref(), Some("v2.0.0"));
 }
@@ -873,13 +847,11 @@ fn arguments_are_filled_in_or_left_out() {
 
 #[test]
 fn ids_are_safe_and_stable() {
-    assert_eq!(
-        store::instance_id("GameCube", "France (PAL)"),
-        "gamecube-france-pal"
-    );
-    assert_eq!(store::instance_id("PS1", "USA"), "ps1-usa");
-    assert_eq!(store::instance_id("Xbox 360", "../../etc"), "xbox-360-etc");
-    assert_eq!(store::instance_id("日本", "Japan"), "x-japan");
+    assert_eq!(store::instance_id("GameCube"), "gamecube");
+    assert_eq!(store::instance_id("PS1"), "ps1");
+    assert_eq!(store::instance_id("Xbox Series X|S"), "xbox-series-x-s");
+    assert_eq!(store::instance_id("../../etc"), "etc");
+    assert_eq!(store::instance_id("日本"), "x");
     for ok in ["tos", "tales-of-eternia", "d2"] {
         assert!(store::valid_game_id(ok), "{ok}");
     }
@@ -922,9 +894,8 @@ fn json_wire_format_matches_the_frontend_types() {
         can_prepare: true,
         keeps_copy: true,
         instances: vec![InstanceView {
-            id: "gc-eu".into(),
+            id: "gc".into(),
             platform: "GC".into(),
-            region: "EU".into(),
             state: InstanceState::NeedsRebuild,
         }],
     };
@@ -934,7 +905,7 @@ fn json_wire_format_matches_the_frontend_types() {
             "gameId": "tos", "repository": "To-Recomp/tos-recomp", "tag": "v1",
             "inputs": [{ "id": "disc1", "label": "Disc 1", "role": "disc", "optional": false, "kinds": ["file"], "extensions": ["iso"] }],
             "prepareLabel": null, "canPrepare": true, "keepsCopy": true,
-            "instances": [{ "id": "gc-eu", "platform": "GC", "region": "EU", "state": "needsRebuild" }]
+            "instances": [{ "id": "gc", "platform": "GC", "state": "needsRebuild" }]
         })
     );
     assert_eq!(

@@ -38,27 +38,37 @@ pub struct Game {
     #[serde(rename(serialize = "japanReleaseYear", deserialize = "japan_release_year"))]
     pub japan_release_year: u32,
     pub repository: String,
-    pub manifest: Option<String>,
     pub platforms: Vec<Platform>,
 }
 
+/// One console of a game. The regions are information (what the game covers there): the
+/// launcher lists consoles, and an instance is one console.
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct Platform {
     pub platform: String,
-    pub region: String,
-    pub status: Status,
-    pub tested: bool,
+    pub regions: Vec<String>,
+    pub state: State,
+    /// Only for a playable console.
+    pub maturity: Option<Maturity>,
+}
+
+/// What the launcher can do with a console.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum State {
+    Planned,
+    InProgress,
+    /// A release can be installed.
+    Playable,
+    Unsupported,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
-pub enum Status {
-    Stable,
-    Beta,
+pub enum Maturity {
     Alpha,
-    Unsupported,
-    #[serde(rename = "coming-soon")]
-    ComingSoon,
+    Beta,
+    Stable,
 }
 
 /// Parses and validates a catalog; games come back ordered by first Japanese release year.
@@ -93,12 +103,12 @@ pub fn parse(text: &str) -> Result<Catalog, String> {
                 game.id
             ));
         }
-        let mut targets = HashSet::new();
+        let mut platforms = HashSet::new();
         for p in &game.platforms {
-            if !targets.insert((p.platform.as_str(), p.region.as_str())) {
+            if !platforms.insert(p.platform.as_str()) {
                 return Err(format!(
-                    "The catalog lists {} / {} twice for \"{}\".",
-                    p.platform, p.region, game.id
+                    "The catalog lists {} twice for \"{}\".",
+                    p.platform, game.id
                 ));
             }
         }

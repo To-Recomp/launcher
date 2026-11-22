@@ -21,7 +21,7 @@ of the repository.
 `<game>-diagnostic-<date>.md` (`launcher-diagnostic-<date>.md` for manual and panic), English,
 at most 48 KiB, in the launcher's log folder (`app_log_dir`). The last 10 are kept. It holds
 `Diagnostic format: 1`, a table (launcher version and build, OS family/name/arch, GPU names, game
-id/release/platform/region/state, context), the error message, and the tail (at most 200 lines) of
+id/release/platform/state, context), the error message, and the tail (at most 200 lines) of
 `prepare.log` or `game.log` in a `<details>` block. An install failure has no log.
 
 Not collected: user and host names, paths outside the placeholders, IP address, hardware serials,

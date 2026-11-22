@@ -101,7 +101,7 @@ export class LibraryStore {
   }
 
   instanceState(gameId: string, platform: Platform): InstanceState {
-    const id = instanceId(platform.platform, platform.region);
+    const id = instanceId(platform.platform);
     return this.installationOf(gameId)?.instances.find((i) => i.id === id)?.state ?? "notPrepared";
   }
 
@@ -170,13 +170,13 @@ export class LibraryStore {
   async prepare(game: Game, platform: Platform) {
     const installation = this.installationOf(game.id);
     if (!installation) return;
-    const job = prepareJob(game.id, instanceId(platform.platform, platform.region));
+    const job = prepareJob(game.id, instanceId(platform.platform));
     const run = (inputs: Record<string, string>) =>
       this.#run(
         job,
         { game, platform },
         installation.prepareLabel ?? "Preparing the game",
-        () => api.prepareInstance(game.id, platform.platform, platform.region, inputs),
+        () => api.prepareInstance(game.id, platform.platform, inputs),
         () => `${game.name} is ready to play.`,
       );
 
@@ -197,13 +197,13 @@ export class LibraryStore {
   }
 
   async play(game: Game, platform: Platform) {
-    const job = gameJob(game.id, instanceId(platform.platform, platform.region));
+    const job = gameJob(game.id, instanceId(platform.platform));
     this.progress[job] = { job, fraction: null, message: `${game.name} is running` };
     this.status = { tone: "info", text: `${game.name} is running.` };
     this.failure = null;
     this.#started[job] = { game, platform };
     try {
-      await api.startGame(game.id, platform.platform, platform.region);
+      await api.startGame(game.id, platform.platform);
     } catch (e) {
       delete this.progress[job];
       const error = errorMessage(e);
@@ -214,7 +214,7 @@ export class LibraryStore {
 
   async showLog(game: Game, platform: Platform, kind: "prepare" | "game") {
     try {
-      const text = await api.readInstanceLog(game.id, platform.platform, platform.region, kind);
+      const text = await api.readInstanceLog(game.id, platform.platform, kind);
       this.log = text || "The log is empty.";
     } catch (e) {
       this.log = errorMessage(e);
@@ -230,7 +230,6 @@ export class LibraryStore {
       context: failure.context,
       gameId: game.id,
       platform: platform?.platform,
-      region: platform?.region,
       error: failure.error,
     });
   }

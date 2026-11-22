@@ -3,7 +3,7 @@
 //! ```text
 //! <library>/<game id>/installation.json        what is installed (release tag, checksum)
 //! <library>/<game id>/release/                 the release: `{install}`, replaced on update
-//! <library>/<game id>/instances/<id>/          one platform and region of the game
+//! <library>/<game id>/instances/<id>/          one platform of the game
 //!     instance.json                            the player's files, which release it was prepared for
 //!     data/                                    `{data}`: settings, saves, the prepared game
 //!     prepare.log, game.log
@@ -32,7 +32,6 @@ pub struct InstallationRecord {
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct InstanceRecord {
     pub platform: String,
-    pub region: String,
     /// The player's files by input id, as picked.
     #[serde(default)]
     pub inputs: BTreeMap<String, String>,
@@ -61,9 +60,9 @@ pub fn valid_game_id(id: &str) -> bool {
         })
 }
 
-/// `("GameCube", "France (PAL)")` -> `gamecube-france-pal`. The frontend mirrors this.
-pub fn instance_id(platform: &str, region: &str) -> String {
-    format!("{}-{}", slug(platform), slug(region))
+/// `"GameCube"` -> `gamecube`, `"Xbox Series X|S"` -> `xbox-series-x-s`. The frontend mirrors this.
+pub fn instance_id(platform: &str) -> String {
+    slug(platform)
 }
 
 fn slug(text: &str) -> String {
@@ -137,12 +136,10 @@ impl Library {
         game_id: &str,
         instance: &str,
         platform: &str,
-        region: &str,
     ) -> Result<InstanceRecord, String> {
         let path = self.instance_dir(game_id, instance)?.join("instance.json");
         Ok(read_json(&path)?.unwrap_or_else(|| InstanceRecord {
             platform: platform.to_string(),
-            region: region.to_string(),
             ..InstanceRecord::default()
         }))
     }
