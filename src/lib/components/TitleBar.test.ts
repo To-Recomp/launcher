@@ -27,4 +27,11 @@ describe("TitleBar", () => {
     await fireEvent.click(screen.getByRole("tab", { name: "Settings" }));
     expect(calls).toEqual(["settings"]);
   });
+
+  it("opens the launcher's own settings from the gear", async () => {
+    const calls: string[] = [];
+    render(TitleBar, { tab: "home", onchange: (t: string) => calls.push(t) });
+    await fireEvent.click(screen.getByRole("button", { name: "Launcher settings" }));
+    expect(calls).toEqual(["launcher"]);
+  });
 });

@@ -202,7 +202,7 @@ pub fn load_view(instance: &Instance) -> Result<SettingsView, String> {
     build_view(instance, &manifest)
 }
 
-fn build_view(instance: &Instance, manifest: &Manifest) -> Result<SettingsView, String> {
+pub(crate) fn build_view(instance: &Instance, manifest: &Manifest) -> Result<SettingsView, String> {
     let state = state::load(instance)?;
     let mut files = Files::new(instance, manifest);
     let mut settings = Vec::with_capacity(manifest.settings.len());
@@ -388,10 +388,20 @@ fn unquote(raw: &str) -> &str {
 /// Validates and writes one change, then returns the refreshed view.
 pub fn apply(instance: &Instance, id: &str, input: SettingInput) -> Result<SettingsView, String> {
     let manifest = read_manifest(instance)?;
+    apply_with(instance, &manifest, id, input)
+}
+
+/// [`apply`] for a manifest the caller already has (the launcher's own settings are built in).
+pub(crate) fn apply_with(
+    instance: &Instance,
+    manifest: &Manifest,
+    id: &str,
+    input: SettingInput,
+) -> Result<SettingsView, String> {
     let setting = manifest
         .setting(id)
         .ok_or(format!("Unknown setting `{id}`."))?;
-    let mut files = Files::new(instance, &manifest);
+    let mut files = Files::new(instance, manifest);
     if !is_enabled(&mut files, setting)? {
         return Err(format!(
             "{} isn't available with the current settings.",
@@ -503,7 +513,7 @@ pub fn apply(instance: &Instance, id: &str, input: SettingInput) -> Result<Setti
     } else {
         files.save(&target)?;
     }
-    build_view(instance, &manifest)
+    build_view(instance, manifest)
 }
 
 /// Command line contributed by `args` settings: a choice's arguments, and a slider or text

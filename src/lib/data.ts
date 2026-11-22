@@ -5,7 +5,8 @@ export const LAUNCHER_VERSION = "0.1.0";
 /** Where the launcher's own bug reports go. */
 export const LAUNCHER_REPOSITORY = "To-Recomp/launcher";
 
-export type TabId = "home" | "settings";
+/** "launcher" is the launcher's own settings page, opened from the title bar's gear, not a tab. */
+export type TabId = "home" | "settings" | "launcher";
 export const tabs: { id: TabId; label: string }[] = [
   { id: "home", label: "Home" },
   { id: "settings", label: "Settings" },

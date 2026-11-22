@@ -3,6 +3,7 @@
   import CrashBanner from "./lib/components/CrashBanner.svelte";
   import DiagnosticDialog from "./lib/components/DiagnosticDialog.svelte";
   import HomeView from "./lib/components/HomeView.svelte";
+  import LauncherSettingsView from "./lib/components/LauncherSettingsView.svelte";
   import SettingsView from "./lib/components/SettingsView.svelte";
   import Sidebar from "./lib/components/Sidebar.svelte";
   import TitleBar from "./lib/components/TitleBar.svelte";
@@ -86,11 +87,14 @@
   });
 </script>
 
-<div class="app" style={paletteStyle(palette)}>
+<div class="app" style={paletteStyle(tab === "launcher" ? null : palette)}>
   <Sidebar
     {games}
-    selectedId={game?.id ?? ""}
-    onselect={(id) => (selectedId = id)}
+    selectedId={tab === "launcher" ? "" : (game?.id ?? "")}
+    onselect={(id) => {
+      selectedId = id;
+      if (tab === "launcher") tab = "home"; // picking a game leaves the launcher's own page
+    }}
     {loading}
     {catalogError}
     onretry={loadCatalog}
@@ -105,7 +109,9 @@
       />
     {/if}
     <main>
-      {#if !game}
+      {#if tab === "launcher"}
+        <LauncherSettingsView />
+      {:else if !game}
         <p class="empty">Pick a game once the list has loaded.</p>
       {:else if tab === "home"}
         <HomeView {game} {platform} {library} onplatform={(label) => (platformByGame[game.id] = label)} />
