@@ -156,6 +156,40 @@ pub fn recent_releases(
         .collect())
 }
 
+/// The license GitHub detected in a repository, for the game's About page.
+#[derive(Debug, Clone, serde::Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct RepositoryLicense {
+    pub name: String,
+    /// The license file on GitHub.
+    pub url: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct ApiLicenseFile {
+    html_url: Option<String>,
+    license: Option<ApiLicense>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ApiLicense {
+    name: String,
+}
+
+/// The license of `repository` (`owner/name`); `None` when it has none or doesn't exist.
+pub fn repository_license(
+    api: &str,
+    repository: &str,
+) -> Result<Option<RepositoryLicense>, String> {
+    let file: Option<ApiLicenseFile> = get_json(&format!("{api}/repos/{repository}/license"))?;
+    Ok(file.and_then(|f| {
+        Some(RepositoryLicense {
+            name: f.license?.name,
+            url: f.html_url?,
+        })
+    }))
+}
+
 fn is_archive(name: &str) -> bool {
     let lower = name.to_ascii_lowercase();
     lower.ends_with(".zip") || lower.ends_with(".tar.gz") || lower.ends_with(".tgz")

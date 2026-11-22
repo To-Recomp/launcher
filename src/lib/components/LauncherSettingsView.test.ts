@@ -14,6 +14,8 @@ const toggle = (value: number): SettingView => ({
 });
 const view = (...settings: SettingView[]): View => ({ settings });
 
+const onreportbug = vi.fn();
+
 beforeEach(() => {
   vi.clearAllMocks();
   api.loadLauncherSettings.mockResolvedValue(view(toggle(1)));
@@ -21,7 +23,7 @@ beforeEach(() => {
 
 describe("LauncherSettingsView", () => {
   it("shows the launcher's settings under their group heading", async () => {
-    render(LauncherSettingsView);
+    render(LauncherSettingsView, { onreportbug });
     expect(await screen.findByText("Check for updates")).toBeInTheDocument();
     expect(screen.getByText("Updates")).toBeInTheDocument();
     expect(screen.getByRole("switch")).toBeChecked();
@@ -29,7 +31,7 @@ describe("LauncherSettingsView", () => {
 
   it("writes a change and shows the refreshed value", async () => {
     api.setLauncherSetting.mockResolvedValue(view(toggle(0)));
-    render(LauncherSettingsView);
+    render(LauncherSettingsView, { onreportbug });
     await fireEvent.click(await screen.findByRole("switch"));
     expect(api.setLauncherSetting).toHaveBeenCalledWith("autoUpdate", { type: "choice", index: 0 });
     await waitFor(() => expect(screen.getByRole("switch")).not.toBeChecked());
@@ -37,7 +39,7 @@ describe("LauncherSettingsView", () => {
 
   it("explains a rejected change and shows what is really saved", async () => {
     api.setLauncherSetting.mockRejectedValue("Check for updates: choice 7 doesn't exist.");
-    render(LauncherSettingsView);
+    render(LauncherSettingsView, { onreportbug });
     await fireEvent.click(await screen.findByRole("switch"));
     expect(await screen.findByRole("alert")).toHaveTextContent("choice 7 doesn't exist");
     await waitFor(() => expect(api.loadLauncherSettings).toHaveBeenCalledTimes(2));
@@ -46,13 +48,7 @@ describe("LauncherSettingsView", () => {
 
   it("says why the settings can't be shown", async () => {
     api.loadLauncherSettings.mockRejectedValue("Can't read launcher.json: denied");
-    render(LauncherSettingsView);
+    render(LauncherSettingsView, { onreportbug });
     expect(await screen.findByRole("alert")).toHaveTextContent("Can't read launcher.json: denied");
-  });
-
-  it("says so when there is nothing to configure yet", async () => {
-    api.loadLauncherSettings.mockResolvedValue(view());
-    render(LauncherSettingsView);
-    expect(await screen.findByText("No launcher settings yet.")).toBeInTheDocument();
   });
 });

@@ -16,7 +16,10 @@
       "identifier": "opener:allow-open-url",
       "allow": [
         { "url": "https://github.com/*/*/issues/new" },
-        { "url": "https://github.com/*/*/issues" }
+        { "url": "https://github.com/*/*/issues" },
+        { "url": "https://github.com/*/*" },
+        { "url": "https://github.com/*/*/blob/**" },
+        { "url": "https://www.steamgriddb.com" }
       ]
     }
   ]

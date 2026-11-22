@@ -239,6 +239,11 @@ export class LibraryStore {
     return this.#report(LAUNCHER_REPOSITORY, { context: "manual" });
   }
 
+  /** Game → Settings → About → Report a bug: this instance, for the game's own repository. */
+  reportGameBug(game: Game, platform: Platform | undefined) {
+    return this.#report(game.repository, { context: "manual", gameId: game.id, platform: platform?.platform });
+  }
+
   closeDiagnostic() {
     this.diagnostic = null;
   }

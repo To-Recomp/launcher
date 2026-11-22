@@ -45,3 +45,9 @@ export const revealFile = (path: string) => revealItemInDir(path);
 export const issuesUrl = (repository: string) => `https://github.com/${repository}/issues/new`;
 
 export const openIssues = (repository: string) => openUrl(issuesUrl(repository));
+
+/** The repository's page (`owner/name`). */
+export const repositoryUrl = (repository: string) => `https://github.com/${repository}`;
+
+/** Opens a page of github.com in the browser (the opener's permission is limited to it). */
+export const openLink = (url: string) => openUrl(url);

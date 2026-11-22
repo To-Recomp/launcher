@@ -947,3 +947,29 @@ fn recent_releases_skip_drafts_and_a_missing_repository_has_none() {
         .unwrap()
         .is_empty());
 }
+
+#[test]
+fn a_repository_license_has_a_name_and_a_link_and_none_is_not_an_error() {
+    let fake = Fake::new();
+    fake.route(
+        &format!("/repos/{REPO}/license"),
+        200,
+        serde_json::json!({
+            "html_url": "https://github.com/To-Recomp/tos-recomp/blob/main/LICENSE",
+            "license": { "name": "GNU General Public License v3.0" }
+        })
+        .to_string()
+        .into_bytes(),
+    );
+    assert_eq!(
+        release::repository_license(&fake.url, REPO).unwrap(),
+        Some(release::RepositoryLicense {
+            name: "GNU General Public License v3.0".into(),
+            url: "https://github.com/To-Recomp/tos-recomp/blob/main/LICENSE".into(),
+        })
+    );
+    assert_eq!(
+        release::repository_license(&fake.url, "To-Recomp/none").unwrap(),
+        None
+    );
+}

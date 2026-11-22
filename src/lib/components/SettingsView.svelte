@@ -1,18 +1,32 @@
 <script lang="ts">
   import { untrack } from "svelte";
+  import GameAbout from "./GameAbout.svelte";
   import Icon, { type IconName } from "./Icon.svelte";
   import SettingRow from "./SettingRow.svelte";
   import { errorMessage, loadSettings, setSetting } from "../settings/api";
   import { sectionsOf } from "../settings/sections";
   import type { Location, SettingInput, SettingView, SettingsView } from "../settings/types";
-  import { LAUNCHER_VERSION, NON_AFFILIATION, settingsTabs, type SettingsTab } from "../data";
+  import { settingsTabs, type SettingsTab } from "../data";
 
   let {
     gameId,
     gameName,
+    repository,
+    platform,
+    tag,
     location,
     onreportbug,
-  }: { gameId: string; gameName: string; location: Location | null; onreportbug: () => void } = $props();
+  }: {
+    gameId: string;
+    gameName: string;
+    repository: string;
+    platform: string | null;
+    /** The installed release; `null` when the game isn't installed. */
+    tag: string | null;
+    location: Location | null;
+    /** Settings → About → Report a bug, for this game. */
+    onreportbug: () => Promise<void> | void;
+  } = $props();
 
   const icons: Record<SettingsTab, IconName> = {
     Display: "display",
@@ -96,15 +110,7 @@
   {/if}
 
   {#if tab === "About"}
-    <div class="group about">
-      <div class="row"><span>To Recomp Launcher</span><span class="muted">v{LAUNCHER_VERSION}</span></div>
-      <div class="row"><span>License</span><span class="muted">GNU GPL v3</span></div>
-      <div class="row">
-        <span>Something went wrong?<span class="muted help"> Creates a file you can review and paste into a GitHub issue.</span></span>
-        <button class="report" onclick={onreportbug}>Report a bug</button>
-      </div>
-      <p class="muted notice">{NON_AFFILIATION}</p>
-    </div>
+    <GameAbout name={gameName} {repository} {platform} {tag} {location} {onreportbug} />
   {:else if !location}
     <p class="empty">Install and prepare {gameName} to configure it.</p>
   {:else if loadError}
@@ -166,19 +172,6 @@
     background: var(--color-surface);
     overflow: hidden;
   }
-  .about { margin-top: var(--space-5); }
-  .row { display: flex; align-items: center; justify-content: space-between; padding: var(--space-3) var(--space-4); }
-  .row + .row { border-top: 1px solid var(--color-border); }
-  .muted { color: var(--color-text-muted); }
-  .help { display: block; font-size: 12px; }
-  .report {
-    padding: 6px 14px;
-    border: 1px solid var(--color-border-strong);
-    border-radius: var(--radius-pill);
-    background: var(--color-surface-alt);
-    font-weight: 500;
-  }
-  .notice { margin: 0; padding: var(--space-3) var(--space-4); border-top: 1px solid var(--color-border); font-size: 12px; }
   .empty { margin-top: var(--space-5); color: var(--color-text-muted); }
   .error {
     display: flex;

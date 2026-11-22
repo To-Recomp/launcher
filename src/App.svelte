@@ -110,13 +110,21 @@
     {/if}
     <main>
       {#if tab === "launcher"}
-        <LauncherSettingsView />
+        <LauncherSettingsView onreportbug={() => library.reportBug()} />
       {:else if !game}
         <p class="empty">Pick a game once the list has loaded.</p>
       {:else if tab === "home"}
         <HomeView {game} {platform} {library} onplatform={(label) => (platformByGame[game.id] = label)} />
       {:else}
-        <SettingsView gameId={game.id} gameName={game.name} {location} onreportbug={() => library.reportBug()} />
+        <SettingsView
+          gameId={game.id}
+          gameName={game.name}
+          repository={game.repository}
+          platform={platform?.platform ?? null}
+          tag={library.installationOf(game.id)?.tag ?? null}
+          {location}
+          onreportbug={() => library.reportGameBug(game, platform)}
+        />
       {/if}
     </main>
     <footer>{NON_AFFILIATION}</footer>
