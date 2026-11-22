@@ -1,0 +1,181 @@
+name: Release
+
+# On a `v*` tag: build Windows and Linux artifacts, publish them with SHA-256 checksums and the
+# updater's latest.json. On a pull request touching the packaging: build only, publish nothing.
+# Tags with a `-` (v0.2.0-rc.1) are published as pre-releases; the updater only follows
+# `releases/latest`, which never points at a pre-release.
+
+on:
+  push:
+    tags: ["v*"]
+  pull_request:
+    paths:
+      - .github/workflows/release.yml
+      - scripts/**
+      - packaging/**
+      - .copr/**
+      - src-tauri/tauri.conf.json
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-22.04, platform: linux }   # oldest glibc we can build on, for the AppImage
+          - { os: windows-latest, platform: windows }
+    runs-on: ${{ matrix.os }}
+    env:
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+      UPDATER_PUBKEY: ${{ vars.TAURI_UPDATER_PUBKEY }}
+      APPIMAGE_EXTRACT_AND_RUN: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the tag matches the app version
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          version=$(jq -r .version src-tauri/tauri.conf.json)
+          if [ "$GITHUB_REF_NAME" != "v$version" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME doesn't match version $version in src-tauri/tauri.conf.json"
+            exit 1
+          fi
+
+      - name: Install Tauri system dependencies
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev libsoup-3.0-dev \
+            libjavascriptcoregtk-4.1-dev patchelf file xdg-utils
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - run: npm ci
+
+      - name: Decide whether the build is signed for the updater
+        id: signing
+        shell: bash
+        run: |
+          if [ -n "$TAURI_SIGNING_PRIVATE_KEY" ] && [ -n "$UPDATER_PUBKEY" ]; then
+            echo "signed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::No updater signing key or public key configured (see docs/releasing.md): building without self-update."
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build (signed, with self-update)
+        if: steps.signing.outputs.signed == 'true'
+        shell: bash
+        run: |
+          config=$(jq -nc --arg pubkey "$UPDATER_PUBKEY" --arg repo "$GITHUB_REPOSITORY" '{
+            bundle: { createUpdaterArtifacts: true },
+            plugins: { updater: {
+              pubkey: $pubkey,
+              endpoints: ["https://github.com/\($repo)/releases/latest/download/latest.json"],
+              windows: { installMode: "passive" }
+            } }
+          }')
+          bundles=$([ "${{ matrix.platform }}" = linux ] && echo appimage || echo nsis)
+          npm run tauri build -- --features updater --bundles "$bundles" --config "$config"
+
+      - name: Build (unsigned, no self-update)
+        if: steps.signing.outputs.signed != 'true'
+        shell: bash
+        run: |
+          bundles=$([ "${{ matrix.platform }}" = linux ] && echo appimage || echo nsis)
+          npm run tauri build -- --bundles "$bundles"
+
+      - name: Stage the release assets
+        shell: bash
+        run: |
+          version=$(jq -r .version src-tauri/tauri.conf.json)
+          bundle=src-tauri/target/release/bundle
+          out=release-assets
+          mkdir -p "$out"
+          if [ "${{ matrix.platform }}" = linux ]; then
+            arch=linux-x86_64
+            cp "$bundle"/appimage/*.AppImage "$out/To-Recomp-Launcher_${version}_${arch}.AppImage"
+            [ -f "$bundle"/appimage/*.AppImage.sig ] && cp "$bundle"/appimage/*.AppImage.sig "$out/To-Recomp-Launcher_${version}_${arch}.AppImage.sig"
+            dir="to-recomp-launcher-${version}-${arch}"
+            mkdir "$dir"
+            cp src-tauri/target/release/to-recomp-launcher LICENSE README.md "$dir/"
+            cp packaging/linux/org.torecomp.launcher.desktop "$dir/"
+            cp src-tauri/icons/icon.png "$dir/org.torecomp.launcher.png"
+            tar czf "$out/To-Recomp-Launcher_${version}_${arch}.tar.gz" "$dir"
+          else
+            arch=windows-x86_64
+            cp "$bundle"/nsis/*-setup.exe "$out/To-Recomp-Launcher_${version}_${arch}-setup.exe"
+            [ -f "$bundle"/nsis/*-setup.exe.sig ] && cp "$bundle"/nsis/*-setup.exe.sig "$out/To-Recomp-Launcher_${version}_${arch}-setup.exe.sig"
+            dir="To-Recomp-Launcher-${version}-${arch}-portable"
+            mkdir "$dir"
+            cp src-tauri/target/release/to-recomp-launcher.exe LICENSE README.md "$dir/"
+            powershell -NoProfile -Command "Compress-Archive -Path '$dir' -DestinationPath '$out/To-Recomp-Launcher_${version}_${arch}-portable.zip'"
+          fi
+          ls -l "$out"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: assets-${{ matrix.platform }}
+          path: release-assets/*
+          if-no-files-found: error
+
+  publish:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: assets-*
+          merge-multiple: true
+          path: release-assets
+
+      - name: latest.json for the updater
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          if node scripts/make-latest-json.mjs --version "$version" --tag "$GITHUB_REF_NAME" \
+              --repo "$GITHUB_REPOSITORY" --dir release-assets > latest.json; then
+            mv latest.json release-assets/latest.json
+          else
+            code=$?
+            [ "$code" = 3 ] || exit "$code"
+            echo "::warning::Assets are unsigned: this release has no latest.json, so no launcher updates."
+            rm -f latest.json
+          fi
+          rm -f release-assets/*.sig
+
+      - name: Checksums
+        working-directory: release-assets
+        run: |
+          sha256sum -- * > ../SHA256SUMS
+          mv ../SHA256SUMS SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          flags=(--title "To Recomp Launcher $GITHUB_REF_NAME" --generate-notes)
+          case "$GITHUB_REF_NAME" in *-*) flags+=(--prerelease) ;; esac
+          gh release create "$GITHUB_REF_NAME" release-assets/* "${flags[@]}"

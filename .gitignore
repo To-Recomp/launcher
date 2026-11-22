@@ -48,3 +48,4 @@ design/*.png
 # Tauri generated schemas
 src-tauri/gen/
 coverage/
+rpmbuild-out/
