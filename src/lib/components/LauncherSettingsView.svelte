@@ -1,10 +1,12 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import LauncherAbout from "./LauncherAbout.svelte";
+  import LauncherCatalog from "./LauncherCatalog.svelte";
   import LauncherFolders from "./LauncherFolders.svelte";
   import LauncherUpdates from "./LauncherUpdates.svelte";
   import RestartBanner from "./RestartBanner.svelte";
   import SettingRow from "./SettingRow.svelte";
+  import type { CatalogStatus } from "../catalog/status";
   import { loadLauncherSettings, setLauncherSetting } from "../launcher/api";
   import { errorMessage } from "../settings/api";
   import { restartNeeded } from "../launcher/restart.svelte";
@@ -12,7 +14,17 @@
   import { sectionsOf } from "../settings/sections";
   import type { SettingInput, SettingView, SettingsView } from "../settings/types";
 
-  let { onreportbug }: { onreportbug: () => Promise<void> | void } = $props();
+  let {
+    catalogStatus,
+    refreshingCatalog,
+    onrefreshcatalog,
+    onreportbug,
+  }: {
+    catalogStatus: CatalogStatus | null;
+    refreshingCatalog: boolean;
+    onrefreshcatalog: () => Promise<void>;
+    onreportbug: () => Promise<void> | void;
+  } = $props();
 
   let view = $state<SettingsView | null>(null);
   let loadError = $state<string | null>(null);
@@ -71,6 +83,8 @@
   {/if}
 
   <LauncherUpdates />
+
+  <LauncherCatalog status={catalogStatus} refreshing={refreshingCatalog} onrefresh={onrefreshcatalog} />
 
   <LauncherFolders />
 

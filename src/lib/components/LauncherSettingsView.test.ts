@@ -17,6 +17,7 @@ const toggle = (value: number): SettingView => ({
 const view = (...settings: SettingView[]): View => ({ settings });
 
 const onreportbug = vi.fn();
+const props = { catalogStatus: null, refreshingCatalog: false, onrefreshcatalog: vi.fn(), onreportbug };
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -26,7 +27,7 @@ beforeEach(() => {
 
 describe("LauncherSettingsView", () => {
   it("shows the launcher's settings under their group heading", async () => {
-    render(LauncherSettingsView, { onreportbug });
+    render(LauncherSettingsView, props);
     expect(await screen.findByText("Check for updates")).toBeInTheDocument();
     expect(screen.getByText("Updates")).toBeInTheDocument();
     expect(screen.getByRole("switch")).toBeChecked();
@@ -34,7 +35,7 @@ describe("LauncherSettingsView", () => {
 
   it("writes a change and shows the refreshed value", async () => {
     api.setLauncherSetting.mockResolvedValue(view(toggle(0)));
-    render(LauncherSettingsView, { onreportbug });
+    render(LauncherSettingsView, props);
     await fireEvent.click(await screen.findByRole("switch"));
     expect(api.setLauncherSetting).toHaveBeenCalledWith("autoUpdate", { type: "choice", index: 0 });
     await waitFor(() => expect(screen.getByRole("switch")).not.toBeChecked());
@@ -42,7 +43,7 @@ describe("LauncherSettingsView", () => {
 
   it("explains a rejected change and shows what is really saved", async () => {
     api.setLauncherSetting.mockRejectedValue("Check for updates: choice 7 doesn't exist.");
-    render(LauncherSettingsView, { onreportbug });
+    render(LauncherSettingsView, props);
     await fireEvent.click(await screen.findByRole("switch"));
     expect(await screen.findByRole("alert")).toHaveTextContent("choice 7 doesn't exist");
     await waitFor(() => expect(api.loadLauncherSettings).toHaveBeenCalledTimes(2));
@@ -51,7 +52,7 @@ describe("LauncherSettingsView", () => {
 
   it("says why the settings can't be shown", async () => {
     api.loadLauncherSettings.mockRejectedValue("Can't read launcher.json: denied");
-    render(LauncherSettingsView, { onreportbug });
+    render(LauncherSettingsView, props);
     expect(await screen.findByRole("alert")).toHaveTextContent("Can't read launcher.json: denied");
   });
 
@@ -63,7 +64,7 @@ describe("LauncherSettingsView", () => {
     api.loadLauncherSettings.mockResolvedValue(view(channel));
     api.setLauncherSetting.mockResolvedValue(view(channel));
     launcherUpdates.found = { version: "0.3.0-beta.1" };
-    render(LauncherSettingsView, { onreportbug });
+    render(LauncherSettingsView, props);
     await fireEvent.click(await screen.findByRole("radio", { name: "Pre-release" }));
     await waitFor(() => expect(launcherUpdates.found).toBeNull());
   });

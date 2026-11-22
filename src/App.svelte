@@ -10,6 +10,7 @@
   import { cachedCatalog, refreshCatalog } from "./lib/catalog/api";
   import { toGames, type Game } from "./lib/catalog/games";
   import { logoFor } from "./lib/catalog/logos";
+  import type { CatalogStatus } from "./lib/catalog/status";
   import { loadPalette, paletteStyle, type Palette } from "./lib/catalog/palette";
   import { NON_AFFILIATION, type TabId } from "./lib/data";
   import { instanceLocation } from "./lib/library/api";
@@ -22,7 +23,9 @@
 
   let catalog = $state<Game[]>([]);
   let loading = $state(true);
+  let catalogLoads = 0;
   let catalogError = $state<string | null>(null);
+  let catalogStatus = $state<CatalogStatus | null>(null);
   let selectedId = $state<string | null>(null);
   let tab = $state<TabId>("home");
 
@@ -64,6 +67,8 @@
 
   /** The saved list shows at once; the download then replaces it if something newer exists. */
   async function loadCatalog() {
+    if (catalogLoads > 0) return; // a refresh is already under way
+    catalogLoads++;
     loading = true;
     try {
       const saved = await cachedCatalog();
@@ -75,10 +80,13 @@
       const result = await refreshCatalog();
       if (result.catalog) catalog = toGames(result.catalog);
       catalogError = result.error;
+      catalogStatus = { at: new Date(), updated: result.updated, error: result.error };
     } catch (e) {
       catalogError = errorMessage(e);
+      catalogStatus = { at: new Date(), updated: false, error: catalogError };
     }
     loading = false;
+    catalogLoads--;
   }
 
   onMount(() => {
@@ -112,7 +120,12 @@
     {/if}
     <main>
       {#if tab === "launcher"}
-        <LauncherSettingsView onreportbug={() => library.reportBug()} />
+        <LauncherSettingsView
+          catalogStatus={catalogStatus}
+          refreshingCatalog={loading}
+          onrefreshcatalog={loadCatalog}
+          onreportbug={() => library.reportBug()}
+        />
       {:else if !game}
         <p class="empty">Pick a game once the list has loaded.</p>
       {:else if tab === "home"}
