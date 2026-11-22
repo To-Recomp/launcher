@@ -4,6 +4,7 @@ mod diagnostics;
 mod fs_util;
 mod launcher_settings;
 mod library;
+mod net;
 mod settings;
 mod updater;
 
@@ -14,6 +15,9 @@ pub fn run() {
             use tauri::Manager;
             app.manage(library::LibraryRoot::resolve(app.handle()));
             app.manage(behavior::Tray::default());
+            if let Ok(dir) = launcher_settings::config_dir(app.handle()) {
+                net::load(&dir);
+            }
             if let Ok(dir) = app.path().app_log_dir() {
                 diagnostics::panic::arm(dir, diagnostics::app_scrub(app));
             }
@@ -61,6 +65,9 @@ pub fn run() {
             launcher_settings::launcher_update_preferences,
             launcher_settings::launcher_language,
             launcher_settings::launcher_appearance,
+            net::proxy_settings,
+            net::set_proxy,
+            net::test_proxy,
             behavior::apply_behavior,
             behavior::autostart_supported,
             behavior::autostart_enabled,

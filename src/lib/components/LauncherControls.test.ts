@@ -8,7 +8,7 @@ const api = vi.hoisted(() => ({
   setLauncherSetting: vi.fn(),
   launcherFolders: vi.fn(),
   setGamesFolder: vi.fn(),
-  applyBehavior: vi.fn().mockResolvedValue(undefined),
+  applyBehavior: vi.fn().mockResolvedValue(undefined), proxySettings: vi.fn().mockResolvedValue({ settings: { mode: "system", protocol: "http", host: "", port: 8080, username: "", noProxy: "" }, hasPassword: false, keychainError: null }), setProxy: vi.fn(), testProxy: vi.fn(),
   autostartSupported: vi.fn().mockResolvedValue(false),
   autostartEnabled: vi.fn(),
   setAutostart: vi.fn(),

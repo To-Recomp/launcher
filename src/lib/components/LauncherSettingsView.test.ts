@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SettingView, SettingsView as View } from "../settings/types";
 
-const api = vi.hoisted(() => ({ loadLauncherSettings: vi.fn(), setLauncherSetting: vi.fn(), launcherFolders: vi.fn(), setGamesFolder: vi.fn(), launcherAppearance: vi.fn(), applyBehavior: vi.fn().mockResolvedValue(undefined), autostartSupported: vi.fn().mockResolvedValue(false), autostartEnabled: vi.fn(), setAutostart: vi.fn() }));
+const api = vi.hoisted(() => ({ loadLauncherSettings: vi.fn(), setLauncherSetting: vi.fn(), launcherFolders: vi.fn(), setGamesFolder: vi.fn(), launcherAppearance: vi.fn(), applyBehavior: vi.fn().mockResolvedValue(undefined), proxySettings: vi.fn().mockResolvedValue({ settings: { mode: "system", protocol: "http", host: "", port: 8080, username: "", noProxy: "" }, hasPassword: false, keychainError: null }), setProxy: vi.fn(), testProxy: vi.fn(), autostartSupported: vi.fn().mockResolvedValue(false), autostartEnabled: vi.fn(), setAutostart: vi.fn() }));
 vi.mock("../launcher/api", () => api);
 vi.mock("../updater", () => ({ updaterAvailable: vi.fn(), updateLauncher: vi.fn(), checkLauncherUpdate: vi.fn(), updatePreferences: vi.fn() }));
 vi.mock("../settings/api", () => ({ errorMessage: (e: unknown) => String(e) }));

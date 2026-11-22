@@ -107,3 +107,27 @@ development switch, see `docs/catalog.md`).
   regular files with that name directly in the folder: other files, subfolders and links (which are
   never followed) are left alone, and so are the games' own logs, which live with their instance.
   A crash banner that offered one of the deleted files goes away.
+
+## Network: proxy
+
+One proxy for every request the launcher makes: the game list, GitHub release lookups and game
+downloads (`ureq`), and the launcher update (the updater's reqwest). `src-tauri/src/net` owns it.
+
+- **Modes:** *System* leaves each client on its defaults: the `HTTP_PROXY` / `HTTPS_PROXY` /
+  `ALL_PROXY` / `NO_PROXY` variables, plus the Windows Internet settings. Other desktops' own proxy
+  settings (GNOME, KDE) are not read: use Manual there. *None* connects directly whatever the
+  system says. *Manual*: HTTP, HTTPS or SOCKS5, host, port, optional login, and a list of hosts
+  that bypass it (`example.com`, `.example.com`, `*`).
+- **Password:** in the system keychain (`keyring`: Secret Service, Credential Manager, Keychain),
+  never in `launcher.json`, which only keeps the user name. If the keychain isn't there, saving a
+  password fails with that reason and nothing is saved; there is no plaintext fallback. Without a
+  password no keychain is needed.
+- **Test connection:** one small request to GitHub with the values on the form, saved or not, and
+  the saved password when none is typed. It tells a refused connection, a login the proxy wants or
+  refused, an address that can't be found and a timeout apart.
+- **When it applies:** requests that start after saving. A download in progress finishes on the
+  connection it started with. A manual proxy that can't be built fails the request; it never goes
+  out directly instead.
+- **Diagnostics:** the proxy's host and user name are hidden in diagnostic files, panic files
+  included.
+- A SOCKS5 proxy also carries the updater (reqwest's `socks` feature is on).

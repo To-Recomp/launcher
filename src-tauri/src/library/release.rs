@@ -38,17 +38,17 @@ pub struct Release {
     pub sha256: String,
 }
 
-fn agent() -> ureq::Agent {
-    ureq::Agent::config_builder()
+fn agent() -> Result<ureq::Agent, String> {
+    Ok(crate::net::agent_builder()?
         .timeout_connect(Some(Duration::from_secs(10)))
         .timeout_recv_response(Some(Duration::from_secs(30)))
         .http_status_as_error(false)
         .build()
-        .into()
+        .into())
 }
 
 fn get_json<T: for<'de> Deserialize<'de>>(url: &str) -> Result<Option<T>, String> {
-    let mut response = agent()
+    let mut response = agent()?
         .get(url)
         .header("Accept", "application/vnd.github+json")
         .header(
@@ -233,7 +233,7 @@ pub fn download(
     cancel: &AtomicBool,
     progress: &mut dyn FnMut(u64, Option<u64>),
 ) -> Result<(), String> {
-    let mut response = agent()
+    let mut response = agent()?
         .get(url)
         .header(
             "User-Agent",

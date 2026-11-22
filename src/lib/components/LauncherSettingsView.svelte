@@ -5,6 +5,7 @@
   import LauncherBehavior from "./LauncherBehavior.svelte";
   import LauncherCatalog from "./LauncherCatalog.svelte";
   import LauncherDiagnostics from "./LauncherDiagnostics.svelte";
+  import LauncherProxy from "./LauncherProxy.svelte";
   import LauncherFolders from "./LauncherFolders.svelte";
   import LauncherUpdates from "./LauncherUpdates.svelte";
   import RestartBanner from "./RestartBanner.svelte";
@@ -101,6 +102,8 @@
   <LauncherCatalog status={catalogStatus} refreshing={refreshingCatalog} onrefresh={onrefreshcatalog} />
 
   <LauncherFolders />
+
+  <LauncherProxy />
 
   <LauncherDiagnostics {oncleaned} />
 
