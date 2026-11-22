@@ -373,3 +373,52 @@ mod download_limit {
         }
     }
 }
+
+#[test]
+fn a_proxy_form_starts_on_port_8080_even_for_a_file_that_has_none_or_a_zero() {
+    let dir = TempDir::new().unwrap();
+    assert_eq!(load_settings(dir.path()).unwrap().port, 8080);
+    for proxy in [
+        r#"{ "proxy": { "mode": "system" } }"#,
+        r#"{ "proxy": { "mode": "system", "port": 0 } }"#,
+    ] {
+        std::fs::write(dir.path().join("launcher.json"), proxy).unwrap();
+        assert_eq!(load_settings(dir.path()).unwrap().port, 8080, "{proxy}");
+    }
+    std::fs::write(
+        dir.path().join("launcher.json"),
+        r#"{ "proxy": { "mode": "manual", "port": 3128 } }"#,
+    )
+    .unwrap();
+    assert_eq!(load_settings(dir.path()).unwrap().port, 3128);
+}
+
+#[test]
+fn a_test_uses_the_typed_password_none_when_forgetting_and_the_saved_one_otherwise() {
+    let mut with_login = manual("proxy.corp", 8080);
+    with_login.username = "yuri".into();
+    let saved = || Some("saved".to_string());
+    assert_eq!(
+        password_for_test(Some("typed".into()), &with_login, saved),
+        Some("typed".into())
+    );
+    assert_eq!(
+        password_for_test(Some(String::new()), &with_login, saved),
+        None,
+        "forget is pending"
+    );
+    assert_eq!(
+        password_for_test(None, &with_login, saved),
+        Some("saved".into())
+    );
+    // No user name, or not a manual proxy: no password is sent whatever is typed or saved.
+    assert_eq!(
+        password_for_test(Some("typed".into()), &manual("proxy.corp", 8080), saved),
+        None
+    );
+    let system = ProxySettings {
+        username: "yuri".into(),
+        ..ProxySettings::default()
+    };
+    assert_eq!(password_for_test(None, &system, saved), None);
+}

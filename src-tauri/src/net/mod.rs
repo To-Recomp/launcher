@@ -52,7 +52,10 @@ impl Protocol {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+/// What the proxy form starts with, and what a file that lacks a port means.
+const DEFAULT_PORT: u16 = 8080;
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct ProxySettings {
     pub mode: Mode,
@@ -63,6 +66,19 @@ pub struct ProxySettings {
     /// Hosts that bypass the proxy, separated by commas or spaces: `example.com`,
     /// `.example.com` (and `*.example.com`) for subdomains, `*` for everything.
     pub no_proxy: String,
+}
+
+impl Default for ProxySettings {
+    fn default() -> Self {
+        ProxySettings {
+            mode: Mode::default(),
+            protocol: Protocol::default(),
+            host: String::new(),
+            port: DEFAULT_PORT,
+            username: String::new(),
+            no_proxy: String::new(),
+        }
+    }
 }
 
 fn is_host_char(c: char) -> bool {
@@ -262,8 +278,15 @@ pub struct ProxyView {
 pub fn load_settings(config_dir: &Path) -> Result<ProxySettings, String> {
     match config::read(config_dir)?.get("proxy") {
         None => Ok(ProxySettings::default()),
-        Some(value) => serde_json::from_value(value.clone())
-            .map_err(|e| format!("The proxy settings in launcher.json aren't valid: {e}")),
+        Some(value) => {
+            let mut settings: ProxySettings = serde_json::from_value(value.clone())
+                .map_err(|e| format!("The proxy settings in launcher.json aren't valid: {e}"))?;
+            if settings.port == 0 {
+                // Saved by an earlier version while no proxy was in use: show a usable port.
+                settings.port = DEFAULT_PORT;
+            }
+            Ok(settings)
+        }
     }
 }
 
@@ -423,22 +446,33 @@ pub fn set_proxy(
     Ok(view)
 }
 
-/// Tries the form's values (and the saved password when none is typed) against GitHub.
+/// The password a test uses: the typed one; none while the player is about to forget the saved
+/// one (`Some("")`); the saved one when nothing was typed.
+fn password_for_test(
+    typed: Option<String>,
+    settings: &ProxySettings,
+    saved: impl FnOnce() -> Option<String>,
+) -> Option<String> {
+    if !settings.uses_credentials() {
+        return None;
+    }
+    match typed {
+        Some(typed) if typed.is_empty() => None,
+        Some(typed) => Some(typed),
+        None => saved(),
+    }
+}
+
+/// Tries the form's values against GitHub.
 #[tauri::command(async)]
 pub fn test_proxy(settings: ProxySettings, password: Option<String>) -> Result<String, String> {
-    let saved;
-    let password = match password.as_deref() {
-        Some(typed) if !typed.is_empty() => Some(typed),
-        _ => {
-            saved = if settings.uses_credentials() {
-                Keychain.get().ok().flatten()
-            } else {
-                None
-            };
-            saved.as_deref()
-        }
-    };
-    check(&settings, password, TEST_URL, Duration::from_secs(10))
+    let password = password_for_test(password, &settings, || Keychain.get().ok().flatten());
+    check(
+        &settings,
+        password.as_deref(),
+        TEST_URL,
+        Duration::from_secs(10),
+    )
 }
 
 #[cfg(test)]
