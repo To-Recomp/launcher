@@ -70,10 +70,11 @@ pub struct Appearance {
 
 pub fn appearance(config_dir: &Path) -> Result<Appearance, String> {
     let config = config::read(config_dir)?;
-    let theme = match config.pointer("/appearance/theme").and_then(|v| v.as_str()) {
-        Some(theme @ ("light" | "system")) => theme,
-        _ => "dark",
-    };
+    let theme = config
+        .pointer("/appearance/theme")
+        .and_then(|v| v.as_str())
+        .filter(|theme| matches!(*theme, "light" | "system"))
+        .unwrap_or("dark");
     Ok(Appearance {
         theme: theme.to_string(),
         game_palette: config
