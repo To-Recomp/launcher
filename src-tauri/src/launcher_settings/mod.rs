@@ -4,6 +4,7 @@
 //! built into the launcher instead of one read from a release. Values live in `launcher.json`
 //! in the app's config folder. `args` settings don't apply here: nothing is launched with them.
 
+mod config;
 pub mod folders;
 
 use std::path::{Path, PathBuf};
@@ -14,6 +15,33 @@ use tauri::Manager;
 use crate::settings::manifest::Manifest;
 use crate::settings::{self, Instance, SettingInput, SettingsView};
 
+/// Whether the launcher checks for updates when it starts, and which releases it looks at.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdatePreferences {
+    pub auto: bool,
+    pub prerelease: bool,
+}
+
+pub fn update_preferences(config_dir: &Path) -> Result<UpdatePreferences, String> {
+    let config = config::read(config_dir)?;
+    Ok(UpdatePreferences {
+        auto: config
+            .pointer("/updates/auto")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(true),
+        prerelease: config.pointer("/updates/channel").and_then(|v| v.as_str())
+            == Some("prerelease"),
+    })
+}
+
+#[tauri::command(async)]
+pub fn launcher_update_preferences(app: tauri::AppHandle) -> Result<UpdatePreferences, String> {
+    update_preferences(&config_dir(&app)?)
+}
+
+/// The heading of the update settings in the built-in manifest.
+const UPDATES_GROUP: &str = "Updates";
 const MANIFEST: &str = include_str!("manifest.json");
 
 fn manifest() -> Result<Manifest, String> {
@@ -33,7 +61,13 @@ pub(crate) fn config_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
 
 #[tauri::command(async)]
 pub fn load_launcher_settings(app: tauri::AppHandle) -> Result<SettingsView, String> {
-    settings::build_view(&instance(&config_dir(&app)?), &manifest()?)
+    let mut view = settings::build_view(&instance(&config_dir(&app)?), &manifest()?)?;
+    if !crate::updater::updater_available() {
+        // Another way of updating (a package, a ZIP): nothing to choose here.
+        view.settings
+            .retain(|s| s.group.as_deref() != Some(UPDATES_GROUP));
+    }
+    Ok(view)
 }
 
 #[tauri::command(async)]

@@ -2,11 +2,13 @@
   import { onMount } from "svelte";
   import LauncherAbout from "./LauncherAbout.svelte";
   import LauncherFolders from "./LauncherFolders.svelte";
+  import LauncherUpdates from "./LauncherUpdates.svelte";
   import RestartBanner from "./RestartBanner.svelte";
   import SettingRow from "./SettingRow.svelte";
   import { loadLauncherSettings, setLauncherSetting } from "../launcher/api";
   import { errorMessage } from "../settings/api";
   import { restartNeeded } from "../launcher/restart.svelte";
+  import { launcherUpdates } from "../launcher/updates.svelte";
   import { sectionsOf } from "../settings/sections";
   import type { SettingInput, SettingView, SettingsView } from "../settings/types";
 
@@ -29,6 +31,7 @@
   async function apply(setting: SettingView, input: SettingInput) {
     try {
       view = await setLauncherSetting(setting.id, input);
+      if (setting.id === "updateChannel") launcherUpdates.forget();
       actionError = null;
     } catch (e) {
       actionError = errorMessage(e);
@@ -66,6 +69,8 @@
       </div>
     {/each}
   {/if}
+
+  <LauncherUpdates />
 
   <LauncherFolders />
 

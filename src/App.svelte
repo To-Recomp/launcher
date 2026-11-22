@@ -13,6 +13,7 @@
   import { loadPalette, paletteStyle, type Palette } from "./lib/catalog/palette";
   import { NON_AFFILIATION, type TabId } from "./lib/data";
   import { instanceLocation } from "./lib/library/api";
+  import { launcherUpdates } from "./lib/launcher/updates.svelte";
   import { LibraryStore } from "./lib/library/store.svelte";
   import type { Location } from "./lib/settings/types";
   import { errorMessage } from "./lib/settings/api";
@@ -82,6 +83,7 @@
 
   onMount(() => {
     library.start();
+    launcherUpdates.start();
     loadCatalog();
     return () => library.stop();
   });

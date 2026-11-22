@@ -9,25 +9,12 @@ use std::path::{Path, PathBuf};
 
 use serde_json::{Map, Value};
 
+use super::config;
 use crate::fs_util::write_atomically;
-
-fn config_file(config_dir: &Path) -> PathBuf {
-    config_dir.join("launcher.json")
-}
-
-fn read(config_dir: &Path) -> Result<Value, String> {
-    let path = config_file(config_dir);
-    match fs::read_to_string(&path) {
-        Ok(text) => serde_json::from_str(&text)
-            .map_err(|e| format!("{} isn't valid JSON: {e}", path.display())),
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(Value::Object(Map::new())),
-        Err(e) => Err(format!("Can't read {}: {e}", path.display())),
-    }
-}
 
 /// The folder the player chose, `None` for the default one.
 pub fn configured(config_dir: &Path) -> Result<Option<PathBuf>, String> {
-    Ok(read(config_dir)?
+    Ok(config::read(config_dir)?
         .pointer("/library/folder")
         .and_then(Value::as_str)
         .filter(|folder| !folder.is_empty())
@@ -53,10 +40,13 @@ pub fn set(config_dir: &Path, folder: Option<&str>) -> Result<(), String> {
     if let Some(folder) = folder {
         validate(Path::new(folder))?;
     }
-    let mut config = read(config_dir)?;
-    let root = config
-        .as_object_mut()
-        .ok_or_else(|| format!("{} isn't a JSON object.", config_file(config_dir).display()))?;
+    let mut config = config::read(config_dir)?;
+    let root = config.as_object_mut().ok_or_else(|| {
+        format!(
+            "{} isn't a JSON object.",
+            config::file(config_dir).display()
+        )
+    })?;
     match folder {
         Some(folder) => {
             let library = root
@@ -74,5 +64,5 @@ pub fn set(config_dir: &Path, folder: Option<&str>) -> Result<(), String> {
         }
     }
     let text = serde_json::to_string_pretty(&config).map_err(|e| e.to_string())? + "\n";
-    write_atomically(&config_file(config_dir), &text)
+    write_atomically(&config::file(config_dir), &text)
 }

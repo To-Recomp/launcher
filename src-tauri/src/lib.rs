@@ -48,6 +48,8 @@ pub fn run() {
             launcher_settings::launcher_folders,
             launcher_settings::set_games_folder,
             updater::updater_available,
+            updater::check_launcher_update,
+            launcher_settings::launcher_update_preferences,
             updater::update_launcher
         ])
         .run(tauri::generate_context!())

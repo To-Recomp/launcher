@@ -48,3 +48,19 @@ a game in the sidebar goes back to Home.
   default, so games never look uninstalled by accident.
 - The launcher's own data (catalog copy, logs, settings) stays in the usual app folders.
 - `TO_RECOMP_LIBRARY` still overrides everything, for development and tests.
+
+## Updates
+
+Only where the launcher can replace itself (an AppImage, or a Windows installation made by the
+installer: `updater_available`); elsewhere the settings below are hidden, since a package or ZIP
+is updated another way.
+
+- **Check for updates** (`updates.auto`, default on): when the launcher starts it looks for a newer
+  release and the sidebar button then reads "Update to vX". Nothing is installed without a click.
+  A failed startup check is silent; "Check now" in the settings reports why it failed.
+- **Releases** (`updates.channel`): Stable (GitHub's latest release, the endpoint built into the
+  app) or Pre-release (the newest release that has a `latest.json`, found through the GitHub
+  releases listing). Changing it discards what the other channel had found.
+- **Launcher version** row: "Check now" and, when something newer exists, "Install and restart".
+  The sidebar button keeps its own check-and-install click.
+- Commands: `check_launcher_update` (no install), `update_launcher`, `launcher_update_preferences`.
