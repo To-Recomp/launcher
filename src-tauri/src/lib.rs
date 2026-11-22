@@ -68,6 +68,7 @@ pub fn run() {
             net::proxy_settings,
             net::set_proxy,
             net::test_proxy,
+            net::apply_download_limit_now,
             behavior::apply_behavior,
             behavior::autostart_supported,
             behavior::autostart_enabled,

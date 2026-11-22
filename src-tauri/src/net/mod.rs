@@ -7,6 +7,7 @@
 //! each client on its own defaults: the `*_PROXY` / `NO_PROXY` environment variables, plus the
 //! Windows Internet settings.
 
+pub mod limit;
 mod secret;
 
 use std::path::Path;
@@ -313,8 +314,23 @@ fn activate(settings: &ProxySettings, secrets: &dyn SecretStore) {
     configure(settings.clone(), password);
 }
 
-/// Called once at startup: the clients use the saved proxy from their first request.
+/// Puts the saved download limit to work; running downloads follow it from their next chunk.
+pub fn apply_download_limit(config_dir: &Path) -> Result<(), String> {
+    let megabytes = config::read(config_dir)?
+        .pointer("/download/limitMBps")
+        .and_then(|v| v.as_f64());
+    limit::shared().set(limit::bytes_per_second(megabytes));
+    Ok(())
+}
+
+#[tauri::command(async)]
+pub fn apply_download_limit_now(app: tauri::AppHandle) -> Result<(), String> {
+    apply_download_limit(&config_dir(&app)?)
+}
+
+/// Called once at startup: the clients use the saved proxy and limit from their first request.
 pub fn load(config_dir: &Path) {
+    let _ = apply_download_limit(config_dir);
     match load_settings(config_dir) {
         Ok(settings) => activate(&settings, &Keychain),
         Err(_) => {

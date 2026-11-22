@@ -89,3 +89,6 @@ export const setProxy = (settings: ProxySettings, password: string | null) =>
 /** Tries these values (not saved) against GitHub; resolves with what worked, rejects with what didn't. */
 export const testProxy = (settings: ProxySettings, password: string | null) =>
   invoke<string>("test_proxy", { settings, password });
+
+/** Makes the saved download speed limit the one in use, running downloads included. */
+export const applyDownloadLimit = () => invoke<void>("apply_download_limit_now");
