@@ -1,11 +1,17 @@
 mod settings;
+mod updater;
 
 pub fn run() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default();
+    #[cfg(feature = "updater")]
+    let builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
+    builder
         .invoke_handler(tauri::generate_handler![
             settings::load_settings,
             settings::set_setting,
-            settings::settings_launch_args
+            settings::settings_launch_args,
+            updater::updater_available,
+            updater::update_launcher
         ])
         .run(tauri::generate_context!())
         .expect("error while running To Recomp Launcher");
@@ -25,6 +31,17 @@ mod tests {
         let package = json(include_str!("../../package.json"));
         assert_eq!(conf["version"], env!("CARGO_PKG_VERSION"));
         assert_eq!(package["version"], env!("CARGO_PKG_VERSION"));
+
+        let spec = include_str!("../../packaging/rpm/to-recomp-launcher.spec");
+        let spec_version = spec
+            .lines()
+            .find_map(|line| line.strip_prefix("Version:"))
+            .expect("Version: in the RPM spec")
+            .trim();
+        // A pre-release 1.2.3-rc.1 is packaged as 1.2.3 with a `~rc.1` Release part, so the
+        // spec only has to carry the numeric part.
+        let numeric = env!("CARGO_PKG_VERSION").split('-').next().unwrap();
+        assert_eq!(spec_version, numeric);
     }
 
     #[test]

@@ -1,8 +1,30 @@
 <script lang="ts">
   import SidebarItem from "./SidebarItem.svelte";
   import { LAUNCHER_VERSION, type Game } from "../data";
+  import { errorMessage } from "../settings/api";
+  import { updateLauncher, updaterAvailable } from "../updater";
 
   let { games, selectedId, onselect }: { games: Game[]; selectedId: string; onselect: (id: string) => void } = $props();
+
+  let available = $state(false);
+  let status = $state<"idle" | "checking" | "current" | "failed">("idle");
+  let failure = $state("");
+  $effect(() => {
+    updaterAvailable().then((yes) => (available = yes));
+  });
+
+  async function update() {
+    status = "checking";
+    try {
+      await updateLauncher(); // restarts into the new version when there is one
+      status = "current";
+    } catch (e) {
+      failure = errorMessage(e);
+      status = "failed";
+    }
+  }
+
+  const labels = { idle: "Update launcher", checking: "Checking…", current: "Up to date", failed: "Update failed" };
 </script>
 
 <aside class="sidebar">
@@ -13,7 +35,11 @@
   </nav>
   <footer>
     <span class="version">v{LAUNCHER_VERSION}</span>
-    <button class="update">Update launcher</button>
+    {#if available}
+      <button class="update" disabled={status === "checking"} title={status === "failed" ? failure : undefined} onclick={update}>
+        {labels[status]}
+      </button>
+    {/if}
   </footer>
 </aside>
 
@@ -51,4 +77,5 @@
     font-size: 12px;
     font-weight: 600;
   }
+  .update:disabled { opacity: 0.6; cursor: default; }
 </style>

@@ -13,12 +13,21 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
+[features]
+# Self-update; only the release workflow enables it, because it needs the maintainer's
+# signing public key (see docs/releasing.md).
+updater = ["dep:tauri-plugin-updater"]
+
 [dependencies]
 dirs = "7.0.0"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
 tauri = { version = "2", features = [] }
+tauri-plugin-updater = { version = "2", optional = true }
 toml_edit = "0.25.5"
 
 [dev-dependencies]
 tempfile = "3.27.0"
+
+[profile.release]
+strip = true

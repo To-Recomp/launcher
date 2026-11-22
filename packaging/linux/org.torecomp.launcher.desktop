@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=To Recomp Launcher
+Comment=Install, prepare, configure and launch the Tales of recompilations
+Exec=to-recomp-launcher
+Icon=org.torecomp.launcher
+Categories=Game;
+Terminal=false
