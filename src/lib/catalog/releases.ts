@@ -14,6 +14,16 @@ export interface ReleaseNote {
 /** The newest releases of `owner/name`, newest first; empty when there are none. */
 export const gameReleases = (repository: string) => invoke<ReleaseNote[]>("game_releases", { repository });
 
+/** The license GitHub detected in a repository. */
+export interface RepositoryLicense {
+  name: string;
+  /** The license file on GitHub. */
+  url: string;
+}
+
+/** The license of `owner/name`; `null` when it has none. */
+export const gameLicense = (repository: string) => invoke<RepositoryLicense | null>("game_license", { repository });
+
 /** "Nov 21, 2026", or "" when the release has no date. */
 export function releaseDate(iso: string | null): string {
   const date = iso ? new Date(iso) : null;

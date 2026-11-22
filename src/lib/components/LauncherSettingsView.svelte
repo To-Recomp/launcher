@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import LauncherAbout from "./LauncherAbout.svelte";
   import RestartBanner from "./RestartBanner.svelte";
   import SettingRow from "./SettingRow.svelte";
   import { loadLauncherSettings, setLauncherSetting } from "../launcher/api";
@@ -7,6 +8,8 @@
   import { restartNeeded } from "../launcher/restart.svelte";
   import { sectionsOf } from "../settings/sections";
   import type { SettingInput, SettingView, SettingsView } from "../settings/types";
+
+  let { onreportbug }: { onreportbug: () => Promise<void> | void } = $props();
 
   let view = $state<SettingsView | null>(null);
   let loadError = $state<string | null>(null);
@@ -52,8 +55,6 @@
     <p class="empty" role="alert">{loadError}</p>
   {:else if !view}
     <p class="empty">Loading…</p>
-  {:else if sections.length === 0}
-    <p class="empty">No launcher settings yet.</p>
   {:else}
     {#each sections as section, i (i)}
       {#if section.group}<h2>{section.group}</h2>{/if}
@@ -64,6 +65,8 @@
       </div>
     {/each}
   {/if}
+
+  <LauncherAbout {onreportbug} />
 </section>
 
 <style>

@@ -235,6 +235,14 @@ describe("LibraryStore diagnostic files", () => {
     expect(store.diagnostic?.repository).toBe("To-Recomp/launcher");
   });
 
+  it("reports a game's About bug for that instance and the game's own repository", async () => {
+    const store = new LibraryStore();
+    diagnostics.buildReport.mockResolvedValue(file);
+    await store.reportGameBug(game, platform);
+    expect(diagnostics.buildReport).toHaveBeenCalledWith({ context: "manual", gameId: game.id, platform: platform.platform });
+    expect(store.diagnostic?.repository).toBe(game.repository);
+  });
+
   it("keeps why the file could not be written", async () => {
     const store = new LibraryStore();
     diagnostics.buildReport.mockRejectedValue("Can't write the diagnostic file in /logs: denied");

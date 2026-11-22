@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/svelte";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/svelte";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SettingView, SettingsView as View } from "../settings/types";
 
@@ -7,6 +7,15 @@ vi.mock("../settings/api", () => ({
   loadSettings: api.loadSettings,
   setSetting: api.setSetting,
   errorMessage: (e: unknown) => String(e),
+}));
+
+const releases = vi.hoisted(() => ({ gameLicense: vi.fn() }));
+vi.mock("../catalog/releases", () => releases);
+
+const links = vi.hoisted(() => ({ openLink: vi.fn(), revealFile: vi.fn() }));
+vi.mock("../diagnostics/api", () => ({
+  ...links,
+  repositoryUrl: (repository: string) => `https://github.com/${repository}`,
 }));
 
 import SettingsView from "./SettingsView.svelte";
@@ -29,9 +38,17 @@ const hidden: SettingView = { ...base, id: "debug", label: "Debug overlay", tab:
 
 const view = (...settings: SettingView[]): View => ({ settings });
 const all = view(toggle, segmented, dropdown, slider, text, keys, hidden);
-const location = { installDir: "/games/eternia" };
+const location = { installDir: "/games/eternia", dataDir: "/games/eternia/data" };
 const onreportbug = vi.fn();
-const props = { gameId: "eternia", gameName: "Tales of Eternia", location, onreportbug };
+const props = {
+  gameId: "eternia",
+  gameName: "Tales of Eternia",
+  repository: "To-Recomp/toe",
+  platform: "PS1",
+  tag: "v0.3.0",
+  location,
+  onreportbug,
+};
 
 async function openTab(name: string) {
   await fireEvent.click(screen.getByRole("tab", { name }));
@@ -41,6 +58,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   localStorage.clear();
   api.loadSettings.mockResolvedValue(all);
+  releases.gameLicense.mockResolvedValue({ name: "GNU General Public License v3.0", url: "https://github.com/To-Recomp/toe/blob/main/LICENSE" });
 });
 
 describe("SettingsView", () => {
@@ -135,13 +153,43 @@ describe("SettingsView", () => {
     expect(screen.queryByRole("switch", { name: "Debug overlay" })).not.toBeInTheDocument();
   });
 
-  it("shows launcher information on About without needing an installation", async () => {
-    render(SettingsView, { ...props, location: null });
+  it("describes the installed game on About", async () => {
+    render(SettingsView, props);
     await openTab("About");
-    expect(screen.getByText(/Not affiliated with or endorsed by/)).toBeInTheDocument();
+    expect(screen.getByText("Tales of Eternia")).toBeInTheDocument();
+    expect(screen.getByText("PS1")).toBeInTheDocument();
+    expect(screen.getByText("v0.3.0")).toBeInTheDocument();
+    expect(screen.getByText("To-Recomp/toe")).toBeInTheDocument();
+    expect(await screen.findByText("GNU General Public License v3.0")).toBeInTheDocument();
+    expect(screen.getByText("/games/eternia")).toBeInTheDocument();
+    expect(screen.getByText("/games/eternia/data")).toBeInTheDocument();
   });
 
-  it("offers Report a bug on About, even without an installation", async () => {
+  it("opens the repository, the license and the folders from About", async () => {
+    render(SettingsView, props);
+    await openTab("About");
+    await screen.findByText("GNU General Public License v3.0");
+    const open = (label: string) => fireEvent.click(within(screen.getByText(label).closest(".row") as HTMLElement).getByRole("button", { name: "Open" }));
+    await open("Repository");
+    await open("License");
+    await open("Install folder");
+    await open("Data folder");
+    expect(links.openLink).toHaveBeenNthCalledWith(1, "https://github.com/To-Recomp/toe");
+    expect(links.openLink).toHaveBeenNthCalledWith(2, "https://github.com/To-Recomp/toe/blob/main/LICENSE");
+    expect(links.revealFile).toHaveBeenNthCalledWith(1, "/games/eternia");
+    expect(links.revealFile).toHaveBeenNthCalledWith(2, "/games/eternia/data");
+  });
+
+  it("still describes a game that isn't installed, without folders", async () => {
+    releases.gameLicense.mockResolvedValue(null);
+    render(SettingsView, { ...props, location: null, tag: null });
+    await openTab("About");
+    expect(screen.getByText("Not installed")).toBeInTheDocument();
+    expect(await screen.findByText("Not published")).toBeInTheDocument();
+    expect(screen.queryByText("Install folder")).not.toBeInTheDocument();
+  });
+
+  it("offers Report a bug for the game on About, even without an installation", async () => {
     render(SettingsView, { ...props, location: null });
     await openTab("About");
     await fireEvent.click(screen.getByRole("button", { name: "Report a bug" }));

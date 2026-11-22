@@ -77,8 +77,8 @@ describe("RestartBanner", () => {
 
 describe("LauncherSettingsView restart banner", () => {
   it("appears once a setting needs a restart, and not before", async () => {
-    render(LauncherSettingsView);
-    await screen.findByText("No launcher settings yet.");
+    render(LauncherSettingsView, { onreportbug: vi.fn() });
+    await screen.findByText("About");
     expect(screen.queryByText("Restart the launcher to apply these changes.")).not.toBeInTheDocument();
     restartNeeded.mark();
     expect(await screen.findByText("Restart the launcher to apply these changes.")).toBeInTheDocument();

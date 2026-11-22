@@ -5,15 +5,18 @@
   let {
     label,
     help = null,
+    value = null,
     action,
     onrun,
   }: {
     label: string;
     help?: string | null;
+    /** What the action is about (a path, a name), shown before the button. */
+    value?: string | null;
     /** The button's text. */
     action: string;
     /** Resolves with a message to show next to the button, or nothing. Rejects with the failure's message. */
-    onrun: () => Promise<string | void>;
+    onrun: () => Promise<string | void> | string | void;
   } = $props();
 
   let busy = $state(false);
@@ -35,6 +38,7 @@
 
 <Row {label} {help}>
   <div class="action">
+    {#if value}<span class="value" title={value}>{value}</span>{/if}
     {#if result}
       <span class="result" class:failed={result.failed} role={result.failed ? "alert" : "status"}>{result.text}</span>
     {/if}
@@ -44,6 +48,15 @@
 
 <style>
   .action { display: flex; align-items: center; gap: var(--space-3); }
+  .value {
+    max-width: 320px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--color-text-muted);
+    font-size: 13px;
+    user-select: text;
+  }
   .result { color: var(--color-text-muted); font-size: 13px; }
   .result.failed { color: var(--color-primary); }
   button {

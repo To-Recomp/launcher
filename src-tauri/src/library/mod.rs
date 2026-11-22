@@ -590,6 +590,15 @@ pub fn game_releases(
     release::recent_releases(&app_env(&app)?.api, &repository, 3)
 }
 
+/// The license of a game's repository, for its About page.
+#[tauri::command(async)]
+pub fn game_license(
+    app: tauri::AppHandle,
+    repository: String,
+) -> Result<Option<release::RepositoryLicense>, String> {
+    release::repository_license(&app_env(&app)?.api, &repository)
+}
+
 #[tauri::command(async)]
 pub fn prepare_instance(
     app: tauri::AppHandle,

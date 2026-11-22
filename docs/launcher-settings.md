@@ -22,3 +22,16 @@ a game in the sidebar goes back to Home.
 - **Restart to apply:** a setting that only applies on the next start calls
   `restartNeeded.mark()` (`src/lib/launcher/restart.svelte.ts`); the page then shows a banner
   with "Restart now" (`restart_launcher` command).
+
+## About
+
+- **Launcher** (bottom of the launcher page): version, license, repository, "Report a bug" for
+  the launcher's own issues, credits of what it is built with (`CREDITS` in `src/lib/data.ts`) and
+  the non-affiliation notice.
+- **Game** (Settings → About of the selected game): name, console, installed release, repository,
+  license (read from GitHub by `game_license`; "Not published" when it has none or GitHub can't be
+  reached), install and data folders with an Open button, and "Report a bug" for the game's own
+  repository (the diagnostic file is about that instance). Works for a game that isn't installed
+  yet: it then shows no folders.
+- Links open github.com pages only (`opener:allow-open-url` scope in `capabilities/default.json`),
+  plus steamgriddb.com for the artwork credit.
