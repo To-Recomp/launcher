@@ -4,8 +4,10 @@ import type { SettingView, SettingsView as View } from "../settings/types";
 
 const api = vi.hoisted(() => ({ loadLauncherSettings: vi.fn(), setLauncherSetting: vi.fn(), launcherFolders: vi.fn(), setGamesFolder: vi.fn() }));
 vi.mock("../launcher/api", () => api);
+vi.mock("../updater", () => ({ updaterAvailable: vi.fn(), updateLauncher: vi.fn(), checkLauncherUpdate: vi.fn(), updatePreferences: vi.fn() }));
 vi.mock("../settings/api", () => ({ errorMessage: (e: unknown) => String(e) }));
 
+import { launcherUpdates } from "../launcher/updates.svelte";
 import LauncherSettingsView from "./LauncherSettingsView.svelte";
 
 const toggle = (value: number): SettingView => ({
@@ -51,5 +53,18 @@ describe("LauncherSettingsView", () => {
     api.loadLauncherSettings.mockRejectedValue("Can't read launcher.json: denied");
     render(LauncherSettingsView, { onreportbug });
     expect(await screen.findByRole("alert")).toHaveTextContent("Can't read launcher.json: denied");
+  });
+
+  it("forgets a release found on the other channel when the channel changes", async () => {
+    const channel: SettingView = {
+      id: "updateChannel", label: "Releases", help: null, tab: "Game", group: "Updates", advanced: false, enabled: true,
+      control: { type: "choices", style: "segmented", options: ["Stable", "Pre-release"], value: 0, custom: null },
+    };
+    api.loadLauncherSettings.mockResolvedValue(view(channel));
+    api.setLauncherSetting.mockResolvedValue(view(channel));
+    launcherUpdates.found = { version: "0.3.0-beta.1" };
+    render(LauncherSettingsView, { onreportbug });
+    await fireEvent.click(await screen.findByRole("radio", { name: "Pre-release" }));
+    await waitFor(() => expect(launcherUpdates.found).toBeNull());
   });
 });

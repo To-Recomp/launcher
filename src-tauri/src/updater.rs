@@ -7,6 +7,8 @@
 
 use std::path::Path;
 
+use serde::Serialize;
+
 pub fn self_update_supported(os: &str, running_appimage: bool, has_uninstaller: bool) -> bool {
     match os {
         "linux" => running_appimage,
@@ -33,20 +35,116 @@ pub fn updater_available() -> bool {
     cfg!(feature = "updater") && supported_here()
 }
 
+#[cfg(feature = "updater")]
+const REPOSITORY: &str = "To-Recomp/launcher";
+#[cfg(feature = "updater")]
+const DEFAULT_API: &str = "https://api.github.com";
+/// The releases listing is only read to find the newest pre-release's `latest.json`.
+#[cfg(feature = "updater")]
+const API_ENV: &str = "TO_RECOMP_GITHUB_API";
+
+#[cfg(any(feature = "updater", test))]
+#[derive(Debug, serde::Deserialize)]
+struct ApiRelease {
+    #[serde(default)]
+    draft: bool,
+    #[serde(default)]
+    assets: Vec<ApiAsset>,
+}
+
+#[cfg(any(feature = "updater", test))]
+#[derive(Debug, serde::Deserialize)]
+struct ApiAsset {
+    name: String,
+    browser_download_url: String,
+}
+
+/// The `latest.json` of the newest release that has one, pre-releases included. GitHub's own
+/// `releases/latest` link never points at a pre-release, which is why it can't be used for
+/// that channel.
+#[cfg(any(feature = "updater", test))]
+fn newest_latest_json(releases: &[ApiRelease]) -> Option<&str> {
+    releases
+        .iter()
+        .filter(|r| !r.draft)
+        .find_map(|r| r.assets.iter().find(|a| a.name == "latest.json"))
+        .map(|a| a.browser_download_url.as_str())
+}
+
+/// What the player is told about a newer release.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateInfo {
+    pub version: String,
+}
+
+#[cfg(feature = "updater")]
+async fn updater_for(app: &tauri::AppHandle) -> Result<tauri_plugin_updater::Updater, String> {
+    use tauri_plugin_updater::UpdaterExt;
+
+    let preferences = crate::launcher_settings::config_dir(app)
+        .and_then(|dir| crate::launcher_settings::update_preferences(&dir))?;
+    let mut builder = app.updater_builder();
+    if preferences.prerelease {
+        let api = std::env::var(API_ENV).unwrap_or_else(|_| DEFAULT_API.to_string());
+        let found =
+            tauri::async_runtime::spawn_blocking(move || -> Result<Option<String>, String> {
+                let releases: Vec<ApiRelease> =
+                    ureq::get(&format!("{api}/repos/{REPOSITORY}/releases?per_page=10"))
+                        .header("Accept", "application/vnd.github+json")
+                        .header(
+                            "User-Agent",
+                            concat!("to-recomp-launcher/", env!("CARGO_PKG_VERSION")),
+                        )
+                        .call()
+                        .map_err(|e| format!("Can't look for pre-releases: {e}"))?
+                        .body_mut()
+                        .read_json()
+                        .map_err(|e| format!("GitHub's answer is unreadable: {e}"))?;
+                Ok(newest_latest_json(&releases).map(str::to_string))
+            })
+            .await
+            .map_err(|e| e.to_string())??;
+        // No release carries one yet: the stable endpoint is the only place left to look.
+        if let Some(url) = found {
+            let url = url
+                .parse()
+                .map_err(|e| format!("Not a usable update address: {e}"))?;
+            builder = builder
+                .endpoints(vec![url])
+                .map_err(|e| format!("Not a usable update address: {e}"))?;
+        }
+    }
+    builder
+        .build()
+        .map_err(|e| format!("Update check failed: {e}"))
+}
+
+/// Looks for a newer release, on the chosen channel, without installing it.
+#[cfg(feature = "updater")]
+#[tauri::command]
+pub async fn check_launcher_update(app: tauri::AppHandle) -> Result<Option<UpdateInfo>, String> {
+    if !supported_here() {
+        return Err("This installation is updated outside the launcher.".to_string());
+    }
+    let update = updater_for(&app)
+        .await?
+        .check()
+        .await
+        .map_err(|e| format!("Update check failed: {e}"))?;
+    Ok(update.map(|u| UpdateInfo { version: u.version }))
+}
+
 /// Downloads and installs a newer release, then restarts into it. `Ok` means there is nothing
 /// newer.
 #[cfg(feature = "updater")]
 #[tauri::command]
 pub async fn update_launcher(app: tauri::AppHandle) -> Result<(), String> {
-    use tauri_plugin_updater::UpdaterExt;
-
     if !supported_here() {
         return Err("This installation is updated outside the launcher.".to_string());
     }
-    let updater = app
-        .updater()
-        .map_err(|e| format!("Update check failed: {e}"))?;
-    let Some(update) = updater
+    let Some(update) = updater_for(&app)
+        .await?
         .check()
         .await
         .map_err(|e| format!("Update check failed: {e}"))?
@@ -58,6 +156,12 @@ pub async fn update_launcher(app: tauri::AppHandle) -> Result<(), String> {
         .await
         .map_err(|e| format!("Update failed: {e}"))?;
     app.restart()
+}
+
+#[cfg(not(feature = "updater"))]
+#[tauri::command]
+pub async fn check_launcher_update() -> Result<Option<UpdateInfo>, String> {
+    Err("This build has no self-update.".to_string())
 }
 
 #[cfg(not(feature = "updater"))]
@@ -77,5 +181,33 @@ mod tests {
         assert!(self_update_supported("windows", false, true)); // installed with the installer
         assert!(!self_update_supported("windows", false, false)); // portable ZIP
         assert!(!self_update_supported("macos", true, true));
+    }
+
+    fn release(draft: bool, assets: &[&str]) -> ApiRelease {
+        ApiRelease {
+            draft,
+            assets: assets
+                .iter()
+                .map(|name| ApiAsset {
+                    name: name.to_string(),
+                    browser_download_url: format!("https://example.test/{name}"),
+                })
+                .collect(),
+        }
+    }
+
+    #[test]
+    fn the_prerelease_channel_follows_the_newest_release_that_has_an_update_file() {
+        let releases = [
+            release(true, &["latest.json"]), // a draft is not published
+            release(false, &["notes.txt"]),  // unsigned: no updater entry
+            release(false, &["latest.json"]),
+            release(false, &["latest.json", "x"]), // older
+        ];
+        assert_eq!(
+            newest_latest_json(&releases),
+            Some("https://example.test/latest.json")
+        );
+        assert_eq!(newest_latest_json(&releases[..2]), None);
     }
 }

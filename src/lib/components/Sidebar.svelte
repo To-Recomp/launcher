@@ -2,8 +2,8 @@
   import SidebarItem from "./SidebarItem.svelte";
   import type { Game } from "../catalog/games";
   import { LAUNCHER_VERSION } from "../data";
+  import { launcherUpdates, type LauncherUpdates } from "../launcher/updates.svelte";
   import { errorMessage } from "../settings/api";
-  import { updateLauncher, updaterAvailable } from "../updater";
 
   let {
     games,
@@ -12,6 +12,7 @@
     loading = false,
     catalogError = null,
     onretry = () => {},
+    updates = launcherUpdates,
   }: {
     games: Game[];
     selectedId: string;
@@ -20,19 +21,16 @@
     /** Why the catalog couldn't be refreshed (the saved list, if any, is shown). */
     catalogError?: string | null;
     onretry?: () => void;
+    updates?: LauncherUpdates;
   } = $props();
 
-  let available = $state(false);
   let status = $state<"idle" | "checking" | "current" | "failed">("idle");
   let failure = $state("");
-  $effect(() => {
-    updaterAvailable().then((yes) => (available = yes));
-  });
 
   async function update() {
     status = "checking";
     try {
-      await updateLauncher(); // restarts into the new version when there is one
+      await updates.install(); // restarts into the new version when there is one
       status = "current";
     } catch (e) {
       failure = errorMessage(e);
@@ -41,6 +39,7 @@
   }
 
   const labels = { idle: "Update launcher", checking: "Checking…", current: "Up to date", failed: "Update failed" };
+  const label = $derived(status === "idle" && updates.found ? `Update to v${updates.found.version}` : labels[status]);
 </script>
 
 <aside class="sidebar">
@@ -60,9 +59,9 @@
   {/if}
   <footer>
     <span class="version">v{LAUNCHER_VERSION}</span>
-    {#if available}
+    {#if updates.available}
       <button class="update" disabled={status === "checking"} title={status === "failed" ? failure : undefined} onclick={update}>
-        {labels[status]}
+        {label}
       </button>
     {/if}
   </footer>

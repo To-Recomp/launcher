@@ -142,3 +142,39 @@ mod games_folder {
         );
     }
 }
+
+#[test]
+fn update_preferences_default_to_a_stable_check_and_follow_what_the_settings_write() {
+    let dir = TempDir::new().unwrap();
+    assert_eq!(
+        update_preferences(dir.path()).unwrap(),
+        UpdatePreferences {
+            auto: true,
+            prerelease: false
+        }
+    );
+
+    let manifest = manifest().unwrap();
+    let instance = instance(dir.path());
+    settings::apply_with(
+        &instance,
+        &manifest,
+        "autoUpdate",
+        SettingInput::Choice { index: 0 },
+    )
+    .unwrap();
+    settings::apply_with(
+        &instance,
+        &manifest,
+        "updateChannel",
+        SettingInput::Choice { index: 1 },
+    )
+    .unwrap();
+    assert_eq!(
+        update_preferences(dir.path()).unwrap(),
+        UpdatePreferences {
+            auto: false,
+            prerelease: true
+        }
+    );
+}
