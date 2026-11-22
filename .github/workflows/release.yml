@@ -149,7 +149,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 26
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: assets-*
           merge-multiple: true
