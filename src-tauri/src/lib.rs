@@ -1,3 +1,4 @@
+mod behavior;
 mod catalog;
 mod diagnostics;
 mod fs_util;
@@ -12,12 +13,18 @@ pub fn run() {
         .setup(|app| {
             use tauri::Manager;
             app.manage(library::LibraryRoot::resolve(app.handle()));
+            app.manage(behavior::Tray::default());
             if let Ok(dir) = app.path().app_log_dir() {
                 diagnostics::panic::arm(dir, diagnostics::app_scrub(app));
             }
             Ok(())
         })
         .manage(library::Jobs::default())
+        .on_window_event(behavior::on_window_event)
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            None,
+        ))
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_clipboard_manager::init());
@@ -51,6 +58,10 @@ pub fn run() {
             updater::check_launcher_update,
             launcher_settings::launcher_update_preferences,
             launcher_settings::launcher_language,
+            behavior::apply_behavior,
+            behavior::autostart_supported,
+            behavior::autostart_enabled,
+            behavior::set_autostart,
             updater::update_launcher
         ])
         .run(tauri::generate_context!())

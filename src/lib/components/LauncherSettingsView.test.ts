@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SettingView, SettingsView as View } from "../settings/types";
 
-const api = vi.hoisted(() => ({ loadLauncherSettings: vi.fn(), setLauncherSetting: vi.fn(), launcherFolders: vi.fn(), setGamesFolder: vi.fn() }));
+const api = vi.hoisted(() => ({ loadLauncherSettings: vi.fn(), setLauncherSetting: vi.fn(), launcherFolders: vi.fn(), setGamesFolder: vi.fn(), applyBehavior: vi.fn().mockResolvedValue(undefined), autostartSupported: vi.fn().mockResolvedValue(false), autostartEnabled: vi.fn(), setAutostart: vi.fn() }));
 vi.mock("../launcher/api", () => api);
 vi.mock("../updater", () => ({ updaterAvailable: vi.fn(), updateLauncher: vi.fn(), checkLauncherUpdate: vi.fn(), updatePreferences: vi.fn() }));
 vi.mock("../settings/api", () => ({ errorMessage: (e: unknown) => String(e) }));
@@ -82,5 +82,21 @@ describe("LauncherSettingsView", () => {
     await fireEvent.click(await screen.findByRole("radio", { name: "Français" }));
     await waitFor(() => expect(restartNeeded.needed).toBe(true));
     restartNeeded.needed = false;
+  });
+
+  it("puts the notification area icon on or off when its setting changes, and says if it can't", async () => {
+    const tray: SettingView = {
+      id: "minimizeToTray", label: "Keep running in the notification area", help: null, tab: "Game", group: "Behavior", advanced: false, enabled: true,
+      control: { type: "choices", style: "toggle", options: ["Off", "On"], value: 0, custom: null },
+    };
+    api.loadLauncherSettings.mockResolvedValue(view(tray));
+    api.setLauncherSetting.mockResolvedValue(view(tray));
+    render(LauncherSettingsView, props);
+    await fireEvent.click(await screen.findByRole("switch"));
+    await waitFor(() => expect(api.applyBehavior).toHaveBeenCalledWith({ show: "Show the launcher", quit: "Quit" }));
+
+    api.applyBehavior.mockRejectedValueOnce("Can't put the launcher in the notification area: no host");
+    await fireEvent.click(screen.getByRole("switch"));
+    expect(await screen.findByRole("alert")).toHaveTextContent("no host");
   });
 });

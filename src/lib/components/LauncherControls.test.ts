@@ -8,6 +8,10 @@ const api = vi.hoisted(() => ({
   setLauncherSetting: vi.fn(),
   launcherFolders: vi.fn(),
   setGamesFolder: vi.fn(),
+  applyBehavior: vi.fn().mockResolvedValue(undefined),
+  autostartSupported: vi.fn().mockResolvedValue(false),
+  autostartEnabled: vi.fn(),
+  setAutostart: vi.fn(),
 }));
 vi.mock("../launcher/api", () => api);
 vi.mock("../settings/api", () => ({ errorMessage: (e: unknown) => String(e) }));

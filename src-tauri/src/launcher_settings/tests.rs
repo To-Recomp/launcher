@@ -204,3 +204,41 @@ fn the_language_follows_the_system_until_one_is_chosen() {
     .unwrap();
     assert_eq!(language(dir.path()).unwrap(), None);
 }
+
+#[test]
+fn behavior_is_off_until_chosen_and_follows_what_the_settings_write() {
+    let dir = TempDir::new().unwrap();
+    assert_eq!(
+        behavior(dir.path()).unwrap(),
+        Behavior {
+            tray: false,
+            close_on_launch: false
+        }
+    );
+
+    let manifest = manifest().unwrap();
+    let instance = instance(dir.path());
+    let index_of = |id: &str| manifest.settings.iter().position(|s| s.id == id).unwrap();
+    assert!(index_of("minimizeToTray") != index_of("closeOnLaunch"));
+    settings::apply_with(
+        &instance,
+        &manifest,
+        "minimizeToTray",
+        SettingInput::Choice { index: 1 },
+    )
+    .unwrap();
+    settings::apply_with(
+        &instance,
+        &manifest,
+        "closeOnLaunch",
+        SettingInput::Choice { index: 1 },
+    )
+    .unwrap();
+    assert_eq!(
+        behavior(dir.path()).unwrap(),
+        Behavior {
+            tray: true,
+            close_on_launch: true
+        }
+    );
+}

@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import { t } from "../i18n/index.svelte";
   import LauncherAbout from "./LauncherAbout.svelte";
+  import LauncherBehavior from "./LauncherBehavior.svelte";
   import LauncherCatalog from "./LauncherCatalog.svelte";
   import LauncherFolders from "./LauncherFolders.svelte";
   import LauncherUpdates from "./LauncherUpdates.svelte";
@@ -12,6 +13,7 @@
   import { errorMessage } from "../settings/api";
   import { localizeSetting } from "../launcher/localize";
   import { restartNeeded } from "../launcher/restart.svelte";
+  import { syncTray } from "../launcher/tray";
   import { launcherUpdates } from "../launcher/updates.svelte";
   import { sectionsOf } from "../settings/sections";
   import type { SettingInput, SettingView, SettingsView } from "../settings/types";
@@ -46,6 +48,7 @@
     try {
       view = await setLauncherSetting(setting.id, input);
       if (setting.id === "updateChannel") launcherUpdates.forget();
+      if (setting.id === "minimizeToTray") await syncTray();
       if (setting.id === "language") restartNeeded.mark(); // the language is chosen when the launcher starts
       actionError = null;
     } catch (e) {
@@ -84,6 +87,8 @@
       </div>
     {/each}
   {/if}
+
+  <LauncherBehavior />
 
   <LauncherUpdates />
 

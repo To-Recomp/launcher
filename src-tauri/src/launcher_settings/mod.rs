@@ -35,6 +35,29 @@ pub fn update_preferences(config_dir: &Path) -> Result<UpdatePreferences, String
     })
 }
 
+/// What the launcher does around its window and the games it starts.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Behavior {
+    /// Closing the window hides it in the notification area instead of quitting.
+    pub tray: bool,
+    /// The launcher quits once a game has started.
+    pub close_on_launch: bool,
+}
+
+pub fn behavior(config_dir: &Path) -> Result<Behavior, String> {
+    let config = config::read(config_dir)?;
+    let flag = |pointer: &str| {
+        config
+            .pointer(pointer)
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false)
+    };
+    Ok(Behavior {
+        tray: flag("/behavior/tray"),
+        close_on_launch: flag("/behavior/closeOnLaunch"),
+    })
+}
+
 /// The language the player chose for the interface, `None` to follow the system's.
 pub fn language(config_dir: &Path) -> Result<Option<String>, String> {
     Ok(config::read(config_dir)?

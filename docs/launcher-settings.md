@@ -72,3 +72,20 @@ or why it failed, in which case the saved list is used) and has a Refresh button
 same refresh as the sidebar's Retry. The time is kept for the session only. The catalog source is
 not a setting: the launcher only reads the To-Recomp catalog (`TO_RECOMP_CATALOG_URL` stays a
 development switch, see `docs/catalog.md`).
+
+## Behavior
+
+- **Start with the system** (Linux and Windows; hidden elsewhere): registers or removes the
+  launcher through `tauri-plugin-autostart` (an `.desktop` entry in `~/.config/autostart`, or the
+  `Run` key of the registry; an AppImage registers its own path). The switch shows what the
+  system says, not a saved value, so an entry removed by hand shows as off.
+- **Keep running in the notification area** (`behavior.tray`): closing the window hides it and a
+  tray icon (Show / Quit) brings it back; turning it off shows the window again. It needs a
+  notification area: GNOME has none without an AppIndicator extension, so the window can look
+  lost there; it is off by default. On Linux the icon uses `libayatana-appindicator` (loaded at
+  run time; the Fedora package requires it, the AppImage bundles it from the build machine).
+- **Close the launcher when a game starts** (`behavior.closeOnLaunch`): `start_game` quits the
+  launcher once the game has been spawned. The game keeps running; its exit code and log summary
+  are no longer reported by the launcher.
+- Applied at once (the tray is synced at startup and on change, with its menu in the interface
+  language). A failure to add the icon is shown above the settings.
