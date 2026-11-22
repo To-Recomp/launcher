@@ -111,6 +111,9 @@
       {#if activeJob && activeJob !== jobs.game}
         <button onclick={() => library.cancel(activeJob)}>Cancel</button>
       {/if}
+      {#if library.failure?.gameId === game.id && !busy}
+        <button onclick={() => library.reportFailure(game, platform)}>Create diagnostic file</button>
+      {/if}
       {#if installation && platform && !busy}
         <button onclick={() => library.showLog(game, platform, "prepare")}>Preparation log</button>
         {#if instanceState === "ready"}

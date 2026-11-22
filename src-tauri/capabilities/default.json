@@ -9,6 +9,15 @@
     "core:window:allow-toggle-maximize",
     "core:window:allow-close",
     "core:window:allow-start-dragging",
-    "dialog:allow-open"
+    "dialog:allow-open",
+    "opener:allow-reveal-item-in-dir",
+    "clipboard-manager:allow-write-text",
+    {
+      "identifier": "opener:allow-open-url",
+      "allow": [
+        { "url": "https://github.com/*/*/issues/new" },
+        { "url": "https://github.com/*/*/issues" }
+      ]
+    }
   ]
 }

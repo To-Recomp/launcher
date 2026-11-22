@@ -1,18 +1,32 @@
 mod catalog;
+mod diagnostics;
 mod fs_util;
 mod library;
 mod settings;
 mod updater;
 
 pub fn run() {
+    diagnostics::panic::install();
     let builder = tauri::Builder::default()
+        .setup(|app| {
+            use tauri::Manager;
+            if let Ok(dir) = app.path().app_log_dir() {
+                diagnostics::panic::arm(dir, diagnostics::app_scrub(app));
+            }
+            Ok(())
+        })
         .manage(library::Jobs::default())
-        .plugin(tauri_plugin_dialog::init());
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_clipboard_manager::init());
     #[cfg(feature = "updater")]
     let builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
     builder
         .invoke_handler(tauri::generate_handler![
             catalog::cached_catalog,
+            diagnostics::build_report,
+            diagnostics::panic::pending_panic,
+            diagnostics::panic::dismiss_panic,
             library::library_snapshot,
             library::install_game,
             library::prepare_instance,

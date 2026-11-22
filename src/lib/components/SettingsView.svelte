@@ -10,7 +10,8 @@
     gameId,
     gameName,
     location,
-  }: { gameId: string; gameName: string; location: Location | null } = $props();
+    onreportbug,
+  }: { gameId: string; gameName: string; location: Location | null; onreportbug: () => void } = $props();
 
   const icons: Record<SettingsTab, IconName> = {
     Display: "display",
@@ -105,6 +106,10 @@
     <div class="group about">
       <div class="row"><span>To Recomp Launcher</span><span class="muted">v{LAUNCHER_VERSION}</span></div>
       <div class="row"><span>License</span><span class="muted">GNU GPL v3</span></div>
+      <div class="row">
+        <span>Something went wrong?<span class="muted help"> Creates a file you can review and paste into a GitHub issue.</span></span>
+        <button class="report" onclick={onreportbug}>Report a bug</button>
+      </div>
       <p class="muted notice">{NON_AFFILIATION}</p>
     </div>
   {:else if !location}
@@ -172,6 +177,14 @@
   .row { display: flex; align-items: center; justify-content: space-between; padding: var(--space-3) var(--space-4); }
   .row + .row { border-top: 1px solid var(--color-border); }
   .muted { color: var(--color-text-muted); }
+  .help { display: block; font-size: 12px; }
+  .report {
+    padding: 6px 14px;
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-pill);
+    background: var(--color-surface-alt);
+    font-weight: 500;
+  }
   .notice { margin: 0; padding: var(--space-3) var(--space-4); border-top: 1px solid var(--color-border); font-size: 12px; }
   .empty { margin-top: var(--space-5); color: var(--color-text-muted); }
   .error {

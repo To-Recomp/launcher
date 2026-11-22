@@ -535,7 +535,7 @@ impl Drop for JobGuard {
     }
 }
 
-fn app_env(app: &tauri::AppHandle) -> Result<Env, String> {
+pub(crate) fn app_env(app: &tauri::AppHandle) -> Result<Env, String> {
     let root = match std::env::var_os(LIBRARY_ENV) {
         Some(root) => PathBuf::from(root),
         None => app
@@ -675,6 +675,79 @@ pub fn instance_location(
         install_dir: location.install.to_string_lossy().into_owned(),
         data_dir: Some(location.data.to_string_lossy().into_owned()),
     }))
+}
+
+/// The last `max_lines` lines of a log file.
+pub fn tail_of(path: &Path, max_lines: usize) -> String {
+    run::tail(path, max_lines)
+}
+
+/// What a diagnostic file says about one instance, and the paths it must hide. A game that failed
+/// to install has no release: the subject then only knows the library.
+pub fn diagnostic_subject(
+    env: &Env,
+    game_id: &str,
+    platform: &str,
+    region: &str,
+    log_file: Option<&str>,
+) -> Result<crate::diagnostics::Subject, String> {
+    let instance_id = store::instance_id(platform, region);
+    let mut paths = vec![(
+        env.library.root().to_string_lossy().into_owned(),
+        "{library}".to_string(),
+    )];
+    let mut game = crate::diagnostics::Game {
+        id: game_id.to_string(),
+        release: None,
+        platform: platform.to_string(),
+        region: region.to_string(),
+        state: "not installed".to_string(),
+    };
+    if let Some(record) = env.library.installation(game_id)? {
+        let location = env.library.location(game_id, &instance_id)?;
+        paths.push((
+            location.data.to_string_lossy().into_owned(),
+            "{data}".to_string(),
+        ));
+        paths.push((
+            location.install.to_string_lossy().into_owned(),
+            "{install}".to_string(),
+        ));
+        game.release = Some(record.tag.clone());
+        game.state = "unknown".to_string();
+        let instance = env
+            .library
+            .instances(game_id)?
+            .into_iter()
+            .find(|(id, _)| *id == instance_id)
+            .map(|(_, instance)| instance);
+        if let Some(instance) = instance {
+            for (id, path) in &instance.inputs {
+                paths.push((path.clone(), format!("{{input:{id}}}")));
+            }
+            if let Ok(manifest) = read_manifest(&env.library.release_dir(game_id)?) {
+                game.state =
+                    match store::instance_state(&manifest, &record, &instance, &location) {
+                        InstanceState::NotPrepared => "not prepared",
+                        InstanceState::Ready => "ready",
+                        InstanceState::NeedsRebuild => "needs rebuild",
+                    }
+                    .to_string();
+            }
+        } else {
+            game.state = "not prepared".to_string();
+        }
+    }
+    let log = log_file.map(|file| {
+        env.library
+            .instance_dir(game_id, &instance_id)
+            .map(|dir| dir.join(file))
+    });
+    Ok(crate::diagnostics::Subject {
+        game,
+        paths,
+        log: log.transpose()?,
+    })
 }
 
 #[cfg(test)]

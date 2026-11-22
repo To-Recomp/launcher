@@ -93,6 +93,10 @@ impl Library {
         Library { root }
     }
 
+    pub fn root(&self) -> &Path {
+        &self.root
+    }
+
     pub fn game_dir(&self, game_id: &str) -> Result<PathBuf, String> {
         if !valid_game_id(game_id) {
             return Err(format!("`{game_id}` isn't a valid game id."));

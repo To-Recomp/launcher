@@ -23,12 +23,15 @@ dirs = "7.0.0"
 flate2 = "1.1.11"
 fs4 = "1.1.0"
 jsonschema = { version = "0.33.0", default-features = false }
+regex = "1.12"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
 sha2 = "0.10.9"
 tar = "0.4.46"
 tauri = { version = "2", features = [] }
+tauri-plugin-clipboard-manager = "2"
 tauri-plugin-dialog = "2"
+tauri-plugin-opener = "2"
 tauri-plugin-updater = { version = "2", optional = true }
 toml_edit = "0.25.5"
 ureq = { version = "3", features = ["json"] }
