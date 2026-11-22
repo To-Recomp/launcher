@@ -131,3 +131,12 @@ downloads (`ureq`), and the launcher update (the updater's reqwest). `src-tauri/
 - **Diagnostics:** the proxy's host and user name are hidden in diagnostic files, panic files
   included.
 - A SOCKS5 proxy also carries the updater (reqwest's `socks` feature is on).
+
+## Downloads: speed limit
+
+**Game download speed** (`download.limitMBps`): Unlimited (default), 0.5, 1, 2, 5, 10, 25 or 50
+MB/s (1 MB = 1,000,000 bytes). It is a single budget for the whole launcher (`net/limit.rs`): two
+game downloads at once split it. It acts on the next chunk of downloads already running, so
+changing it, or switching it off, takes effect without restarting them. A paused download still
+cancels at once. Only game downloads are limited; the game list, GitHub lookups and launcher
+updates are not. There is no schedule by time of day.

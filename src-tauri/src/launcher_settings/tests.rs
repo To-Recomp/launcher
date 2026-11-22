@@ -287,3 +287,48 @@ fn appearance_is_dark_with_game_colors_until_chosen_and_follows_the_settings() {
     .unwrap();
     assert_eq!(appearance(dir.path()).unwrap().theme, "light");
 }
+
+#[test]
+fn each_download_speed_choice_is_read_back_as_that_many_megabytes_per_second() {
+    let dir = TempDir::new().unwrap();
+    let manifest = manifest().unwrap();
+    let instance = instance(dir.path());
+    let setting = manifest.setting("downloadLimit").unwrap();
+    let labels: Vec<&str> = setting
+        .choices
+        .as_ref()
+        .unwrap()
+        .iter()
+        .map(|c| c.label.as_str())
+        .collect();
+    assert_eq!(labels[0], "Unlimited");
+
+    let read = || {
+        crate::net::limit::bytes_per_second(
+            config::read(dir.path())
+                .unwrap()
+                .pointer("/download/limitMBps")
+                .and_then(|v| v.as_f64()),
+        )
+    };
+    assert_eq!(read(), 0, "unlimited until chosen");
+    for (index, label) in labels.iter().enumerate().skip(1) {
+        settings::apply_with(
+            &instance,
+            &manifest,
+            "downloadLimit",
+            SettingInput::Choice { index },
+        )
+        .unwrap();
+        let megabytes: f64 = label.trim_end_matches(" MB/s").parse().unwrap();
+        assert_eq!(read(), (megabytes * 1_000_000.0) as u64, "{label}");
+    }
+    settings::apply_with(
+        &instance,
+        &manifest,
+        "downloadLimit",
+        SettingInput::Choice { index: 0 },
+    )
+    .unwrap();
+    assert_eq!(read(), 0);
+}

@@ -306,3 +306,70 @@ fn each_mode_gives_the_client_its_proxy_and_a_broken_manual_one_never_goes_direc
     assert!(build(&none).unwrap().proxy().is_none());
     assert!(build(&manual("bad host", 8080)).is_err());
 }
+
+mod download_limit {
+    use std::time::{Duration, Instant};
+
+    use super::super::limit::{bytes_per_second, Limiter};
+
+    const SECOND: Duration = Duration::from_secs(1);
+
+    #[test]
+    fn nothing_waits_while_unlimited() {
+        let limiter = Limiter::new();
+        assert_eq!(limiter.reserve(10_000_000, Instant::now()), Duration::ZERO);
+    }
+
+    #[test]
+    fn reads_share_one_timeline_so_two_downloads_split_the_budget() {
+        let limiter = Limiter::new();
+        limiter.set(1000);
+        let t0 = Instant::now();
+        assert_eq!(limiter.reserve(500, t0), Duration::ZERO); // the first chunk is free
+        assert_eq!(limiter.reserve(500, t0), SECOND / 2); // a second download queues behind it
+        assert_eq!(limiter.reserve(500, t0), SECOND);
+    }
+
+    #[test]
+    fn an_idle_download_earns_no_burst_credit() {
+        let limiter = Limiter::new();
+        limiter.set(1000);
+        let t0 = Instant::now();
+        limiter.reserve(1000, t0);
+        assert_eq!(limiter.reserve(1000, t0 + 10 * SECOND), Duration::ZERO);
+        assert_eq!(limiter.reserve(1000, t0 + 10 * SECOND), SECOND);
+    }
+
+    #[test]
+    fn a_change_acts_on_the_next_chunk_and_unlimited_clears_the_backlog() {
+        let limiter = Limiter::new();
+        limiter.set(1000);
+        let t0 = Instant::now();
+        limiter.reserve(1000, t0);
+        limiter.set(2000);
+        assert_eq!(limiter.reserve(1000, t0), SECOND); // still queued behind the first
+        limiter.set(0);
+        assert_eq!(limiter.reserve(1000, t0), Duration::ZERO);
+        limiter.set(1000);
+        assert_eq!(
+            limiter.reserve(1000, t0),
+            Duration::ZERO,
+            "no backlog is left from before"
+        );
+    }
+
+    #[test]
+    fn the_setting_is_megabytes_per_second_and_anything_odd_means_unlimited() {
+        assert_eq!(bytes_per_second(Some(2.5)), 2_500_000);
+        assert_eq!(bytes_per_second(Some(0.5)), 500_000);
+        for odd in [
+            None,
+            Some(0.0),
+            Some(-3.0),
+            Some(f64::NAN),
+            Some(f64::INFINITY),
+        ] {
+            assert_eq!(bytes_per_second(odd), 0, "{odd:?}");
+        }
+    }
+}

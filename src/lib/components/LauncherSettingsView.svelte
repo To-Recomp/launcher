@@ -11,7 +11,7 @@
   import RestartBanner from "./RestartBanner.svelte";
   import SettingRow from "./SettingRow.svelte";
   import type { CatalogStatus } from "../catalog/status";
-  import { loadLauncherSettings, setLauncherSetting } from "../launcher/api";
+  import { applyDownloadLimit, loadLauncherSettings, setLauncherSetting } from "../launcher/api";
   import { errorMessage } from "../settings/api";
   import { appearance } from "../launcher/appearance.svelte";
   import { localizeSetting } from "../launcher/localize";
@@ -55,6 +55,7 @@
       view = await setLauncherSetting(setting.id, input);
       if (setting.id === "updateChannel") launcherUpdates.forget();
       if (setting.id === "theme" || setting.id === "gamePalette") await appearance.reload();
+      if (setting.id === "downloadLimit") await applyDownloadLimit();
       if (setting.id === "minimizeToTray") await syncTray();
       if (setting.id === "language") restartNeeded.mark(); // the language is chosen when the launcher starts
       actionError = null;

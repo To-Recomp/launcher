@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SettingView, SettingsView as View } from "../settings/types";
 
-const api = vi.hoisted(() => ({ loadLauncherSettings: vi.fn(), setLauncherSetting: vi.fn(), launcherFolders: vi.fn(), setGamesFolder: vi.fn(), launcherAppearance: vi.fn(), applyBehavior: vi.fn().mockResolvedValue(undefined), proxySettings: vi.fn().mockResolvedValue({ settings: { mode: "system", protocol: "http", host: "", port: 8080, username: "", noProxy: "" }, hasPassword: false, keychainError: null }), setProxy: vi.fn(), testProxy: vi.fn(), autostartSupported: vi.fn().mockResolvedValue(false), autostartEnabled: vi.fn(), setAutostart: vi.fn() }));
+const api = vi.hoisted(() => ({ loadLauncherSettings: vi.fn(), setLauncherSetting: vi.fn(), launcherFolders: vi.fn(), setGamesFolder: vi.fn(), launcherAppearance: vi.fn(), applyBehavior: vi.fn().mockResolvedValue(undefined), applyDownloadLimit: vi.fn().mockResolvedValue(undefined), proxySettings: vi.fn().mockResolvedValue({ settings: { mode: "system", protocol: "http", host: "", port: 8080, username: "", noProxy: "" }, hasPassword: false, keychainError: null }), setProxy: vi.fn(), testProxy: vi.fn(), autostartSupported: vi.fn().mockResolvedValue(false), autostartEnabled: vi.fn(), setAutostart: vi.fn() }));
 vi.mock("../launcher/api", () => api);
 vi.mock("../updater", () => ({ updaterAvailable: vi.fn(), updateLauncher: vi.fn(), checkLauncherUpdate: vi.fn(), updatePreferences: vi.fn() }));
 vi.mock("../settings/api", () => ({ errorMessage: (e: unknown) => String(e) }));
@@ -115,5 +115,19 @@ describe("LauncherSettingsView", () => {
     await waitFor(() => expect(appearance.theme).toBe("light"));
     expect(restartNeeded.needed).toBe(false);
     document.documentElement.removeAttribute("data-theme");
+  });
+
+  it("applies a new download speed limit at once, so running downloads follow it", async () => {
+    const limit: SettingView = {
+      id: "downloadLimit", label: "Game download speed", help: null, tab: "Game", group: "Downloads", advanced: false, enabled: true,
+      control: { type: "choices", style: "dropdown", options: ["Unlimited", "1 MB/s"], value: 0, custom: null },
+    };
+    api.loadLauncherSettings.mockResolvedValue(view(limit));
+    api.setLauncherSetting.mockResolvedValue(view(limit));
+    render(LauncherSettingsView, props);
+    await fireEvent.click(await screen.findByRole("combobox", { name: "Game download speed" }));
+    await fireEvent.click(await screen.findByRole("option", { name: "1 MB/s" }));
+    await waitFor(() => expect(api.applyDownloadLimit).toHaveBeenCalledOnce());
+    expect(api.setLauncherSetting).toHaveBeenCalledWith("downloadLimit", { type: "choice", index: 1 });
   });
 });

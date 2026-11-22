@@ -973,3 +973,60 @@ fn a_repository_license_has_a_name_and_a_link_and_none_is_not_an_error() {
         None
     );
 }
+
+/// The limit is process-wide: the tests that set it take turns.
+static LIMIT: Mutex<()> = Mutex::new(());
+
+#[test]
+fn a_download_keeps_to_the_shared_speed_limit_and_can_be_cancelled_while_waiting() {
+    use sha2::{Digest, Sha256};
+
+    let _turn = LIMIT.lock().unwrap_or_else(|e| e.into_inner());
+    let body = vec![7u8; 400_000];
+    let sha: String = Sha256::digest(&body)
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect();
+    let fake = Fake::new();
+    fake.route("/file.zip", 200, body);
+    let dir = tempfile::TempDir::new().unwrap();
+    let url = format!("{}/file.zip", fake.url);
+
+    crate::net::limit::shared().set(200_000);
+    let started = std::time::Instant::now();
+    release::download(
+        &url,
+        &dir.path().join("a.zip"),
+        &sha,
+        &AtomicBool::new(false),
+        &mut |_, _| {},
+    )
+    .unwrap();
+    let took = started.elapsed();
+
+    // 400 kB at 200 kB/s, the first chunk and the last one's wait being free.
+    assert!(took >= Duration::from_millis(1400), "took {took:?}");
+
+    crate::net::limit::shared().set(10_000);
+    let cancel = Arc::new(AtomicBool::new(false));
+    let stopper = Arc::clone(&cancel);
+    thread::spawn(move || {
+        thread::sleep(Duration::from_millis(200));
+        stopper.store(true, Ordering::Relaxed);
+    });
+    let started = std::time::Instant::now();
+    let err = release::download(
+        &url,
+        &dir.path().join("b.zip"),
+        &sha,
+        &cancel,
+        &mut |_, _| {},
+    )
+    .unwrap_err();
+    crate::net::limit::shared().set(0);
+    assert_eq!(err, CANCELLED);
+    assert!(
+        started.elapsed() < Duration::from_secs(2),
+        "a paused download still stops at once"
+    );
+}

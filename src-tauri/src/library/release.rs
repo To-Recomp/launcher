@@ -277,6 +277,7 @@ pub fn download(
             .map_err(|e| format!("Can't write {}: {e}", dest.display()))?;
         done += n as u64;
         progress(done, total);
+        crate::net::limit::shared().pace(n, cancel); // the budget shared by every game download
     }
     let actual = hex(&hasher.finalize());
     if actual != sha256 {

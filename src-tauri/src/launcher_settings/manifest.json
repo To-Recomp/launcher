@@ -177,6 +177,65 @@
       "defaults": {
         "appearance/gamePalette": "true"
       }
+    },
+    {
+      "id": "downloadLimit",
+      "label": "Game download speed",
+      "help": "Applies to game downloads only, shared by all of them. The game list and launcher updates aren't limited.",
+      "group": "Downloads",
+      "choices": [
+        {
+          "label": "Unlimited",
+          "set": {
+            "download/limitMBps": "0"
+          }
+        },
+        {
+          "label": "0.5 MB/s",
+          "set": {
+            "download/limitMBps": "0.5"
+          }
+        },
+        {
+          "label": "1 MB/s",
+          "set": {
+            "download/limitMBps": "1"
+          }
+        },
+        {
+          "label": "2 MB/s",
+          "set": {
+            "download/limitMBps": "2"
+          }
+        },
+        {
+          "label": "5 MB/s",
+          "set": {
+            "download/limitMBps": "5"
+          }
+        },
+        {
+          "label": "10 MB/s",
+          "set": {
+            "download/limitMBps": "10"
+          }
+        },
+        {
+          "label": "25 MB/s",
+          "set": {
+            "download/limitMBps": "25"
+          }
+        },
+        {
+          "label": "50 MB/s",
+          "set": {
+            "download/limitMBps": "50"
+          }
+        }
+      ],
+      "defaults": {
+        "download/limitMBps": "0"
+      }
     }
   ]
 }
