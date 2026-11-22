@@ -57,6 +57,8 @@ pub enum Status {
     Beta,
     Alpha,
     Unsupported,
+    #[serde(rename = "coming-soon")]
+    ComingSoon,
 }
 
 /// Parses and validates a catalog; games come back ordered by first Japanese release year.

@@ -16,6 +16,6 @@ The sidebar is built from `catalog.json` of [`To-Recomp/catalog`](https://github
 - **Development:** `TO_RECOMP_CATALOG_URL` points the launcher at another catalog (a local
   server, a fork).
 
-Each platform shows as a chip with a status dot: stable, beta, alpha, unsupported.
+Each platform shows as a chip with a status dot: stable, beta, alpha, unsupported, coming-soon.
 Installation state (download / settings / play icon) comes with #3; until then every game shows
 the download icon.

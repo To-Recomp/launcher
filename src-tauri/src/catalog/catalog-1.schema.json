@@ -29,7 +29,7 @@
       "properties": {
         "platform": { "type": "string", "minLength": 1 },
         "region": { "type": "string", "minLength": 1 },
-        "status": { "enum": ["stable", "beta", "alpha", "unsupported"] },
+        "status": { "enum": ["stable", "beta", "alpha", "unsupported", "coming-soon"] },
         "tested": { "type": "boolean" }
       }
     }

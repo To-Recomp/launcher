@@ -1,6 +1,6 @@
 // Mirrors src-tauri/src/catalog/mod.rs (serde camelCase).
 
-export type Status = "stable" | "beta" | "alpha" | "unsupported";
+export type Status = "stable" | "beta" | "alpha" | "unsupported" | "coming-soon";
 
 export interface CatalogPlatform {
   platform: string;

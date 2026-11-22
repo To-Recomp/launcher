@@ -294,6 +294,15 @@ fn an_empty_catalog_is_valid_and_unknown_fields_are_ignored() {
 }
 
 #[test]
+fn a_coming_soon_platform_is_valid_and_keeps_its_wire_name() {
+    let raw = r#"{"format":1,"generated":"2026-11-22T12:00:00Z","games":[{"id":"t","name":"T","japan_release_year":2003,"repository":"a/b","platforms":[{"platform":"PS2","region":"Japan","status":"coming-soon","tested":false}]}]}"#;
+    let catalog = parse(raw).unwrap();
+    assert_eq!(catalog.games[0].platforms[0].status, Status::ComingSoon);
+    let json = serde_json::to_value(&catalog).unwrap();
+    assert_eq!(json["games"][0]["platforms"][0]["status"], "coming-soon");
+}
+
+#[test]
 fn json_wire_format_matches_the_frontend_types() {
     let catalog = parse(&catalog_json(&[("tos", "Tales of Symphonia", 2003)])).unwrap();
     let json = serde_json::to_value(Refresh {
