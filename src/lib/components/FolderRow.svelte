@@ -1,5 +1,6 @@
 <script lang="ts">
   import Row from "./Row.svelte";
+  import { t } from "../i18n/index.svelte";
   import { pickFolder } from "../launcher/api";
 
   let {
@@ -26,9 +27,9 @@
 
 <Row {label} {help}>
   <div class="pick">
-    <span class="path" title={path ?? undefined}>{path ?? "Default"}</span>
-    <button onclick={choose}>Choose…</button>
-    {#if path !== null && onreset}<button onclick={onreset}>Use default</button>{/if}
+    <span class="path" title={path ?? undefined}>{path ?? t("launcher.folders.default")}</span>
+    <button onclick={choose}>{t("launcher.folders.choose")}</button>
+    {#if path !== null && onreset}<button onclick={onreset}>{t("launcher.folders.useDefault")}</button>{/if}
   </div>
 </Row>
 

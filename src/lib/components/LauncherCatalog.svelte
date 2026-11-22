@@ -1,5 +1,6 @@
 <script lang="ts">
   import ActionRow from "./ActionRow.svelte";
+  import { t } from "../i18n/index.svelte";
   import { describeCatalog, type CatalogStatus } from "../catalog/status";
 
   let {
@@ -13,13 +14,13 @@
   } = $props();
 </script>
 
-<h2>Game list</h2>
+<h2>{t("launcher.catalog.heading")}</h2>
 <div class="group">
   <ActionRow
-    label="Game catalog"
-    help={status?.error ?? "Downloaded from the To-Recomp catalog when the launcher starts."}
+    label={t("launcher.catalog.label")}
+    help={status?.error ?? t("launcher.catalog.help")}
     value={describeCatalog(status, refreshing)}
-    action="Refresh"
+    action={t("launcher.catalog.refresh")}
     onrun={onrefresh}
   />
 </div>

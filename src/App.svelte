@@ -12,7 +12,8 @@
   import { logoFor } from "./lib/catalog/logos";
   import type { CatalogStatus } from "./lib/catalog/status";
   import { loadPalette, paletteStyle, type Palette } from "./lib/catalog/palette";
-  import { NON_AFFILIATION, type TabId } from "./lib/data";
+  import { nonAffiliation, type TabId } from "./lib/data";
+  import { t } from "./lib/i18n/index.svelte";
   import { instanceLocation } from "./lib/library/api";
   import { launcherUpdates } from "./lib/launcher/updates.svelte";
   import { LibraryStore } from "./lib/library/store.svelte";
@@ -110,7 +111,7 @@
     onretry={loadCatalog}
   />
   <div class="main">
-    <TitleBar {tab} onchange={(t) => (tab = t)} />
+    <TitleBar {tab} onchange={(next) => (tab = next)} />
     {#if library.crash}
       <CrashBanner
         file={library.crash}
@@ -127,7 +128,7 @@
           onreportbug={() => library.reportBug()}
         />
       {:else if !game}
-        <p class="empty">Pick a game once the list has loaded.</p>
+        <p class="empty">{t("shell.app.pickGame")}</p>
       {:else if tab === "home"}
         <HomeView {game} {platform} {library} onplatform={(label) => (platformByGame[game.id] = label)} />
       {:else}
@@ -142,7 +143,7 @@
         />
       {/if}
     </main>
-    <footer>{NON_AFFILIATION}</footer>
+    <footer>{nonAffiliation()}</footer>
   </div>
   {#if library.diagnostic}
     <DiagnosticDialog diagnostic={library.diagnostic} onclose={() => library.closeDiagnostic()} />

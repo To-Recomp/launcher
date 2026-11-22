@@ -48,3 +48,15 @@ export function t(key: MessageKey, params?: Record<string, string | number>): st
   if (!params) return text;
   return text.replace(/\{(\w+)\}/g, (whole, name: string) => (name in params ? String(params[name]) : whole));
 }
+
+/**
+ * A message whose placeholders stand for markup the template builds (`<code>`, `<strong>`): its
+ * text pieces, and the name of each placeholder in `names` where it falls, in the language's order.
+ */
+export function tParts<N extends string>(key: MessageKey, names: readonly N[]): ({ text: string } | N)[] {
+  const text: string = catalogs[language.code]?.[key] ?? en[key] ?? key;
+  return text
+    .split(/\{(\w+)\}/)
+    .map((piece, i) => (i % 2 === 1 && (names as readonly string[]).includes(piece) ? (piece as N) : { text: i % 2 === 1 ? `{${piece}}` : piece }))
+    .filter((part) => typeof part !== "object" || part.text !== "");
+}

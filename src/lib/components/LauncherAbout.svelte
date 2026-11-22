@@ -1,30 +1,31 @@
 <script lang="ts">
   import ActionRow from "./ActionRow.svelte";
+  import { t } from "../i18n/index.svelte";
   import Row from "./Row.svelte";
   import { openLink } from "../diagnostics/api";
-  import { CREDITS, LAUNCHER_REPOSITORY, LAUNCHER_URL, LAUNCHER_VERSION, NON_AFFILIATION } from "../data";
+  import { CREDITS, LAUNCHER_REPOSITORY, LAUNCHER_URL, LAUNCHER_VERSION, nonAffiliation } from "../data";
 
   let { onreportbug }: { onreportbug: () => Promise<void> | void } = $props();
 </script>
 
-<h2>About</h2>
+<h2>{t("launcher.about.heading")}</h2>
 <div class="group">
-  <Row label="To Recomp Launcher"><span class="muted">v{LAUNCHER_VERSION}</span></Row>
-  <Row label="License"><span class="muted">GNU GPL v3</span></Row>
-  <ActionRow label="Repository" value={LAUNCHER_REPOSITORY} action="Open" onrun={() => openLink(LAUNCHER_URL)} />
+  <Row label={t("launcher.about.name")}><span class="muted">v{LAUNCHER_VERSION}</span></Row>
+  <Row label={t("launcher.about.license")}><span class="muted">GNU GPL v3</span></Row>
+  <ActionRow label={t("launcher.about.repository")} value={LAUNCHER_REPOSITORY} action={t("launcher.about.open")} onrun={() => openLink(LAUNCHER_URL)} />
   <ActionRow
-    label="Something went wrong?"
-    help="Creates a file you can review and paste into a GitHub issue."
-    action="Report a bug"
+    label={t("launcher.about.problemLabel")}
+    help={t("launcher.about.problemHelp")}
+    action={t("launcher.about.reportBug")}
     onrun={onreportbug}
   />
-  <p class="muted notice">{NON_AFFILIATION}</p>
+  <p class="muted notice">{nonAffiliation()}</p>
 </div>
 
-<h2>Credits</h2>
+<h2>{t("launcher.about.credits")}</h2>
 <div class="group">
   {#each CREDITS as credit (credit.name)}
-    <ActionRow label={credit.name} value={credit.license} action="Open" onrun={() => openLink(credit.url)} />
+    <ActionRow label={credit.name} value={credit.license ?? (credit.licenseKey ? t(credit.licenseKey) : "")} action={t("launcher.about.open")} onrun={() => openLink(credit.url)} />
   {/each}
 </div>
 

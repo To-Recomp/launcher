@@ -1,6 +1,7 @@
 <script lang="ts">
   import { keyName, mouseName, wheelName } from "../settings/keys";
   import type { ActionView } from "../settings/types";
+  import { t } from "../i18n/index.svelte";
 
   let {
     actions,
@@ -38,7 +39,9 @@
             <button
               class="chip"
               class:listening={isListening(action, index)}
-              aria-label={isListening(action, index) ? `Press a key for ${action.label}` : `${action.label}: ${key}`}
+              aria-label={isListening(action, index)
+                ? t("game.keys.pressFor", { action: action.label })
+                : t("game.keys.binding", { action: action.label, key })}
               onclick={() => (listening = { action: action.key, index })}
               onkeydown={(e) => {
                 if (!isListening(action, index)) return;
@@ -58,11 +61,11 @@
               onblur={() => isListening(action, index) && (listening = null)}
               oncontextmenu={(e) => isListening(action, index) && e.preventDefault()}
             >
-              {isListening(action, index) ? "Press a key…" : key}
+              {isListening(action, index) ? t("game.keys.press") : key}
             </button>
             <button
               class="remove"
-              aria-label="Remove {key} from {action.label}"
+              aria-label={t("game.keys.remove", { key, action: action.label })}
               onclick={() => onchange(action.key, action.keys.filter((_, i) => i !== index))}>×</button
             >
           </span>
@@ -71,7 +74,7 @@
           {#if isListening(action, action.keys.length)}
             <button
               class="chip listening"
-              aria-label="Press a key for {action.label}"
+              aria-label={t("game.keys.pressFor", { action: action.label })}
               onkeydown={(e) => {
                 e.preventDefault();
                 capture(action, keyName(e));
@@ -87,18 +90,18 @@
               onblur={() => (listening = null)}
               oncontextmenu={(e) => e.preventDefault()}
             >
-              Press a key…
+              {t("game.keys.press")}
             </button>
           {:else}
             <button
               class="add"
-              aria-label="Add a key to {action.label}"
+              aria-label={t("game.keys.add", { action: action.label })}
               onclick={() => (listening = { action: action.key, index: action.keys.length })}>+</button
             >
           {/if}
         {/if}
         {#if !same(action.keys, action.default)}
-          <button class="reset" onclick={() => onchange(action.key, action.default)}>Reset</button>
+          <button class="reset" onclick={() => onchange(action.key, action.default)}>{t("game.keys.reset")}</button>
         {/if}
       </div>
     </div>

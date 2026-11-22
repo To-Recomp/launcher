@@ -7,6 +7,7 @@
   import { gameReleases, releaseDate, releaseSummary, type ReleaseNote } from "../catalog/releases";
   import { gameJob, installJob, instanceId, prepareJob } from "../library/types";
   import type { LibraryStore } from "../library/store.svelte";
+  import { t } from "../i18n/index.svelte";
 
   let {
     game,
@@ -51,17 +52,23 @@
   const required = $derived(installation?.inputs.filter((i) => !i.optional) ?? []);
 
   function chooseLabel(): string {
-    if (required.length === 0) return "Prepare";
-    if (required.length > 1) return "Choose game files";
-    return required[0].kinds.length === 1 && required[0].kinds[0] === "folder" ? "Choose game folder" : "Choose game file";
+    if (required.length === 0) return t("game.home.prepare");
+    if (required.length > 1) return t("game.home.chooseFiles");
+    return required[0].kinds.length === 1 && required[0].kinds[0] === "folder"
+      ? t("game.home.chooseFolder")
+      : t("game.home.chooseFile");
   }
 
   const primary = $derived.by((): { label: string; icon: IconName; run: () => void } => {
-    if (!installation) return { label: "Install", icon: "download", run: () => library.install(game) };
-    if (!platform) return { label: "Install", icon: "download", run: () => {} };
-    if (instanceState === "ready") return { label: "Play", icon: "play", run: () => library.play(game, platform) };
+    if (!installation) return { label: t("game.home.install"), icon: "download", run: () => library.install(game) };
+    if (!platform) return { label: t("game.home.install"), icon: "download", run: () => {} };
+    if (instanceState === "ready") return { label: t("game.home.play"), icon: "play", run: () => library.play(game, platform) };
     if (instanceState === "needsRebuild") {
-      return { label: installation.keepsCopy ? "Rebuild" : "Prepare again", icon: "folder", run: () => library.prepare(game, platform) };
+      return {
+        label: installation.keepsCopy ? t("game.home.rebuild") : t("game.home.prepareAgain"),
+        icon: "folder",
+        run: () => library.prepare(game, platform),
+      };
     }
     return { label: chooseLabel(), icon: "folder", run: () => library.prepare(game, platform) };
   });
@@ -69,23 +76,23 @@
   /** Why the selected console can't be installed or prepared, if it can't. */
   const unavailable = $derived(
     platform?.state === "planned"
-      ? "This console is planned: nothing to install yet."
+      ? t("game.home.planned")
       : platform?.state === "in-progress"
-        ? "This console is in progress: there is nothing to install yet."
+        ? t("game.home.inProgress")
         : platform?.state === "unsupported"
-          ? "This console isn't supported."
+          ? t("game.home.unsupported")
           : null,
   );
 
   const hint = $derived(
     unavailable ??
       (!installation
-        ? "Install the game to get started."
+        ? t("game.home.hintInstall")
         : instanceState === "ready"
-          ? "Ready to play."
+          ? t("game.home.hintReady")
           : instanceState === "needsRebuild"
-            ? "The game needs a new build after the update."
-            : "Choose your game files to get started."),
+            ? t("game.home.hintRebuild")
+            : t("game.home.hintChoose")),
   );
 </script>
 
@@ -97,8 +104,8 @@
 
   <div class="actions">
     <Dropdown
-      caption="Platform"
-      label="Platform"
+      caption={t("game.home.platform")}
+      label={t("game.home.platform")}
       options={game.platforms.map((p) => p.platform)}
       value={platform?.platform ?? ""}
       onchange={onplatform}
@@ -107,20 +114,20 @@
       <Icon name={primary.icon} size={20} /> {primary.label}
     </button>
     {#if installation && instanceState === "ready" && required.length > 0 && platform}
-      <button class="secondary" disabled={busy} onclick={() => library.prepare(game, platform)}>Change game files</button>
+      <button class="secondary" disabled={busy} onclick={() => library.prepare(game, platform)}>{t("game.home.changeFiles")}</button>
     {/if}
   </div>
 
   <div class="status" role="status" class:error={!active && library.status?.tone === "error"}>
     <span class="status-icon"><Icon name="info" size={20} /></span>
     <div class="status-body">
-      <strong>Action status</strong>
+      <strong>{t("game.home.actionStatus")}</strong>
       {#if active}
         <p>{active.message}{active.fraction !== null ? ` · ${Math.round(active.fraction * 100)}%` : ""}</p>
         <div
           class="bar"
           role="progressbar"
-          aria-label="Progress"
+          aria-label={t("game.home.progress")}
           aria-valuemin="0"
           aria-valuemax="100"
           aria-valuenow={active.fraction === null ? undefined : Math.round(active.fraction * 100)}
@@ -130,33 +137,33 @@
       {:else if library.status}
         <p>{library.status.text}</p>
       {:else}
-        <p>No recent actions. Results will appear here.</p>
+        <p>{t("game.home.noActions")}</p>
       {/if}
     </div>
     <div class="status-actions">
       {#if activeJob && activeJob !== jobs.game}
-        <button onclick={() => library.cancel(activeJob)}>Cancel</button>
+        <button onclick={() => library.cancel(activeJob)}>{t("game.home.cancel")}</button>
       {/if}
       {#if library.failure?.gameId === game.id && !busy}
-        <button onclick={() => library.reportFailure(game, platform)}>Create diagnostic file</button>
+        <button onclick={() => library.reportFailure(game, platform)}>{t("game.home.createDiagnostic")}</button>
       {/if}
       {#if installation && platform && !busy}
-        <button onclick={() => library.showLog(game, platform, "prepare")}>Preparation log</button>
+        <button onclick={() => library.showLog(game, platform, "prepare")}>{t("game.home.prepareLog")}</button>
         {#if instanceState === "ready"}
-          <button onclick={() => library.showLog(game, platform, "game")}>Game log</button>
+          <button onclick={() => library.showLog(game, platform, "game")}>{t("game.home.gameLog")}</button>
         {/if}
       {/if}
     </div>
   </div>
   {#if library.log !== null}
-    <pre class="log" aria-label="Log">{library.log}</pre>
+    <pre class="log" aria-label={t("game.home.log")}>{library.log}</pre>
   {/if}
 
-  <h2>Latest updates</h2>
+  <h2>{t("game.home.latestUpdates")}</h2>
   {#if releases === null}
-    <p class="releases-empty">Loading the releases…</p>
+    <p class="releases-empty">{t("game.home.releasesLoading")}</p>
   {:else if !featured}
-    <p class="releases-empty">{releasesError ? "The releases can't be read right now." : "No release has been published yet."}</p>
+    <p class="releases-empty">{releasesError ? t("game.home.releasesError") : t("game.home.releasesNone")}</p>
   {:else}
     <div class="cards">
       <Card featured>

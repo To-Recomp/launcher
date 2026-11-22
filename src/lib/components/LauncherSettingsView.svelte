@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { t } from "../i18n/index.svelte";
   import LauncherAbout from "./LauncherAbout.svelte";
   import LauncherCatalog from "./LauncherCatalog.svelte";
   import LauncherFolders from "./LauncherFolders.svelte";
@@ -56,21 +57,21 @@
 </script>
 
 <section class="settings">
-  <h1>Launcher settings</h1>
+  <h1>{t("launcher.settings.title")}</h1>
 
   {#if restartNeeded.needed}<RestartBanner />{/if}
 
   {#if actionError}
     <div class="error" role="alert">
       <span>{actionError}</span>
-      <button aria-label="Dismiss" onclick={() => (actionError = null)}>×</button>
+      <button aria-label={t("launcher.settings.dismiss")} onclick={() => (actionError = null)}>×</button>
     </div>
   {/if}
 
   {#if loadError}
     <p class="empty" role="alert">{loadError}</p>
   {:else if !view}
-    <p class="empty">Loading…</p>
+    <p class="empty">{t("launcher.settings.loading")}</p>
   {:else}
     {#each sections as section, i (i)}
       {#if section.group}<h2>{section.group}</h2>{/if}

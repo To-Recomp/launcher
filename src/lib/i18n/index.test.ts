@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { catalogs, detectLocale, FALLBACK_LOCALE, locale, setLocale, t, type Catalog } from "./index.svelte";
+import { catalogs, detectLocale, FALLBACK_LOCALE, locale, setLocale, t, tParts, type Catalog } from "./index.svelte";
 
 const SAMPLE = "shell.sample" as never;
 
@@ -43,5 +43,13 @@ describe("i18n", () => {
     catalogs.xx = {};
     setLocale("xx");
     expect(document.documentElement.lang).toBe("xx");
+  });
+
+  it("splits a message around markup placeholders, in the order of the language", () => {
+    (catalogs.en as Record<string, string>)["shell.sample"] = "Saved as {file} in {folder}.";
+    catalogs.xx = { [SAMPLE]: "{folder}: {file} saved" } as Catalog;
+    expect(tParts(SAMPLE, ["file", "folder"])).toEqual([{ text: "Saved as " }, "file", { text: " in " }, "folder", { text: "." }]);
+    setLocale("xx");
+    expect(tParts(SAMPLE, ["file", "folder"])).toEqual(["folder", { text: ": " }, "file", { text: " saved" }]);
   });
 });

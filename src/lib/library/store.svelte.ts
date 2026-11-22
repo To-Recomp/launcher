@@ -1,6 +1,7 @@
 import type { Game, GameState, Platform } from "../catalog/games";
 import { buildReport, dismissPanic, pendingPanic, type DiagnosticFile, type DiagnosticRequest } from "../diagnostics/api";
 import { LAUNCHER_REPOSITORY } from "../data";
+import { t } from "../i18n/index.svelte";
 import { errorMessage } from "../settings/api";
 import * as api from "./api";
 import {
@@ -64,11 +65,11 @@ export class LibraryStore {
           const started = this.#started[e.job];
           this.failure =
             e.code && started
-              ? { context: "game", gameId: started.game.id, platform: started.platform, error: `The game stopped with exit code ${e.code}.` }
+              ? { context: "game", gameId: started.game.id, platform: started.platform, error: t("shell.library.exitCode", { code: e.code }) }
               : null;
           this.status = e.code
-            ? { tone: "error", text: `The game stopped with exit code ${e.code}. Check the log.` }
-            : { tone: "info", text: "The game closed." };
+            ? { tone: "error", text: t("shell.library.exitCodeCheckLog", { code: e.code }) }
+            : { tone: "info", text: t("shell.library.closed") };
           await this.refresh();
         }),
       );
@@ -139,7 +140,7 @@ export class LibraryStore {
     } catch (e) {
       const message = errorMessage(e);
       if (message === CANCELLED) {
-        this.status = { tone: "info", text: "Cancelled." };
+        this.status = { tone: "info", text: t("shell.library.cancelled") };
       } else {
         this.status = { tone: "error", text: message };
         const context = job.startsWith("install:") ? "install" : "prepare";
@@ -156,9 +157,9 @@ export class LibraryStore {
     await this.#run(
       installJob(game.id),
       { game },
-      "Looking for the latest release",
+      t("shell.library.lookingForRelease"),
       () => api.installGame(game.id, game.repository),
-      (installation) => `Installed ${game.name} ${installation.tag}.`,
+      (installation) => t("shell.library.installed", { game: game.name, tag: installation.tag }),
     );
   }
 
@@ -175,9 +176,9 @@ export class LibraryStore {
       this.#run(
         job,
         { game, platform },
-        installation.prepareLabel ?? "Preparing the game",
+        installation.prepareLabel ?? t("shell.library.preparing"),
         () => api.prepareInstance(game.id, platform.platform, inputs),
-        () => `${game.name} is ready to play.`,
+        () => t("shell.library.ready", { game: game.name }),
       );
 
     if (this.instanceState(game.id, platform) === "needsRebuild") {
@@ -188,7 +189,7 @@ export class LibraryStore {
     for (const input of installation.inputs.filter((i) => !i.optional)) {
       const picked = await api.pickInput(input);
       if (!picked) {
-        this.status = { tone: "info", text: "Nothing was changed: no file was chosen." };
+        this.status = { tone: "info", text: t("shell.library.nothingChanged") };
         return;
       }
       inputs[input.id] = picked;
@@ -198,8 +199,8 @@ export class LibraryStore {
 
   async play(game: Game, platform: Platform) {
     const job = gameJob(game.id, instanceId(platform.platform));
-    this.progress[job] = { job, fraction: null, message: `${game.name} is running` };
-    this.status = { tone: "info", text: `${game.name} is running.` };
+    this.progress[job] = { job, fraction: null, message: t("shell.library.runningProgress", { game: game.name }) };
+    this.status = { tone: "info", text: t("shell.library.running", { game: game.name }) };
     this.failure = null;
     this.#started[job] = { game, platform };
     try {
@@ -215,7 +216,7 @@ export class LibraryStore {
   async showLog(game: Game, platform: Platform, kind: "prepare" | "game") {
     try {
       const text = await api.readInstanceLog(game.id, platform.platform, kind);
-      this.log = text || "The log is empty.";
+      this.log = text || t("shell.library.logEmpty");
     } catch (e) {
       this.log = errorMessage(e);
     }
