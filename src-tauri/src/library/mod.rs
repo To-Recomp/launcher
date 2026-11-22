@@ -1,7 +1,7 @@
 //! Installations and instances.
 //!
 //! One **installation** per game: a release of the game's repository, downloaded, checked and
-//! unpacked. One **instance** per platform and region of that game, with its own data folder,
+//! unpacked. One **instance** per platform of that game, with its own data folder,
 //! settings and saves. The player gives their dump once, to the instance's *prepare* step;
 //! afterwards the game starts without it. See `store` for the layout.
 
@@ -87,7 +87,6 @@ pub struct InputView {
 pub struct InstanceView {
     pub id: String,
     pub platform: String,
-    pub region: String,
     pub state: InstanceState,
 }
 
@@ -150,7 +149,6 @@ fn installation_view(
             state: store::instance_state(&manifest, record, &instance, &location),
             id,
             platform: instance.platform,
-            region: instance.region,
         });
     }
     Ok(InstallationView {
@@ -312,7 +310,6 @@ pub fn prepare(
     env: &Env,
     game_id: &str,
     platform: &str,
-    region: &str,
     picked: BTreeMap<String, PathBuf>,
     cancel: &AtomicBool,
     progress: &mut dyn FnMut(Progress),
@@ -323,9 +320,9 @@ pub fn prepare(
         .ok_or("This game isn't installed yet.")?;
     let release_dir = library.release_dir(game_id)?;
     let manifest = read_manifest(&release_dir)?;
-    let id = store::instance_id(platform, region);
+    let id = store::instance_id(platform);
     let location = library.location(game_id, &id)?;
-    let mut instance = library.instance_record(game_id, &id, platform, region)?;
+    let mut instance = library.instance_record(game_id, &id, platform)?;
 
     validate_inputs(&manifest, &picked)?;
     let rebuild_from_kept = manifest.prepare.as_ref().is_some_and(|p| p.keeps_copy)
@@ -409,7 +406,6 @@ pub fn prepare(
     Ok(InstanceView {
         id,
         platform: platform.to_string(),
-        region: region.to_string(),
         state,
     })
 }
@@ -419,7 +415,6 @@ pub fn start(
     env: &Env,
     game_id: &str,
     platform: &str,
-    region: &str,
     on_exit: impl FnOnce(Option<i32>) + Send + 'static,
 ) -> Result<(), String> {
     let library = &env.library;
@@ -427,9 +422,9 @@ pub fn start(
         .installation(game_id)?
         .ok_or("This game isn't installed yet.")?;
     let manifest = read_manifest(&library.release_dir(game_id)?)?;
-    let id = store::instance_id(platform, region);
+    let id = store::instance_id(platform);
     let location = library.location(game_id, &id)?;
-    let instance = library.instance_record(game_id, &id, platform, region)?;
+    let instance = library.instance_record(game_id, &id, platform)?;
     if store::instance_state(&manifest, &record, &instance, &location) != InstanceState::Ready {
         return Err("This game isn't ready: prepare it first.".to_string());
     }
@@ -481,7 +476,6 @@ pub fn read_log(
     env: &Env,
     game_id: &str,
     platform: &str,
-    region: &str,
     kind: &str,
     max_lines: usize,
 ) -> Result<String, String> {
@@ -492,7 +486,7 @@ pub fn read_log(
     };
     let dir = env
         .library
-        .instance_dir(game_id, &store::instance_id(platform, region))?;
+        .instance_dir(game_id, &store::instance_id(platform))?;
     Ok(run::tail(&dir.join(file), max_lines))
 }
 
@@ -593,14 +587,10 @@ pub fn prepare_instance(
     jobs: tauri::State<Jobs>,
     game_id: String,
     platform: String,
-    region: String,
     inputs: BTreeMap<String, String>,
 ) -> Result<InstanceView, String> {
     let env = app_env(&app)?;
-    let key = format!(
-        "prepare:{game_id}/{}",
-        store::instance_id(&platform, &region)
-    );
+    let key = format!("prepare:{game_id}/{}", store::instance_id(&platform));
     let guard = jobs.begin(&key)?;
     let picked = inputs
         .into_iter()
@@ -610,7 +600,6 @@ pub fn prepare_instance(
         &env,
         &game_id,
         &platform,
-        &region,
         picked,
         &guard.cancel,
         &mut reporter(&app, &key),
@@ -623,14 +612,13 @@ pub fn start_game(
     jobs: tauri::State<Jobs>,
     game_id: String,
     platform: String,
-    region: String,
 ) -> Result<(), String> {
     let env = app_env(&app)?;
-    let instance = store::instance_id(&platform, &region);
+    let instance = store::instance_id(&platform);
     let key = format!("game:{game_id}/{instance}");
     let guard = jobs.begin(&key)?;
     let exited = app.clone();
-    start(&env, &game_id, &platform, &region, move |code| {
+    start(&env, &game_id, &platform, move |code| {
         let _ = exited.emit(
             "library-game-exited",
             serde_json::json!({ "job": key, "code": code }),
@@ -650,10 +638,9 @@ pub fn read_instance_log(
     app: tauri::AppHandle,
     game_id: String,
     platform: String,
-    region: String,
     kind: String,
 ) -> Result<String, String> {
-    read_log(&app_env(&app)?, &game_id, &platform, &region, &kind, 200)
+    read_log(&app_env(&app)?, &game_id, &platform, &kind, 200)
 }
 
 /// Where the settings of an instance live, once its game is installed.
@@ -662,7 +649,6 @@ pub fn instance_location(
     app: tauri::AppHandle,
     game_id: String,
     platform: String,
-    region: String,
 ) -> Result<Option<Location>, String> {
     let env = app_env(&app)?;
     if env.library.installation(&game_id)?.is_none() {
@@ -670,7 +656,7 @@ pub fn instance_location(
     }
     let location = env
         .library
-        .location(&game_id, &store::instance_id(&platform, &region))?;
+        .location(&game_id, &store::instance_id(&platform))?;
     Ok(Some(Location {
         install_dir: location.install.to_string_lossy().into_owned(),
         data_dir: Some(location.data.to_string_lossy().into_owned()),
@@ -688,10 +674,9 @@ pub fn diagnostic_subject(
     env: &Env,
     game_id: &str,
     platform: &str,
-    region: &str,
     log_file: Option<&str>,
 ) -> Result<crate::diagnostics::Subject, String> {
-    let instance_id = store::instance_id(platform, region);
+    let instance_id = store::instance_id(platform);
     let mut paths = vec![(
         env.library.root().to_string_lossy().into_owned(),
         "{library}".to_string(),
@@ -700,7 +685,6 @@ pub fn diagnostic_subject(
         id: game_id.to_string(),
         release: None,
         platform: platform.to_string(),
-        region: region.to_string(),
         state: "not installed".to_string(),
     };
     if let Some(record) = env.library.installation(game_id)? {

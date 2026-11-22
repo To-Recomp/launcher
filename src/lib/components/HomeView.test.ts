@@ -25,7 +25,7 @@ const input = (id: string, kinds = ["file"], optional = false) => ({ id, label: 
 function installed(state: InstanceState | null, extra: Partial<InstallationView> = {}): InstallationView {
   return {
     gameId: "toe", repository: "To-Recomp/toe", tag: "v1", inputs: [input("disc1")], prepareLabel: null, canPrepare: true, keepsCopy: false,
-    instances: state ? [{ id: "ps1-usa", platform: "PS1", region: "USA", state }] : [], ...extra,
+    instances: state ? [{ id: "ps1", platform: "PS1", state }] : [], ...extra,
   };
 }
 
@@ -63,7 +63,7 @@ describe("HomeView actions", () => {
     api.startGame.mockResolvedValue(undefined);
     expect(screen.getByText("Ready to play.")).toBeInTheDocument();
     await fireEvent.click(screen.getByRole("button", { name: "Play" }));
-    expect(api.startGame).toHaveBeenCalledWith("toe", "PS1", "USA");
+    expect(api.startGame).toHaveBeenCalledWith("toe", "PS1");
     expect(screen.getByRole("button", { name: "Change game files" })).toBeInTheDocument();
   });
 
@@ -77,12 +77,12 @@ describe("HomeView actions", () => {
 describe("HomeView status", () => {
   it("shows progress with a way to cancel while a job runs", async () => {
     const library = show(installed(null));
-    library.progress["prepare:toe/ps1-usa"] = { job: "prepare:toe/ps1-usa", fraction: 0.4, message: "Compiling" };
+    library.progress["prepare:toe/ps1"] = { job: "prepare:toe/ps1", fraction: 0.4, message: "Compiling" };
     expect(await screen.findByText("Compiling · 40%")).toBeInTheDocument();
     expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "40");
     expect(screen.getByRole("button", { name: "Choose game file" })).toBeDisabled();
     await fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
-    expect(api.cancelJob).toHaveBeenCalledWith("prepare:toe/ps1-usa");
+    expect(api.cancelJob).toHaveBeenCalledWith("prepare:toe/ps1");
   });
 
   it("shows the last result and the logs on demand", async () => {
@@ -93,9 +93,31 @@ describe("HomeView status", () => {
     api.readInstanceLog.mockResolvedValue("progress 0.1 Reading\ndisc is unreadable");
     await fireEvent.click(screen.getByRole("button", { name: "Preparation log" }));
     expect(await screen.findByLabelText("Log")).toHaveTextContent("disc is unreadable");
-    expect(api.readInstanceLog).toHaveBeenCalledWith("toe", "PS1", "USA", "prepare");
+    expect(api.readInstanceLog).toHaveBeenCalledWith("toe", "PS1", "prepare");
     await fireEvent.click(screen.getByRole("button", { name: "Game log" }));
-    expect(api.readInstanceLog).toHaveBeenLastCalledWith("toe", "PS1", "USA", "game");
+    expect(api.readInstanceLog).toHaveBeenLastCalledWith("toe", "PS1", "game");
+  });
+});
+
+describe("HomeView availability", () => {
+  it.each([
+    ["planned", "This console is planned: nothing to install yet."],
+    ["in-progress", "This console is in progress: there is nothing to install yet."],
+    ["unsupported", "This console isn't supported."],
+  ] as const)("can't install or prepare a %s console, and says why", (state, hint) => {
+    const library = new LibraryStore();
+    library.installations = [installed(null)];
+    render(HomeView, { game: eternia, platform: { ...platform, state, maturity: null }, library, onplatform: () => {} });
+    expect(screen.getByText(hint)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Choose game file" })).toBeDisabled();
+  });
+
+  it("lists consoles only in the selector", async () => {
+    const library = new LibraryStore();
+    const game = { ...eternia, platforms: [platform, { platform: "Windows", regions: ["Worldwide"], state: "planned" as const, maturity: null }] };
+    render(HomeView, { game, platform, library, onplatform: () => {} });
+    await fireEvent.click(screen.getByRole("combobox", { name: "Platform" }));
+    expect(screen.getAllByRole("option").map((o) => o.textContent?.trim())).toEqual(["PS1", "Windows"]);
   });
 });
 
@@ -114,7 +136,7 @@ describe("HomeView diagnostic file", () => {
     await fireEvent.click(button);
     expect(report).toHaveBeenCalledWith(eternia, platform);
 
-    library.progress["game:toe/ps1-usa"] = { job: "game:toe/ps1-usa", fraction: null, message: "running" };
+    library.progress["game:toe/ps1"] = { job: "game:toe/ps1", fraction: null, message: "running" };
     await waitFor(() => expect(screen.queryByRole("button", { name: "Create diagnostic file" })).not.toBeInTheDocument());
   });
 });

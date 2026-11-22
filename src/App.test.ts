@@ -26,14 +26,14 @@ vi.mock("./lib/diagnostics/api", () => diagnostics);
 import App from "./App.svelte";
 
 const game = (id: string, name: string, year: number, platforms: Catalog["games"][0]["platforms"]) => ({
-  id, name, japanReleaseYear: year, repository: `To-Recomp/${id}`, manifest: null, platforms,
+  id, name, japanReleaseYear: year, repository: `To-Recomp/${id}`, platforms,
 });
 const catalog: Catalog = {
   games: [
-    game("toe", "Tales of Eternia", 2000, [{ platform: "PS1", region: "USA", status: "alpha", tested: true }]),
+    game("toe", "Tales of Eternia", 2000, [{ platform: "PS1", regions: ["USA"], state: "playable", maturity: "alpha" }]),
     game("tos", "Tales of Symphonia", 2003, [
-      { platform: "GameCube", region: "France (PAL)", status: "unsupported", tested: false },
-      { platform: "GameCube", region: "Japan", status: "beta", tested: false },
+      { platform: "GameCube", regions: ["France (PAL)", "Japan"], state: "playable", maturity: "beta" },
+      { platform: "PlayStation 2", regions: ["Japan"], state: "planned", maturity: null },
     ]),
   ],
 };
@@ -60,13 +60,11 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: /Tales of Eternia/ })).toHaveAttribute("aria-current", "true");
   });
 
-  it("shows each platform's status and tells regions apart in the selector", async () => {
+  it("lists consoles in the selector, not their regions", async () => {
     render(App);
     await fireEvent.click(await screen.findByRole("button", { name: /Tales of Symphonia/ }));
-    expect(screen.getAllByTitle(/GameCube \(France \(PAL\)\): unsupported, untested/)).toHaveLength(1);
-    expect(screen.getAllByTitle("GameCube (Japan): beta, untested")).toHaveLength(1);
     await fireEvent.click(screen.getByRole("combobox", { name: "Platform" }));
-    expect(screen.getAllByRole("option").map((o) => o.textContent?.trim())).toEqual(["GameCube · France (PAL)", "GameCube · Japan"]);
+    expect(screen.getAllByRole("option").map((o) => o.textContent?.trim())).toEqual(["GameCube", "PlayStation 2"]);
   });
 
   it("shows the saved list at once, then the downloaded one", async () => {
@@ -114,19 +112,19 @@ describe("App", () => {
   it("shows what is installed in the sidebar and finds the settings of the selected platform", async () => {
     library.librarySnapshot.mockResolvedValue([
       { gameId: "tos", repository: "To-Recomp/tos", tag: "v1", inputs: [], prepareLabel: null, canPrepare: false, keepsCopy: false,
-        instances: [{ id: "gamecube-japan", platform: "GameCube", region: "Japan", state: "ready" }] },
+        instances: [{ id: "gamecube", platform: "GameCube", state: "ready" }] },
     ]);
-    library.instanceLocation.mockImplementation(async (game: string, platform: string, region: string) =>
-      game === "tos" ? { installDir: `/lib/${game}/release`, dataDir: `/lib/${game}/${platform}-${region}` } : null);
+    library.instanceLocation.mockImplementation(async (game: string, platform: string) =>
+      game === "tos" ? { installDir: `/lib/${game}/release`, dataDir: `/lib/${game}/${platform}` } : null);
     render(App);
     await fireEvent.click(await screen.findByRole("button", { name: /Tales of Symphonia/ }));
     expect(screen.getByRole("img", { name: "Play" })).toBeInTheDocument();
     expect(screen.getByRole("img", { name: "Install" })).toBeInTheDocument(); // Eternia
-    expect(library.instanceLocation).toHaveBeenCalledWith("tos", "GameCube", "France (PAL)");
+    expect(library.instanceLocation).toHaveBeenCalledWith("tos", "GameCube");
 
     await fireEvent.click(screen.getByRole("combobox", { name: "Platform" }));
-    await fireEvent.click(screen.getByRole("option", { name: "GameCube · Japan" }));
-    await waitFor(() => expect(library.instanceLocation).toHaveBeenLastCalledWith("tos", "GameCube", "Japan"));
+    await fireEvent.click(screen.getByRole("option", { name: "PlayStation 2" }));
+    await waitFor(() => expect(library.instanceLocation).toHaveBeenLastCalledWith("tos", "PlayStation 2"));
   });
 
   it("does not expose the hidden Mods tab and switches between Home and Settings", async () => {

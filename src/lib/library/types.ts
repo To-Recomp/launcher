@@ -16,7 +16,6 @@ export interface InputView {
 export interface InstanceView {
   id: string;
   platform: string;
-  region: string;
   state: InstanceState;
 }
 
@@ -40,16 +39,13 @@ export interface ProgressEvent {
 /** What the backend rejects with when the player cancels. */
 export const CANCELLED = "Cancelled.";
 
-/** `("GameCube", "France (PAL)")` -> `gamecube-france-pal`; mirrors the backend. */
-export function instanceId(platform: string, region: string): string {
-  const slug = (text: string) => {
-    const out = text
-      .replace(/[^A-Za-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "")
-      .toLowerCase();
-    return out || "x";
-  };
-  return `${slug(platform)}-${slug(region)}`;
+/** `"GameCube"` -> `gamecube`, `"Xbox Series X|S"` -> `xbox-series-x-s`; mirrors the backend. */
+export function instanceId(platform: string): string {
+  const out = platform
+    .replace(/[^A-Za-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .toLowerCase();
+  return out || "x";
 }
 
 export const installJob = (gameId: string) => `install:${gameId}`;

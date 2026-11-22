@@ -67,7 +67,6 @@ pub struct Game {
     pub id: String,
     pub release: Option<String>,
     pub platform: String,
-    pub region: String,
     pub state: String,
 }
 
@@ -131,7 +130,6 @@ pub fn render(facts: &Facts, known: &Scrub) -> String {
             rows.push(("Release", release.clone()));
         }
         rows.push(("Platform", game.platform.clone()));
-        rows.push(("Region", game.region.clone()));
         rows.push(("State", game.state.clone()));
     }
     rows.push(("Context", facts.kind.name().to_string()));
@@ -314,7 +312,6 @@ pub struct Request {
     pub context: Kind,
     pub game_id: Option<String>,
     pub platform: Option<String>,
-    pub region: Option<String>,
     pub error: Option<String>,
 }
 
@@ -337,14 +334,13 @@ pub fn build_report(app: tauri::AppHandle, request: Request) -> Result<Created, 
         .map_err(|e| format!("No place to keep the diagnostic file: {e}"))?;
 
     let mut known = app_scrub(&app);
-    let subject = match (&request.game_id, &request.platform, &request.region) {
-        (Some(id), Some(platform), Some(region)) => {
+    let subject = match (&request.game_id, &request.platform) {
+        (Some(id), Some(platform)) => {
             let env = library::app_env(&app)?;
             Some(library::diagnostic_subject(
                 &env,
                 id,
                 platform,
-                region,
                 request.context.log_file(),
             )?)
         }

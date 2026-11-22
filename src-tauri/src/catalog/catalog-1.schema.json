@@ -19,19 +19,26 @@
         "name": { "type": "string", "minLength": 1 },
         "japan_release_year": { "type": "integer", "minimum": 1990, "maximum": 2100 },
         "repository": { "type": "string", "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$" },
-        "manifest": { "type": "string", "format": "uri", "pattern": "^https://" },
         "platforms": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/platform" } }
       }
     },
     "platform": {
       "type": "object",
-      "required": ["platform", "region", "status", "tested"],
+      "required": ["platform", "regions", "state"],
       "properties": {
         "platform": { "type": "string", "minLength": 1 },
-        "region": { "type": "string", "minLength": 1 },
-        "status": { "enum": ["stable", "beta", "alpha", "unsupported", "coming-soon"] },
-        "tested": { "type": "boolean" }
-      }
+        "regions": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "state": { "enum": ["planned", "in-progress", "playable", "unsupported"] },
+        "maturity": { "enum": ["alpha", "beta", "stable"] }
+      },
+      "if": { "properties": { "state": { "const": "playable" } }, "required": ["state"] },
+      "then": { "required": ["maturity"] },
+      "else": { "not": { "required": ["maturity"] } }
     }
   }
 }

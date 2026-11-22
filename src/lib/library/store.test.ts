@@ -20,7 +20,7 @@ vi.mock("../diagnostics/api", () => diagnostics);
 import { LibraryStore } from "./store.svelte";
 import { CANCELLED, instanceId, type InstallationView, type InstanceState } from "./types";
 
-const platform: Platform = { platform: "GameCube", region: "France (PAL)", status: "beta", tested: false, label: "GameCube · France (PAL)" };
+const platform: Platform = { platform: "GameCube", regions: ["France (PAL)", "Japan"], state: "playable", maturity: "beta" };
 const game: Game = { id: "tos", icon: "S", name: "Tales of Symphonia", repository: "To-Recomp/tos-recomp", year: 2003, state: "not-installed", platforms: [platform] };
 
 const disc = (id: string, optional = false) => ({ id, label: `Label ${id}`, role: "disc", optional, kinds: ["file"], extensions: ["iso"] });
@@ -28,7 +28,7 @@ function installation(state: InstanceState | null, extra: Partial<InstallationVi
   return {
     gameId: "tos", repository: game.repository, tag: "v1", inputs: [disc("disc1"), disc("disc2"), disc("dlc", true)],
     prepareLabel: "Building the game", canPrepare: true, keepsCopy: true,
-    instances: state ? [{ id: "gamecube-france-pal", platform: "GameCube", region: "France (PAL)", state }] : [],
+    instances: state ? [{ id: "gamecube", platform: "GameCube", state }] : [],
     ...extra,
   };
 }
@@ -47,12 +47,13 @@ beforeEach(() => {
 
 describe("instanceId", () => {
   it.each([
-    ["GameCube", "France (PAL)", "gamecube-france-pal"],
-    ["PS1", "USA", "ps1-usa"],
-    ["Xbox 360", "../../etc", "xbox-360-etc"],
-    ["日本", "Japan", "x-japan"],
-  ])("%s / %s -> %s (same as the backend)", (p, r, expected) => {
-    expect(instanceId(p, r)).toBe(expected);
+    ["GameCube", "gamecube"],
+    ["PS1", "ps1"],
+    ["Xbox Series X|S", "xbox-series-x-s"],
+    ["../../etc", "etc"],
+    ["日本", "x"],
+  ])("%s -> %s (same as the backend)", (p, expected) => {
+    expect(instanceId(p)).toBe(expected);
   });
 });
 
@@ -64,7 +65,7 @@ describe("LibraryStore state", () => {
     expect(store.gameState("tos")).toBe("installed");
     expect(store.gameState("other")).toBe("not-installed");
     expect(store.instanceState("tos", platform)).toBe("needsRebuild");
-    expect(store.instanceState("tos", { ...platform, region: "Japan" })).toBe("notPrepared");
+    expect(store.instanceState("tos", { ...platform, platform: "PlayStation 2" })).toBe("notPrepared");
 
     api.librarySnapshot.mockResolvedValue([installation("ready")]);
     await store.refresh();
@@ -115,10 +116,10 @@ describe("LibraryStore actions", () => {
     api.librarySnapshot.mockResolvedValue([installation(null)]);
     await store.refresh();
     api.pickInput.mockImplementation(async (input) => `/discs/${input.id}.iso`);
-    api.prepareInstance.mockResolvedValue({ id: "x", platform: "GameCube", region: "France (PAL)", state: "ready" });
+    api.prepareInstance.mockResolvedValue({ id: "x", platform: "GameCube", state: "ready" });
     await store.prepare(game, platform);
     expect(api.pickInput).toHaveBeenCalledTimes(2);
-    expect(api.prepareInstance).toHaveBeenCalledWith("tos", "GameCube", "France (PAL)", { disc1: "/discs/disc1.iso", disc2: "/discs/disc2.iso" });
+    expect(api.prepareInstance).toHaveBeenCalledWith("tos", "GameCube", { disc1: "/discs/disc1.iso", disc2: "/discs/disc2.iso" });
     expect(store.status).toEqual({ tone: "success", text: "Tales of Symphonia is ready to play." });
   });
 
@@ -138,14 +139,14 @@ describe("LibraryStore actions", () => {
     await store.refresh();
     api.prepareInstance.mockResolvedValueOnce({ state: "ready" });
     await store.prepare(game, platform);
-    expect(api.prepareInstance).toHaveBeenCalledWith("tos", "GameCube", "France (PAL)", {});
+    expect(api.prepareInstance).toHaveBeenCalledWith("tos", "GameCube", {});
     expect(api.pickInput).not.toHaveBeenCalled();
 
     api.prepareInstance.mockRejectedValueOnce("Missing file: Label disc2.").mockResolvedValueOnce({ state: "ready" });
     api.pickInput.mockImplementation(async (input) => `/discs/${input.id}.iso`);
     await store.prepare(game, platform);
     expect(api.pickInput).toHaveBeenCalledTimes(2);
-    expect(api.prepareInstance).toHaveBeenLastCalledWith("tos", "GameCube", "France (PAL)", { disc1: "/discs/disc1.iso", disc2: "/discs/disc2.iso" });
+    expect(api.prepareInstance).toHaveBeenLastCalledWith("tos", "GameCube", { disc1: "/discs/disc1.iso", disc2: "/discs/disc2.iso" });
     expect(store.status?.tone).toBe("success");
   });
 
@@ -153,12 +154,12 @@ describe("LibraryStore actions", () => {
     const store = new LibraryStore();
     api.startGame.mockResolvedValue(undefined);
     await store.play(game, platform);
-    expect(api.startGame).toHaveBeenCalledWith("tos", "GameCube", "France (PAL)");
-    expect(store.isRunning("game:tos/gamecube-france-pal")).toBe(true);
+    expect(api.startGame).toHaveBeenCalledWith("tos", "GameCube");
+    expect(store.isRunning("game:tos/gamecube")).toBe(true);
 
     api.startGame.mockRejectedValue("This game isn't ready: prepare it first.");
     await store.play(game, platform);
-    expect(store.isRunning("game:tos/gamecube-france-pal")).toBe(false);
+    expect(store.isRunning("game:tos/gamecube")).toBe(false);
     expect(store.status).toEqual({ tone: "error", text: "This game isn't ready: prepare it first." });
   });
 
@@ -166,7 +167,7 @@ describe("LibraryStore actions", () => {
     const store = new LibraryStore();
     api.readInstanceLog.mockResolvedValue("line 1\nline 2");
     await store.showLog(game, platform, "prepare");
-    expect(api.readInstanceLog).toHaveBeenCalledWith("tos", "GameCube", "France (PAL)", "prepare");
+    expect(api.readInstanceLog).toHaveBeenCalledWith("tos", "GameCube", "prepare");
     expect(store.log).toBe("line 1\nline 2");
     api.readInstanceLog.mockResolvedValue("");
     await store.showLog(game, platform, "game");
@@ -189,7 +190,7 @@ describe("LibraryStore diagnostic files", () => {
     diagnostics.buildReport.mockResolvedValue(file);
     await store.reportFailure(game, undefined);
     expect(diagnostics.buildReport).toHaveBeenCalledWith({
-      context: "prepare", gameId: "tos", platform: "GameCube", region: "France (PAL)", error: "The preparation failed (exit code 7).",
+      context: "prepare", gameId: "tos", platform: "GameCube", error: "The preparation failed (exit code 7).",
     });
     expect(store.diagnostic).toEqual({ repository: "To-Recomp/tos-recomp", file, error: null });
     store.closeDiagnostic();
@@ -204,7 +205,7 @@ describe("LibraryStore diagnostic files", () => {
     // An install has no instance: the page's platform stands in.
     diagnostics.buildReport.mockResolvedValue(file);
     await store.reportFailure(game, platform);
-    expect(diagnostics.buildReport).toHaveBeenCalledWith(expect.objectContaining({ context: "install", platform: "GameCube", region: "France (PAL)" }));
+    expect(diagnostics.buildReport).toHaveBeenCalledWith(expect.objectContaining({ context: "install", platform: "GameCube" }));
 
     api.installGame.mockRejectedValue(CANCELLED);
     await store.install(game);
@@ -214,10 +215,10 @@ describe("LibraryStore diagnostic files", () => {
     await store.start();
     api.startGame.mockResolvedValue(undefined);
     await store.play(game, platform);
-    await exitListener({ job: "game:tos/gamecube-france-pal", code: 3 });
+    await exitListener({ job: "game:tos/gamecube", code: 3 });
     expect(store.failure).toMatchObject({ context: "game", gameId: "tos", platform, error: "The game stopped with exit code 3." });
     await store.play(game, platform);
-    await exitListener({ job: "game:tos/gamecube-france-pal", code: 0 });
+    await exitListener({ job: "game:tos/gamecube", code: 0 });
     expect(store.failure).toBeNull();
   });
 

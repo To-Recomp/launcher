@@ -9,20 +9,19 @@ export const librarySnapshot = () => invoke<InstallationView[]>("library_snapsho
 export const installGame = (gameId: string, repository: string) =>
   invoke<InstallationView>("install_game", { gameId, repository });
 
-export const prepareInstance = (gameId: string, platform: string, region: string, inputs: Record<string, string>) =>
-  invoke<InstanceView>("prepare_instance", { gameId, platform, region, inputs });
+export const prepareInstance = (gameId: string, platform: string, inputs: Record<string, string>) =>
+  invoke<InstanceView>("prepare_instance", { gameId, platform, inputs });
 
-export const startGame = (gameId: string, platform: string, region: string) =>
-  invoke<void>("start_game", { gameId, platform, region });
+export const startGame = (gameId: string, platform: string) => invoke<void>("start_game", { gameId, platform });
 
 export const cancelJob = (job: string) => invoke<void>("cancel_job", { job });
 
-export const readInstanceLog = (gameId: string, platform: string, region: string, kind: "prepare" | "game") =>
-  invoke<string>("read_instance_log", { gameId, platform, region, kind });
+export const readInstanceLog = (gameId: string, platform: string, kind: "prepare" | "game") =>
+  invoke<string>("read_instance_log", { gameId, platform, kind });
 
 /** Where the settings of an instance live; `null` while the game isn't installed. */
-export const instanceLocation = (gameId: string, platform: string, region: string) =>
-  invoke<Location | null>("instance_location", { gameId, platform, region });
+export const instanceLocation = (gameId: string, platform: string) =>
+  invoke<Location | null>("instance_location", { gameId, platform });
 
 export const onProgress = (listener: (event: ProgressEvent) => void) =>
   listen<ProgressEvent>("library-progress", (e) => listener(e.payload));
