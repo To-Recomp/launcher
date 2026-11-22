@@ -20,7 +20,7 @@
     background: var(--game-bg-mid, var(--color-bg));
   }
   .card.featured {
-    background: linear-gradient(160deg, var(--game-card-top, #3a3f5c), var(--game-bg-mid, #1f2238));
+    background: linear-gradient(160deg, var(--game-card-top, var(--card-top)), var(--game-bg-mid, var(--card-bottom)));
     border-color: var(--color-border-strong);
   }
 </style>

@@ -2,11 +2,12 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SettingView, SettingsView as View } from "../settings/types";
 
-const api = vi.hoisted(() => ({ loadLauncherSettings: vi.fn(), setLauncherSetting: vi.fn(), launcherFolders: vi.fn(), setGamesFolder: vi.fn(), applyBehavior: vi.fn().mockResolvedValue(undefined), autostartSupported: vi.fn().mockResolvedValue(false), autostartEnabled: vi.fn(), setAutostart: vi.fn() }));
+const api = vi.hoisted(() => ({ loadLauncherSettings: vi.fn(), setLauncherSetting: vi.fn(), launcherFolders: vi.fn(), setGamesFolder: vi.fn(), launcherAppearance: vi.fn(), applyBehavior: vi.fn().mockResolvedValue(undefined), autostartSupported: vi.fn().mockResolvedValue(false), autostartEnabled: vi.fn(), setAutostart: vi.fn() }));
 vi.mock("../launcher/api", () => api);
 vi.mock("../updater", () => ({ updaterAvailable: vi.fn(), updateLauncher: vi.fn(), checkLauncherUpdate: vi.fn(), updatePreferences: vi.fn() }));
 vi.mock("../settings/api", () => ({ errorMessage: (e: unknown) => String(e) }));
 
+import { appearance } from "../launcher/appearance.svelte";
 import { restartNeeded } from "../launcher/restart.svelte";
 import { launcherUpdates } from "../launcher/updates.svelte";
 import LauncherSettingsView from "./LauncherSettingsView.svelte";
@@ -98,5 +99,21 @@ describe("LauncherSettingsView", () => {
     api.applyBehavior.mockRejectedValueOnce("Can't put the launcher in the notification area: no host");
     await fireEvent.click(screen.getByRole("switch"));
     expect(await screen.findByRole("alert")).toHaveTextContent("no host");
+  });
+
+  it("applies a theme change at once, without a restart", async () => {
+    const theme: SettingView = {
+      id: "theme", label: "Theme", help: null, tab: "Game", group: "Appearance", advanced: false, enabled: true,
+      control: { type: "choices", style: "segmented", options: ["Dark", "Light", "System"], value: 0, custom: null },
+    };
+    api.loadLauncherSettings.mockResolvedValue(view(theme));
+    api.setLauncherSetting.mockResolvedValue(view(theme));
+    api.launcherAppearance.mockResolvedValue({ theme: "light", gamePalette: true });
+    restartNeeded.needed = false;
+    render(LauncherSettingsView, props);
+    await fireEvent.click(await screen.findByRole("radio", { name: "Light" }));
+    await waitFor(() => expect(appearance.theme).toBe("light"));
+    expect(restartNeeded.needed).toBe(false);
+    document.documentElement.removeAttribute("data-theme");
   });
 });

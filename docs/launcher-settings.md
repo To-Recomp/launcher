@@ -89,3 +89,12 @@ development switch, see `docs/catalog.md`).
   are no longer reported by the launcher.
 - Applied at once (the tray is synced at startup and on change, with its menu in the interface
   language). A failure to add the icon is shown above the settings.
+
+## Appearance
+
+- **Theme** (`appearance.theme`): Dark (default), Light or System (follows the OS, live). Applied
+  at once, and before the first screen at startup (`data-theme` on `<html>`, tokens in
+  `src/app.css`; the light values are in `:root[data-theme="light"]`).
+- **Game colors** (`appearance.gamePalette`, default on): the palette taken from the game's logo
+  tints the page and the sidebar. It is made for the dark theme, so a light theme never uses it
+  whatever this says.

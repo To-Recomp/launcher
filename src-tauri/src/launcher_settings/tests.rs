@@ -242,3 +242,48 @@ fn behavior_is_off_until_chosen_and_follows_what_the_settings_write() {
         }
     );
 }
+
+#[test]
+fn appearance_is_dark_with_game_colors_until_chosen_and_follows_the_settings() {
+    let dir = TempDir::new().unwrap();
+    assert_eq!(
+        appearance(dir.path()).unwrap(),
+        Appearance {
+            theme: "dark".into(),
+            game_palette: true
+        }
+    );
+
+    let manifest = manifest().unwrap();
+    let instance = instance(dir.path());
+    // Dark, Light, System / Off, On
+    settings::apply_with(
+        &instance,
+        &manifest,
+        "theme",
+        SettingInput::Choice { index: 2 },
+    )
+    .unwrap();
+    settings::apply_with(
+        &instance,
+        &manifest,
+        "gamePalette",
+        SettingInput::Choice { index: 0 },
+    )
+    .unwrap();
+    assert_eq!(
+        appearance(dir.path()).unwrap(),
+        Appearance {
+            theme: "system".into(),
+            game_palette: false
+        }
+    );
+    settings::apply_with(
+        &instance,
+        &manifest,
+        "theme",
+        SettingInput::Choice { index: 1 },
+    )
+    .unwrap();
+    assert_eq!(appearance(dir.path()).unwrap().theme, "light");
+}

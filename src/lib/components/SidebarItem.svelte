@@ -4,6 +4,7 @@
   import { logoFor } from "../catalog/logos";
   import { loadPalette } from "../catalog/palette";
   import { t } from "../i18n/index.svelte";
+  import { appearance } from "../launcher/appearance.svelte";
 
   let { game, selected = false, onselect }: { game: Game; selected?: boolean; onselect: () => void } = $props();
 
@@ -12,7 +13,7 @@
   $effect(() => {
     const logo = logoFor(game.name);
     accent = null;
-    if (!logo) return;
+    if (!logo || !appearance.usesGamePalette) return;
     let stale = false;
     loadPalette(logo).then((found) => {
       if (!stale) accent = found?.accent ?? null;

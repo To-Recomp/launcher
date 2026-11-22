@@ -58,6 +58,7 @@ pub fn run() {
             updater::check_launcher_update,
             launcher_settings::launcher_update_preferences,
             launcher_settings::launcher_language,
+            launcher_settings::launcher_appearance,
             behavior::apply_behavior,
             behavior::autostart_supported,
             behavior::autostart_enabled,
