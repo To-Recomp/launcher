@@ -33,8 +33,7 @@ a game in the sidebar goes back to Home.
   reached), install and data folders with an Open button, and "Report a bug" for the game's own
   repository (the diagnostic file is about that instance). Works for a game that isn't installed
   yet: it then shows no folders.
-- Links open github.com pages only (`opener:allow-open-url` scope in `capabilities/default.json`),
-  plus steamgriddb.com for the artwork credit.
+- Links open github.com pages only (`opener:allow-open-url` scope in `capabilities/default.json`).
 
 ## Storage
 

@@ -29,14 +29,11 @@ export interface Credit {
   name: string;
   url: string;
   /** A license name, which is data and stays as is. */
-  license?: string;
-  /** What the credit is for, where there is no license name to show. */
-  licenseKey?: MessageKey;
+  license: string;
 }
 export const CREDITS: readonly Credit[] = [
   { name: "Tauri", license: "Apache-2.0 or MIT", url: "https://github.com/tauri-apps/tauri" },
   { name: "Svelte", license: "MIT", url: "https://github.com/sveltejs/svelte" },
   { name: "ureq", license: "MIT or Apache-2.0", url: "https://github.com/algesten/ureq" },
   { name: "toml_edit", license: "MIT or Apache-2.0", url: "https://github.com/toml-rs/toml" },
-  { name: "SteamGridDB", licenseKey: "shell.credits.artwork", url: "https://www.steamgriddb.com" },
 ];

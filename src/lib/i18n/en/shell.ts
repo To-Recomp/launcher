@@ -3,7 +3,6 @@ export const shell = {
   "shell.tabs.settings": "Settings",
   "shell.nonAffiliation":
     "Not affiliated with or endorsed by Bandai Namco Entertainment, Sony Interactive Entertainment, Microsoft, Nintendo, or any game's publisher or developer.",
-  "shell.credits.artwork": "Game artwork",
   "shell.app.pickGame": "Pick a game once the list has loaded.",
   "shell.titleBar.launcherSettings": "Launcher settings",
   "shell.titleBar.minimize": "Minimize",

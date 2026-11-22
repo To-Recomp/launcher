@@ -25,7 +25,7 @@
 <h2>{t("launcher.about.credits")}</h2>
 <div class="group">
   {#each CREDITS as credit (credit.name)}
-    <ActionRow label={credit.name} value={credit.license ?? (credit.licenseKey ? t(credit.licenseKey) : "")} action={t("launcher.about.open")} onrun={() => openLink(credit.url)} />
+    <ActionRow label={credit.name} value={credit.license} action={t("launcher.about.open")} onrun={() => openLink(credit.url)} />
   {/each}
 </div>
 

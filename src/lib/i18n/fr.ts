@@ -7,7 +7,6 @@ export const fr: Catalog = {
   "shell.tabs.settings": "Paramètres",
   "shell.nonAffiliation":
     "Non affilié à Bandai Namco Entertainment, Sony Interactive Entertainment, Microsoft, Nintendo, ni à l'éditeur ou au développeur d'un jeu, et non approuvé par eux.",
-  "shell.credits.artwork": "Illustrations des jeux",
   "shell.app.pickGame": "Choisissez un jeu une fois la liste chargée.",
   "shell.titleBar.launcherSettings": "Paramètres du launcher",
   "shell.titleBar.minimize": "Réduire",
