@@ -101,20 +101,8 @@ impl ConfigDoc {
                 serde_json::to_string_pretty(root).map_err(|e| e.to_string())? + "\n"
             }
         };
-        write_atomically(path, &text)
+        crate::fs_util::write_atomically(path, &text)
     }
-}
-
-/// Writes next to the target then renames, so a crash never leaves half a configuration file.
-pub fn write_atomically(path: &Path, text: &str) -> Result<(), String> {
-    let fail = |e: std::io::Error| format!("Can't write {}: {e}", path.display());
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent).map_err(fail)?;
-    }
-    let mut tmp = path.as_os_str().to_owned();
-    tmp.push(".tmp");
-    fs::write(&tmp, text).map_err(fail)?;
-    fs::rename(&tmp, path).map_err(fail)
 }
 
 fn toml_item<'a>(doc: &'a DocumentMut, key: &str) -> Option<&'a Item> {

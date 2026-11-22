@@ -1,4 +1,4 @@
-import type { Game } from "./data";
+import type { Game } from "./catalog/games";
 import type { Location } from "./settings/types";
 
 /**

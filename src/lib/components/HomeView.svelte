@@ -2,13 +2,14 @@
   import Card from "./Card.svelte";
   import Dropdown from "./Dropdown.svelte";
   import Icon from "./Icon.svelte";
-  import { updates, type Game } from "../data";
+  import type { Game } from "../catalog/games";
+  import { updates } from "../data";
 
   let { game }: { game: Game } = $props();
 
   let platform = $state("");
   $effect(() => {
-    platform = game.platforms[0];
+    platform = game.platforms[0]?.label ?? "";
   });
 
   const title = $derived(game.name.replace(/^Tales of (the )?/, ""));
@@ -20,7 +21,7 @@
   <p class="hint">Choose your game folder to get started.</p>
 
   <div class="actions">
-    <Dropdown caption="Platform" label="Platform" options={game.platforms} value={platform} onchange={(v) => (platform = v)} />
+    <Dropdown caption="Platform" label="Platform" options={game.platforms.map((p) => p.label)} value={platform} onchange={(v) => (platform = v)} />
     <button class="primary"><Icon name="folder" size={20} /> Choose game folder</button>
   </div>
 

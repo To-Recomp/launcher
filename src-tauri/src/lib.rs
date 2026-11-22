@@ -1,3 +1,5 @@
+mod catalog;
+mod fs_util;
 mod settings;
 mod updater;
 
@@ -7,6 +9,8 @@ pub fn run() {
     let builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
     builder
         .invoke_handler(tauri::generate_handler![
+            catalog::cached_catalog,
+            catalog::refresh_catalog,
             settings::load_settings,
             settings::set_setting,
             settings::settings_launch_args,

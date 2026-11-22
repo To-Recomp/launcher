@@ -1,6 +1,6 @@
 <script lang="ts">
   import Icon from "./Icon.svelte";
-  import type { Game } from "../data";
+  import type { Game } from "../catalog/games";
 
   let { game, selected = false, onselect }: { game: Game; selected?: boolean; onselect: () => void } = $props();
 
@@ -18,6 +18,13 @@
   <span class="text">
     <span class="name">{game.name}</span>
     <span class="year">{game.year}</span>
+    <span class="platforms">
+      {#each game.platforms as p (p.platform + p.region)}
+        <span class="chip {p.status}" title="{p.platform} ({p.region}): {p.status}{p.tested ? '' : ', untested'}">
+          <span class="dot"></span>{p.platform}
+        </span>
+      {/each}
+    </span>
   </span>
   <span class="status" class:play={game.state === "ready"} role="img" aria-label={action.label}>
     <Icon name={action.icon} size={18} />
@@ -63,6 +70,22 @@
   .text { display: flex; flex-direction: column; flex: 1; min-width: 0; }
   .name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .year { font-size: 12px; color: var(--color-text-muted); }
+  .platforms { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 1px 6px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-pill);
+    font-size: 10px;
+    color: var(--color-text-muted);
+  }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--status-color); }
+  .chip.stable { --status-color: var(--color-stable); }
+  .chip.beta { --status-color: var(--color-beta); }
+  .chip.alpha { --status-color: var(--color-alpha); }
+  .chip.unsupported { --status-color: var(--color-unsupported); }
   .status {
     display: grid;
     place-items: center;
