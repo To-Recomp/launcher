@@ -7,31 +7,54 @@
   import { cachedCatalog, refreshCatalog } from "./lib/catalog/api";
   import { toGames, type Game } from "./lib/catalog/games";
   import { NON_AFFILIATION, type TabId } from "./lib/data";
-  import { locationFor } from "./lib/instances";
+  import { instanceLocation } from "./lib/library/api";
+  import { LibraryStore } from "./lib/library/store.svelte";
+  import type { Location } from "./lib/settings/types";
   import { errorMessage } from "./lib/settings/api";
 
-  let games = $state<Game[]>([]);
+  const library = new LibraryStore();
+
+  let catalog = $state<Game[]>([]);
   let loading = $state(true);
   let catalogError = $state<string | null>(null);
   let selectedId = $state<string | null>(null);
   let tab = $state<TabId>("home");
 
+  // The sidebar's icon says whether the game is installed or ready to play.
+  const games = $derived(catalog.map((g) => ({ ...g, state: library.gameState(g.id) })));
+
   // The first game until the player picks one (or the picked one left the catalog).
   const game = $derived(games.find((g) => g.id === selectedId) ?? games[0]);
-  const location = $derived(game ? locationFor(game) : null);
+
+  let platformByGame = $state<Record<string, string>>({});
+  const platform = $derived(game?.platforms.find((p) => p.label === platformByGame[game.id]) ?? game?.platforms[0]);
+
+  /** Where the selected instance keeps its settings, once its game is installed. */
+  let location = $state<Location | null>(null);
+  $effect(() => {
+    const current = game && platform ? { id: game.id, platform: platform.platform, region: platform.region } : null;
+    library.installationOf(current?.id ?? "")?.tag; // reload when the game gets (re)installed
+    location = null;
+    if (!current) return;
+    let stale = false;
+    instanceLocation(current.id, current.platform, current.region)
+      .then((found) => !stale && (location = found))
+      .catch(() => {});
+    return () => (stale = true);
+  });
 
   /** The saved list shows at once; the download then replaces it if something newer exists. */
   async function loadCatalog() {
     loading = true;
     try {
       const saved = await cachedCatalog();
-      if (saved) games = toGames(saved);
+      if (saved) catalog = toGames(saved);
     } catch {
       // No saved list yet: the download below decides.
     }
     try {
       const result = await refreshCatalog();
-      if (result.catalog) games = toGames(result.catalog);
+      if (result.catalog) catalog = toGames(result.catalog);
       catalogError = result.error;
     } catch (e) {
       catalogError = errorMessage(e);
@@ -39,7 +62,11 @@
     loading = false;
   }
 
-  onMount(loadCatalog);
+  onMount(() => {
+    library.start();
+    loadCatalog();
+    return () => library.stop();
+  });
 </script>
 
 <div class="app">
@@ -57,7 +84,7 @@
       {#if !game}
         <p class="empty">Pick a game once the list has loaded.</p>
       {:else if tab === "home"}
-        <HomeView {game} />
+        <HomeView {game} {platform} {library} onplatform={(label) => (platformByGame[game.id] = label)} />
       {:else}
         <SettingsView gameId={game.id} gameName={game.name} {location} />
       {/if}

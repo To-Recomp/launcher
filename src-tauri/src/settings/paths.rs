@@ -26,6 +26,11 @@ impl Instance {
     }
 
     pub fn resolve(&self, template: &str) -> Result<PathBuf, String> {
+        self.expand_text(template).map(PathBuf::from)
+    }
+
+    /// Fills in the placeholders of a path, an argument or a value.
+    pub fn expand_text(&self, template: &str) -> Result<String, String> {
         let known = [
             ("{install}", Some(self.install.clone())),
             ("{data}", Some(self.data.clone())),
@@ -50,7 +55,7 @@ impl Instance {
                 &rest[..end]
             ));
         }
-        Ok(PathBuf::from(out))
+        Ok(out)
     }
 
     /// The file of a config entry (first candidate whose `if` exists, else the unconditional

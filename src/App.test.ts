@@ -1,9 +1,17 @@
-import { fireEvent, render, screen, within } from "@testing-library/svelte";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/svelte";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Catalog } from "./lib/catalog/types";
 
 const api = vi.hoisted(() => ({ cachedCatalog: vi.fn(), refreshCatalog: vi.fn() }));
 vi.mock("./lib/catalog/api", () => api);
+
+const library = vi.hoisted(() => ({
+  librarySnapshot: vi.fn(),
+  instanceLocation: vi.fn(),
+  onProgress: vi.fn(),
+  onGameExited: vi.fn(),
+}));
+vi.mock("./lib/library/api", () => library);
 
 import App from "./App.svelte";
 
@@ -24,6 +32,10 @@ beforeEach(() => {
   vi.clearAllMocks();
   api.cachedCatalog.mockResolvedValue(null);
   api.refreshCatalog.mockResolvedValue({ catalog, updated: true, error: null });
+  library.librarySnapshot.mockResolvedValue([]);
+  library.instanceLocation.mockResolvedValue(null);
+  library.onProgress.mockResolvedValue(() => {});
+  library.onGameExited.mockResolvedValue(() => {});
 });
 
 describe("App", () => {
@@ -85,6 +97,23 @@ describe("App", () => {
     await fireEvent.click(screen.getByRole("button", { name: "Retry" }));
     expect(await screen.findByRole("heading", { level: 1, name: "Eternia" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Tales of Symphonia/ })).not.toBeInTheDocument();
+  });
+
+  it("shows what is installed in the sidebar and finds the settings of the selected platform", async () => {
+    library.librarySnapshot.mockResolvedValue([
+      { gameId: "tos", repository: "To-Recomp/tos", tag: "v1", inputs: [], prepareLabel: null, canPrepare: false, keepsCopy: false,
+        instances: [{ id: "gamecube-japan", platform: "GameCube", region: "Japan", state: "ready" }] },
+    ]);
+    library.instanceLocation.mockImplementation(async (game: string, platform: string, region: string) =>
+      game === "tos" ? { installDir: `/lib/${game}/release`, dataDir: `/lib/${game}/${platform}-${region}` } : null);
+    render(App);
+    await fireEvent.click(await screen.findByRole("button", { name: /Tales of Symphonia/ }));
+    expect(screen.getByRole("img", { name: "Play" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Install" })).toBeInTheDocument(); // Eternia
+    expect(library.instanceLocation).toHaveBeenCalledWith("tos", "GameCube", "France (PAL)");
+
+    await fireEvent.change(screen.getByRole("combobox", { name: "Platform" }), { target: { value: "GameCube · Japan" } });
+    await waitFor(() => expect(library.instanceLocation).toHaveBeenLastCalledWith("tos", "GameCube", "Japan"));
   });
 
   it("does not expose the hidden Mods tab and switches between Home and Settings", async () => {
