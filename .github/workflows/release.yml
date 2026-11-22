@@ -110,7 +110,9 @@ jobs:
           if [ "${{ matrix.platform }}" = linux ]; then
             arch=linux-x86_64
             cp "$bundle"/appimage/*.AppImage "$out/To-Recomp-Launcher_${version}_${arch}.AppImage"
-            [ -f "$bundle"/appimage/*.AppImage.sig ] && cp "$bundle"/appimage/*.AppImage.sig "$out/To-Recomp-Launcher_${version}_${arch}.AppImage.sig"
+            for sig in "$bundle"/appimage/*.AppImage.sig; do
+              if [ -f "$sig" ]; then cp "$sig" "$out/To-Recomp-Launcher_${version}_${arch}.AppImage.sig"; fi
+            done
             dir="to-recomp-launcher-${version}-${arch}"
             mkdir "$dir"
             cp src-tauri/target/release/to-recomp-launcher LICENSE README.md "$dir/"
@@ -120,7 +122,9 @@ jobs:
           else
             arch=windows-x86_64
             cp "$bundle"/nsis/*-setup.exe "$out/To-Recomp-Launcher_${version}_${arch}-setup.exe"
-            [ -f "$bundle"/nsis/*-setup.exe.sig ] && cp "$bundle"/nsis/*-setup.exe.sig "$out/To-Recomp-Launcher_${version}_${arch}-setup.exe.sig"
+            for sig in "$bundle"/nsis/*-setup.exe.sig; do
+              if [ -f "$sig" ]; then cp "$sig" "$out/To-Recomp-Launcher_${version}_${arch}-setup.exe.sig"; fi
+            done
             dir="To-Recomp-Launcher-${version}-${arch}-portable"
             mkdir "$dir"
             cp src-tauri/target/release/to-recomp-launcher.exe LICENSE README.md "$dir/"
