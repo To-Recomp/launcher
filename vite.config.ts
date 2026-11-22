@@ -11,5 +11,12 @@ export default defineConfig(({ mode }) => ({
     environment: "jsdom",
     setupFiles: ["./src/test-setup.ts"],
     include: ["src/**/*.test.ts"],
+    coverage: {
+      provider: "v8",
+      include: ["src/**/*.{ts,svelte}"],
+      exclude: ["src/**/*.test.ts", "src/test-setup.ts", "src/main.ts"],
+      reporter: ["text", "lcov"],
+      thresholds: { lines: 90, functions: 90, statements: 90, branches: 65 },
+    },
   },
 }));

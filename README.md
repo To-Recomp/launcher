@@ -17,9 +17,9 @@ Requirements: Node 26, Rust stable, and the [Tauri system dependencies](https://
 ```
 npm install
 npm run tauri dev     # app window with hot reload
-npm run check         # svelte-check / type check
-npm test              # component tests
-cd src-tauri && cargo build
+npm run verify        # type check + tests with coverage gate + build (what CI runs)
+npm test              # frontend tests only
+cd src-tauri && cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test
 ```
 
 ![Home screen](docs/screenshots/home.png)
