@@ -84,6 +84,17 @@ describe("LauncherProxy", () => {
     expect(api.setProxy).not.toHaveBeenCalled();
   });
 
+  it("tests without the saved password once Forget is pending", async () => {
+    api.proxySettings.mockResolvedValue(view({ mode: "manual", host: "proxy.corp", username: "yuri" }, { hasPassword: true }));
+    api.testProxy.mockResolvedValue("Connected: GitHub answered 200.");
+    render(LauncherProxy);
+    await fireEvent.click(await screen.findByRole("button", { name: "Test" }));
+    await waitFor(() => expect(api.testProxy).toHaveBeenLastCalledWith(expect.anything(), null));
+    await fireEvent.click(screen.getByRole("button", { name: "Forget" }));
+    await fireEvent.click(screen.getByRole("button", { name: "Test" }));
+    await waitFor(() => expect(api.testProxy).toHaveBeenLastCalledWith(expect.anything(), ""));
+  });
+
   it("shows the keychain's problem next to the password", async () => {
     api.proxySettings.mockResolvedValue(view({ mode: "manual" }, { keychainError: "The system keychain isn't available" }));
     render(LauncherProxy);
