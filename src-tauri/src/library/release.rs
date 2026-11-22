@@ -132,10 +132,16 @@ struct ApiNote {
 
 /// The newest published releases of `repository` (`owner/name`), newest first. A repository
 /// that doesn't exist or has no release gives an empty list.
-pub fn recent_releases(api: &str, repository: &str, count: usize) -> Result<Vec<ReleaseNote>, String> {
-    let all: Vec<ApiNote> =
-        get_json(&format!("{api}/repos/{repository}/releases?per_page={}", count + 5))?
-            .unwrap_or_default();
+pub fn recent_releases(
+    api: &str,
+    repository: &str,
+    count: usize,
+) -> Result<Vec<ReleaseNote>, String> {
+    let all: Vec<ApiNote> = get_json(&format!(
+        "{api}/repos/{repository}/releases?per_page={}",
+        count + 5
+    ))?
+    .unwrap_or_default();
     Ok(all
         .into_iter()
         .filter(|r| !r.draft)

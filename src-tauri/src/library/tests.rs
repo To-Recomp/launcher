@@ -943,5 +943,7 @@ fn recent_releases_skip_drafts_and_a_missing_repository_has_none() {
     assert_eq!(notes[0].name.as_deref(), Some("Second"));
     assert!(notes[0].prerelease);
 
-    assert!(release::recent_releases(&fake.url, "To-Recomp/none", 3).unwrap().is_empty());
+    assert!(release::recent_releases(&fake.url, "To-Recomp/none", 3)
+        .unwrap()
+        .is_empty());
 }
