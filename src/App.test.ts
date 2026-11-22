@@ -53,8 +53,8 @@ describe("App", () => {
     await fireEvent.click(await screen.findByRole("button", { name: /Tales of Symphonia/ }));
     expect(screen.getAllByTitle(/GameCube \(France \(PAL\)\): unsupported, untested/)).toHaveLength(1);
     expect(screen.getAllByTitle("GameCube (Japan): beta, untested")).toHaveLength(1);
-    const platform = screen.getByRole("combobox", { name: "Platform" }) as HTMLSelectElement;
-    expect([...platform.options].map((o) => o.value)).toEqual(["GameCube · France (PAL)", "GameCube · Japan"]);
+    await fireEvent.click(screen.getByRole("combobox", { name: "Platform" }));
+    expect(screen.getAllByRole("option").map((o) => o.textContent?.trim())).toEqual(["GameCube · France (PAL)", "GameCube · Japan"]);
   });
 
   it("shows the saved list at once, then the downloaded one", async () => {
@@ -112,7 +112,8 @@ describe("App", () => {
     expect(screen.getByRole("img", { name: "Install" })).toBeInTheDocument(); // Eternia
     expect(library.instanceLocation).toHaveBeenCalledWith("tos", "GameCube", "France (PAL)");
 
-    await fireEvent.change(screen.getByRole("combobox", { name: "Platform" }), { target: { value: "GameCube · Japan" } });
+    await fireEvent.click(screen.getByRole("combobox", { name: "Platform" }));
+    await fireEvent.click(screen.getByRole("option", { name: "GameCube · Japan" }));
     await waitFor(() => expect(library.instanceLocation).toHaveBeenLastCalledWith("tos", "GameCube", "Japan"));
   });
 

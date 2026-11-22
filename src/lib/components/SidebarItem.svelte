@@ -96,5 +96,5 @@
     background: var(--color-surface-alt);
     color: var(--color-text-muted);
   }
-  .status.play { color: var(--color-accent); border-color: rgb(226 194 107 / 0.4); }
+  .status.play { color: var(--color-accent); border-color: color-mix(in srgb, var(--color-accent) 40%, transparent); }
 </style>

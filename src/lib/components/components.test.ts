@@ -28,11 +28,54 @@ describe("Toggle", () => {
 });
 
 describe("Dropdown", () => {
-  it("reports the selected option", async () => {
+  const show = (value = "1") => {
     const onchange = vi.fn();
-    render(Dropdown, { options: ["1", "2"], value: "1", label: "Size", onchange });
-    await fireEvent.change(screen.getByRole("combobox", { name: "Size" }), { target: { value: "2" } });
+    render(Dropdown, { options: ["1", "2", "3"], value, label: "Size", onchange });
+    return { onchange, box: screen.getByRole("combobox", { name: "Size" }) };
+  };
+
+  it("shows the value and opens a list of options on click, closing it on a choice", async () => {
+    const { onchange, box } = show();
+    expect(box).toHaveTextContent("1");
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    await fireEvent.click(box);
+    expect(box).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("option", { name: "1" })).toHaveAttribute("aria-selected", "true");
+    await fireEvent.click(screen.getByRole("option", { name: "2" }));
     expect(onchange).toHaveBeenCalledWith("2");
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+  });
+
+  it("does not report the option that is already selected", async () => {
+    const { onchange, box } = show();
+    await fireEvent.click(box);
+    await fireEvent.click(screen.getByRole("option", { name: "1" }));
+    expect(onchange).not.toHaveBeenCalled();
+  });
+
+  it("works from the keyboard: arrows move, Enter chooses, Escape cancels", async () => {
+    const { onchange, box } = show();
+    await fireEvent.keyDown(box, { key: "ArrowDown" }); // opens on the current value
+    expect(box).toHaveAttribute("aria-expanded", "true");
+    await fireEvent.keyDown(box, { key: "ArrowDown" });
+    await fireEvent.keyDown(box, { key: "ArrowDown" });
+    await fireEvent.keyDown(box, { key: "ArrowDown" }); // stops at the last option
+    await fireEvent.keyDown(box, { key: "Enter" });
+    expect(onchange).toHaveBeenCalledExactlyOnceWith("3");
+    expect(box).toHaveAttribute("aria-expanded", "false");
+
+    await fireEvent.keyDown(box, { key: "Enter" });
+    await fireEvent.keyDown(box, { key: "Home" });
+    await fireEvent.keyDown(box, { key: "Escape" });
+    expect(onchange).toHaveBeenCalledOnce();
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+  });
+
+  it("closes when the pointer goes down elsewhere", async () => {
+    const { box } = show();
+    await fireEvent.click(box);
+    await fireEvent.pointerDown(document.body);
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
   });
 });
 
