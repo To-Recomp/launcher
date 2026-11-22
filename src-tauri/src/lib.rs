@@ -1,5 +1,12 @@
+mod settings;
+
 pub fn run() {
     tauri::Builder::default()
+        .invoke_handler(tauri::generate_handler![
+            settings::load_settings,
+            settings::set_setting,
+            settings::settings_launch_args
+        ])
         .run(tauri::generate_context!())
         .expect("error while running To Recomp Launcher");
 }

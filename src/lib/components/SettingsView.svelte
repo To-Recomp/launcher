@@ -1,9 +1,16 @@
 <script lang="ts">
-  import Dropdown from "./Dropdown.svelte";
+  import { untrack } from "svelte";
   import Icon, { type IconName } from "./Icon.svelte";
-  import Segmented from "./Segmented.svelte";
-  import Toggle from "./Toggle.svelte";
-  import { settingsTabs, type SettingsTab } from "../data";
+  import SettingRow from "./SettingRow.svelte";
+  import { errorMessage, loadSettings, setSetting } from "../settings/api";
+  import type { Location, SettingInput, SettingView, SettingsView } from "../settings/types";
+  import { LAUNCHER_VERSION, NON_AFFILIATION, settingsTabs, type SettingsTab } from "../data";
+
+  let {
+    gameId,
+    gameName,
+    location,
+  }: { gameId: string; gameName: string; location: Location | null } = $props();
 
   const icons: Record<SettingsTab, IconName> = {
     Display: "display",
@@ -16,15 +23,64 @@
   };
 
   let tab = $state<SettingsTab>("Display");
+  let view = $state<SettingsView | null>(null);
+  let loadError = $state<string | null>(null);
+  let actionError = $state<string | null>(null);
 
-  // Static values; real settings come from the game's manifest (#4).
-  let windowMode = $state("Windowed");
-  let windowSize = $state("1280 × 720");
-  let renderResolution = $state("Match window");
-  let aspectRatio = $state("Automatic");
-  let letterbox = $state(true);
-  let frameLimit = $state("Match display");
-  let vsync = $state(true);
+  const advancedKey = $derived(`settings.showAdvanced.${gameId}`);
+  let showAdvanced = $state(false);
+  $effect(() => {
+    showAdvanced = localStorage.getItem(advancedKey) === "true";
+  });
+  function toggleAdvanced() {
+    showAdvanced = !showAdvanced;
+    localStorage.setItem(advancedKey, String(showAdvanced));
+  }
+
+  async function reload(current: Location) {
+    try {
+      const loaded = await loadSettings(current);
+      if (current === location) view = loaded;
+    } catch (e) {
+      if (current === location) loadError = errorMessage(e);
+    }
+  }
+
+  $effect(() => {
+    const current = location;
+    untrack(() => {
+      view = null;
+      loadError = null;
+      actionError = null;
+    });
+    if (current) reload(current);
+  });
+
+  async function apply(setting: SettingView, input: SettingInput) {
+    if (!location) return;
+    try {
+      view = await setSetting(location, setting.id, input);
+      actionError = null;
+    } catch (e) {
+      actionError = errorMessage(e);
+      // Show what is really in the file, not the value the player tried.
+      await reload(location);
+    }
+  }
+
+  const inTab = $derived((view?.settings ?? []).filter((s) => s.tab === tab));
+  const hasAdvanced = $derived(inTab.some((s) => s.advanced));
+  const visible = $derived(inTab.filter((s) => showAdvanced || !s.advanced));
+
+  /** Consecutive settings of the same group share a card under one heading. */
+  const sections = $derived(
+    visible.reduce<{ group: string | null; items: SettingView[] }[]>((acc, setting) => {
+      const last = acc.at(-1);
+      if (last && last.group === setting.group) last.items.push(setting);
+      else acc.push({ group: setting.group, items: [setting] });
+      return acc;
+    }, []),
+  );
 </script>
 
 <section class="settings">
@@ -38,44 +94,42 @@
     {/each}
   </div>
 
-  {#if tab === "Display"}
-    <h2>Picture</h2>
-    <div class="group">
-      <div class="row">
-        <span>Window</span>
-        <Segmented label="Window" options={["Windowed", "Borderless", "Fullscreen"]} value={windowMode} onchange={(v) => (windowMode = v)} />
-      </div>
-      <div class="row">
-        <span>Window size</span>
-        <Dropdown label="Window size" options={["1280 × 720", "1600 × 900", "1920 × 1080"]} value={windowSize} onchange={(v) => (windowSize = v)} />
-      </div>
-      <div class="row">
-        <span>Render resolution</span>
-        <Dropdown label="Render resolution" options={["Match window", "Native", "2x"]} value={renderResolution} onchange={(v) => (renderResolution = v)} />
-      </div>
-      <div class="row">
-        <span>Aspect ratio</span>
-        <Dropdown label="Aspect ratio" options={["Automatic", "4:3", "16:9"]} value={aspectRatio} onchange={(v) => (aspectRatio = v)} />
-      </div>
-      <div class="row">
-        <span>Letterbox instead of stretching</span>
-        <Toggle label="Letterbox instead of stretching" checked={letterbox} onchange={(v) => (letterbox = v)} />
-      </div>
+  {#if actionError}
+    <div class="error" role="alert">
+      <span>{actionError}</span>
+      <button aria-label="Dismiss" onclick={() => (actionError = null)}>×</button>
     </div>
+  {/if}
 
-    <h2>Frame rate</h2>
-    <div class="group">
-      <div class="row">
-        <span>Frame rate limit</span>
-        <Dropdown label="Frame rate limit" options={["Match display", "30", "60", "120"]} value={frameLimit} onchange={(v) => (frameLimit = v)} />
-      </div>
-      <div class="row">
-        <span>VSync</span>
-        <Toggle label="VSync" checked={vsync} onchange={(v) => (vsync = v)} />
-      </div>
+  {#if tab === "About"}
+    <div class="group about">
+      <div class="row"><span>To Recomp Launcher</span><span class="muted">v{LAUNCHER_VERSION}</span></div>
+      <div class="row"><span>License</span><span class="muted">GNU GPL v3</span></div>
+      <p class="muted notice">{NON_AFFILIATION}</p>
     </div>
+  {:else if !location}
+    <p class="empty">Install and prepare {gameName} to configure it.</p>
+  {:else if loadError}
+    <p class="empty" role="alert">{loadError}</p>
+  {:else if !view}
+    <p class="empty">Loading…</p>
+  {:else if sections.length === 0}
+    <p class="empty">No settings in this section.</p>
   {:else}
-    <p class="empty">{tab} settings will be generated from the game's manifest.</p>
+    {#each sections as section, i (i)}
+      {#if section.group}<h2>{section.group}</h2>{/if}
+      <div class="group">
+        {#each section.items as setting (setting.id)}
+          <SettingRow {setting} onchange={(input) => apply(setting, input)} />
+        {/each}
+      </div>
+    {/each}
+  {/if}
+
+  {#if hasAdvanced && view}
+    <button class="advanced" onclick={toggleAdvanced}>
+      {showAdvanced ? "Hide advanced options" : "Show advanced options"}
+    </button>
   {/if}
 </section>
 
@@ -108,18 +162,35 @@
     color: var(--color-text);
   }
   .group {
+    margin-top: var(--space-2);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
     background: var(--color-surface);
     overflow: hidden;
   }
-  .row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: var(--space-3) var(--space-4);
-    min-height: 55px;
-  }
+  .about { margin-top: var(--space-5); }
+  .row { display: flex; align-items: center; justify-content: space-between; padding: var(--space-3) var(--space-4); }
   .row + .row { border-top: 1px solid var(--color-border); }
+  .muted { color: var(--color-text-muted); }
+  .notice { margin: 0; padding: var(--space-3) var(--space-4); border-top: 1px solid var(--color-border); font-size: 12px; }
   .empty { margin-top: var(--space-5); color: var(--color-text-muted); }
+  .error {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: var(--space-4);
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid rgb(200 48 44 / 0.6);
+    border-radius: var(--radius-md);
+    background: rgb(200 48 44 / 0.15);
+  }
+  .error button { border: 0; background: none; font-size: 18px; color: var(--color-text-muted); }
+  .advanced {
+    margin-top: var(--space-5);
+    padding: 8px 16px;
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-pill);
+    background: var(--color-surface-alt);
+    font-weight: 500;
+  }
 </style>
