@@ -14,6 +14,9 @@ const api = vi.hoisted(() => ({
 }));
 vi.mock("./api", () => api);
 
+const diagnostics = vi.hoisted(() => ({ buildReport: vi.fn(), pendingPanic: vi.fn(), dismissPanic: vi.fn() }));
+vi.mock("../diagnostics/api", () => diagnostics);
+
 import { LibraryStore } from "./store.svelte";
 import { CANCELLED, instanceId, type InstallationView, type InstanceState } from "./types";
 
@@ -38,6 +41,8 @@ beforeEach(() => {
   api.librarySnapshot.mockResolvedValue([]);
   api.onProgress.mockImplementation(async (l) => ((progressListener = l), () => {}));
   api.onGameExited.mockImplementation(async (l) => ((exitListener = l), () => {}));
+  diagnostics.pendingPanic.mockResolvedValue(null);
+  diagnostics.dismissPanic.mockResolvedValue(undefined);
 });
 
 describe("instanceId", () => {
@@ -166,5 +171,102 @@ describe("LibraryStore actions", () => {
     api.readInstanceLog.mockResolvedValue("");
     await store.showLog(game, platform, "game");
     expect(store.log).toBe("The log is empty.");
+  });
+});
+
+describe("LibraryStore diagnostic files", () => {
+  const file = { name: "tos-diagnostic-x.md", path: "/logs/tos-diagnostic-x.md", folder: "/logs", text: "Diagnostic format: 1" };
+
+  it("offers a file for a failed preparation, about that instance, for the game's repository", async () => {
+    const store = new LibraryStore();
+    api.librarySnapshot.mockResolvedValue([installation(null)]);
+    await store.start();
+    api.pickInput.mockResolvedValue("/discs/a.iso");
+    api.prepareInstance.mockRejectedValue("The preparation failed (exit code 7).");
+    await store.prepare(game, platform);
+    expect(store.failure).toMatchObject({ context: "prepare", gameId: "tos", platform });
+
+    diagnostics.buildReport.mockResolvedValue(file);
+    await store.reportFailure(game, undefined);
+    expect(diagnostics.buildReport).toHaveBeenCalledWith({
+      context: "prepare", gameId: "tos", platform: "GameCube", region: "France (PAL)", error: "The preparation failed (exit code 7).",
+    });
+    expect(store.diagnostic).toEqual({ repository: "To-Recomp/tos-recomp", file, error: null });
+    store.closeDiagnostic();
+    expect(store.diagnostic).toBeNull();
+  });
+
+  it("offers a file for a failed install and for a game that exits with an error, not for a cancel or a clean exit", async () => {
+    const store = new LibraryStore();
+    api.installGame.mockRejectedValue("Can't download the release.");
+    await store.install(game);
+    expect(store.failure).toMatchObject({ context: "install", gameId: "tos", platform: undefined });
+    // An install has no instance: the page's platform stands in.
+    diagnostics.buildReport.mockResolvedValue(file);
+    await store.reportFailure(game, platform);
+    expect(diagnostics.buildReport).toHaveBeenCalledWith(expect.objectContaining({ context: "install", platform: "GameCube", region: "France (PAL)" }));
+
+    api.installGame.mockRejectedValue(CANCELLED);
+    await store.install(game);
+    expect(store.failure).toBeNull();
+
+    api.librarySnapshot.mockResolvedValue([installation("ready")]);
+    await store.start();
+    api.startGame.mockResolvedValue(undefined);
+    await store.play(game, platform);
+    await exitListener({ job: "game:tos/gamecube-france-pal", code: 3 });
+    expect(store.failure).toMatchObject({ context: "game", gameId: "tos", platform, error: "The game stopped with exit code 3." });
+    await store.play(game, platform);
+    await exitListener({ job: "game:tos/gamecube-france-pal", code: 0 });
+    expect(store.failure).toBeNull();
+  });
+
+  it("ignores a failure of another game, and a Report a bug is about no game and the launcher's repository", async () => {
+    const store = new LibraryStore();
+    api.installGame.mockRejectedValue("nope");
+    await store.install(game);
+    await store.reportFailure({ ...game, id: "other" }, platform);
+    expect(diagnostics.buildReport).not.toHaveBeenCalled();
+
+    diagnostics.buildReport.mockResolvedValue(file);
+    await store.reportBug();
+    expect(diagnostics.buildReport).toHaveBeenCalledWith({ context: "manual" });
+    expect(store.diagnostic?.repository).toBe("To-Recomp/launcher");
+  });
+
+  it("keeps why the file could not be written", async () => {
+    const store = new LibraryStore();
+    diagnostics.buildReport.mockRejectedValue("Can't write the diagnostic file in /logs: denied");
+    await store.reportBug();
+    expect(store.diagnostic).toEqual({ repository: "To-Recomp/launcher", file: null, error: "Can't write the diagnostic file in /logs: denied" });
+  });
+});
+
+describe("LibraryStore launcher crash", () => {
+  const file = { name: "launcher-diagnostic-x.md", path: "/logs/launcher-diagnostic-x.md", folder: "/logs", text: "Diagnostic format: 1" };
+
+  it("offers the file of a panic at the previous run, for the launcher's repository, until dismissed", async () => {
+    const store = new LibraryStore();
+    diagnostics.pendingPanic.mockResolvedValue(file);
+    await store.start();
+    expect(store.crash).toEqual(file);
+
+    store.viewCrash();
+    expect(store.diagnostic).toEqual({ repository: "To-Recomp/launcher", file, error: null });
+
+    await store.dismissCrash();
+    expect(store.crash).toBeNull();
+    expect(diagnostics.dismissPanic).toHaveBeenCalledOnce();
+  });
+
+  it("shows nothing after a normal run, or without a backend", async () => {
+    const store = new LibraryStore();
+    await store.start();
+    expect(store.crash).toBeNull();
+    diagnostics.pendingPanic.mockRejectedValue("no runtime");
+    await store.start();
+    expect(store.crash).toBeNull();
+    store.viewCrash();
+    expect(store.diagnostic).toBeNull();
   });
 });

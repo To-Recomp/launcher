@@ -9,6 +9,9 @@ export interface UpdateNote {
 
 export const LAUNCHER_VERSION = "0.1.0";
 
+/** Where the launcher's own bug reports go. */
+export const LAUNCHER_REPOSITORY = "To-Recomp/launcher";
+
 export const updates: UpdateNote[] = [
   { date: "Nov 21, 2026", version: "v1.2.0", title: "Library improvements", body: "Improved startup times and refined library navigation." },
   { date: "Nov 20, 2026", version: "v1.1.2", title: "Bug fixes", body: "Fixed folder detection issues and resolved a crash when reopening the launcher." },

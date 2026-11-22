@@ -13,6 +13,16 @@ const library = vi.hoisted(() => ({
 }));
 vi.mock("./lib/library/api", () => library);
 
+const diagnostics = vi.hoisted(() => ({
+  pendingPanic: vi.fn(),
+  dismissPanic: vi.fn(),
+  copyText: vi.fn(),
+  buildReport: vi.fn(),
+  revealFile: vi.fn(),
+  openIssues: vi.fn(),
+}));
+vi.mock("./lib/diagnostics/api", () => diagnostics);
+
 import App from "./App.svelte";
 
 const game = (id: string, name: string, year: number, platforms: Catalog["games"][0]["platforms"]) => ({
@@ -36,6 +46,8 @@ beforeEach(() => {
   library.instanceLocation.mockResolvedValue(null);
   library.onProgress.mockResolvedValue(() => {});
   library.onGameExited.mockResolvedValue(() => {});
+  diagnostics.pendingPanic.mockResolvedValue(null);
+  diagnostics.dismissPanic.mockResolvedValue(undefined);
 });
 
 describe("App", () => {
@@ -132,5 +144,32 @@ describe("App", () => {
     render(App);
     expect(within(screen.getByRole("complementary")).getByText("v0.1.0")).toBeInTheDocument();
     expect(screen.getByText(/Not affiliated with or endorsed by/)).toBeInTheDocument();
+  });
+});
+
+describe("launcher crash banner", () => {
+  const file = { name: "launcher-diagnostic-x.md", path: "/logs/x.md", folder: "/logs", text: "Diagnostic format: 1\n" };
+
+  it("is absent after a normal run", async () => {
+    render(App);
+    await screen.findByText("Tales of Eternia", { selector: "h1" }).catch(() => {});
+    expect(screen.queryByText("The launcher stopped unexpectedly")).not.toBeInTheDocument();
+  });
+
+  it("offers the file of the previous run's panic, opens it for review and goes away when dismissed", async () => {
+    diagnostics.pendingPanic.mockResolvedValue(file);
+    render(App);
+    expect(await screen.findByText("The launcher stopped unexpectedly")).toBeInTheDocument();
+
+    await fireEvent.click(screen.getByRole("button", { name: "View file" }));
+    expect(screen.getByRole("dialog")).toHaveTextContent("Review this file before you publish it: it will be public.");
+    expect(screen.getByLabelText("File content").textContent).toBe(file.text);
+    await fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Open issues" }));
+    expect(diagnostics.openIssues).toHaveBeenCalledWith("To-Recomp/launcher");
+    await fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Close" }));
+
+    await fireEvent.click(screen.getByRole("button", { name: "Dismiss" }));
+    expect(diagnostics.dismissPanic).toHaveBeenCalledOnce();
+    expect(screen.queryByText("The launcher stopped unexpectedly")).not.toBeInTheDocument();
   });
 });

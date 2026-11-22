@@ -30,7 +30,8 @@ const hidden: SettingView = { ...base, id: "debug", label: "Debug overlay", tab:
 const view = (...settings: SettingView[]): View => ({ settings });
 const all = view(toggle, segmented, dropdown, slider, text, keys, hidden);
 const location = { installDir: "/games/eternia" };
-const props = { gameId: "eternia", gameName: "Tales of Eternia", location };
+const onreportbug = vi.fn();
+const props = { gameId: "eternia", gameName: "Tales of Eternia", location, onreportbug };
 
 async function openTab(name: string) {
   await fireEvent.click(screen.getByRole("tab", { name }));
@@ -138,5 +139,12 @@ describe("SettingsView", () => {
     render(SettingsView, { ...props, location: null });
     await openTab("About");
     expect(screen.getByText(/Not affiliated with or endorsed by/)).toBeInTheDocument();
+  });
+
+  it("offers Report a bug on About, even without an installation", async () => {
+    render(SettingsView, { ...props, location: null });
+    await openTab("About");
+    await fireEvent.click(screen.getByRole("button", { name: "Report a bug" }));
+    expect(onreportbug).toHaveBeenCalledOnce();
   });
 });

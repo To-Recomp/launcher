@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/svelte";
+import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const api = vi.hoisted(() => ({
@@ -96,5 +96,25 @@ describe("HomeView status", () => {
     expect(api.readInstanceLog).toHaveBeenCalledWith("toe", "PS1", "USA", "prepare");
     await fireEvent.click(screen.getByRole("button", { name: "Game log" }));
     expect(api.readInstanceLog).toHaveBeenLastCalledWith("toe", "PS1", "USA", "game");
+  });
+});
+
+describe("HomeView diagnostic file", () => {
+  it("offers Create diagnostic file after a failure of this game only, when nothing is running", async () => {
+    const library = show(installed("ready"));
+    expect(screen.queryByRole("button", { name: "Create diagnostic file" })).not.toBeInTheDocument();
+
+    library.failure = { context: "game", gameId: "other", error: "x" };
+    await Promise.resolve();
+    expect(screen.queryByRole("button", { name: "Create diagnostic file" })).not.toBeInTheDocument();
+
+    library.failure = { context: "game", gameId: "toe", platform, error: "The game stopped with exit code 3." };
+    const button = await screen.findByRole("button", { name: "Create diagnostic file" });
+    const report = vi.spyOn(library, "reportFailure").mockResolvedValue();
+    await fireEvent.click(button);
+    expect(report).toHaveBeenCalledWith(eternia, platform);
+
+    library.progress["game:toe/ps1-usa"] = { job: "game:toe/ps1-usa", fraction: null, message: "running" };
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Create diagnostic file" })).not.toBeInTheDocument());
   });
 });

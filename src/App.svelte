@@ -1,5 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import CrashBanner from "./lib/components/CrashBanner.svelte";
+  import DiagnosticDialog from "./lib/components/DiagnosticDialog.svelte";
   import HomeView from "./lib/components/HomeView.svelte";
   import SettingsView from "./lib/components/SettingsView.svelte";
   import Sidebar from "./lib/components/Sidebar.svelte";
@@ -95,17 +97,27 @@
   />
   <div class="main">
     <TitleBar {tab} onchange={(t) => (tab = t)} />
+    {#if library.crash}
+      <CrashBanner
+        file={library.crash}
+        onview={() => library.viewCrash()}
+        ondismiss={() => library.dismissCrash()}
+      />
+    {/if}
     <main>
       {#if !game}
         <p class="empty">Pick a game once the list has loaded.</p>
       {:else if tab === "home"}
         <HomeView {game} {platform} {library} onplatform={(label) => (platformByGame[game.id] = label)} />
       {:else}
-        <SettingsView gameId={game.id} gameName={game.name} {location} />
+        <SettingsView gameId={game.id} gameName={game.name} {location} onreportbug={() => library.reportBug()} />
       {/if}
     </main>
     <footer>{NON_AFFILIATION}</footer>
   </div>
+  {#if library.diagnostic}
+    <DiagnosticDialog diagnostic={library.diagnostic} onclose={() => library.closeDiagnostic()} />
+  {/if}
 </div>
 
 <style>
