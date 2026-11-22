@@ -50,6 +50,7 @@ pub fn run() {
             updater::updater_available,
             updater::check_launcher_update,
             launcher_settings::launcher_update_preferences,
+            launcher_settings::launcher_language,
             updater::update_launcher
         ])
         .run(tauri::generate_context!())

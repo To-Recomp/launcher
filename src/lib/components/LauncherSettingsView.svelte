@@ -10,6 +10,7 @@
   import type { CatalogStatus } from "../catalog/status";
   import { loadLauncherSettings, setLauncherSetting } from "../launcher/api";
   import { errorMessage } from "../settings/api";
+  import { localizeSetting } from "../launcher/localize";
   import { restartNeeded } from "../launcher/restart.svelte";
   import { launcherUpdates } from "../launcher/updates.svelte";
   import { sectionsOf } from "../settings/sections";
@@ -45,6 +46,7 @@
     try {
       view = await setLauncherSetting(setting.id, input);
       if (setting.id === "updateChannel") launcherUpdates.forget();
+      if (setting.id === "language") restartNeeded.mark(); // the language is chosen when the launcher starts
       actionError = null;
     } catch (e) {
       actionError = errorMessage(e);
@@ -53,7 +55,7 @@
     }
   }
 
-  const sections = $derived(sectionsOf(view?.settings ?? []));
+  const sections = $derived(sectionsOf((view?.settings ?? []).map(localizeSetting)));
 </script>
 
 <section class="settings">

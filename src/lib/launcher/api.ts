@@ -31,3 +31,6 @@ export const launcherFolders = () => invoke<Folders>("launcher_folders");
 
 /** Chooses the games folder (`null`: the default); it applies on the next start. */
 export const setGamesFolder = (folder: string | null) => invoke<Folders>("set_games_folder", { folder });
+
+/** The language the player chose for the interface; `null` to follow the system's. */
+export const launcherLanguage = () => invoke<string | null>("launcher_language");

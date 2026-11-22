@@ -7,6 +7,7 @@ vi.mock("../launcher/api", () => api);
 vi.mock("../updater", () => ({ updaterAvailable: vi.fn(), updateLauncher: vi.fn(), checkLauncherUpdate: vi.fn(), updatePreferences: vi.fn() }));
 vi.mock("../settings/api", () => ({ errorMessage: (e: unknown) => String(e) }));
 
+import { restartNeeded } from "../launcher/restart.svelte";
 import { launcherUpdates } from "../launcher/updates.svelte";
 import LauncherSettingsView from "./LauncherSettingsView.svelte";
 
@@ -67,5 +68,19 @@ describe("LauncherSettingsView", () => {
     render(LauncherSettingsView, props);
     await fireEvent.click(await screen.findByRole("radio", { name: "Pre-release" }));
     await waitFor(() => expect(launcherUpdates.found).toBeNull());
+  });
+
+  it("asks for a restart when the language changes, since it is chosen at startup", async () => {
+    const language: SettingView = {
+      id: "language", label: "Language", help: null, tab: "Game", group: "Interface", advanced: false, enabled: true,
+      control: { type: "choices", style: "segmented", options: ["System", "English", "Français"], value: 0, custom: null },
+    };
+    restartNeeded.needed = false;
+    api.loadLauncherSettings.mockResolvedValue(view(language));
+    api.setLauncherSetting.mockResolvedValue(view(language));
+    render(LauncherSettingsView, props);
+    await fireEvent.click(await screen.findByRole("radio", { name: "Français" }));
+    await waitFor(() => expect(restartNeeded.needed).toBe(true));
+    restartNeeded.needed = false;
   });
 });

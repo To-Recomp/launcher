@@ -35,6 +35,20 @@ pub fn update_preferences(config_dir: &Path) -> Result<UpdatePreferences, String
     })
 }
 
+/// The language the player chose for the interface, `None` to follow the system's.
+pub fn language(config_dir: &Path) -> Result<Option<String>, String> {
+    Ok(config::read(config_dir)?
+        .pointer("/language")
+        .and_then(|v| v.as_str())
+        .filter(|code| *code != "auto")
+        .map(str::to_string))
+}
+
+#[tauri::command(async)]
+pub fn launcher_language(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    language(&config_dir(&app)?)
+}
+
 #[tauri::command(async)]
 pub fn launcher_update_preferences(app: tauri::AppHandle) -> Result<UpdatePreferences, String> {
     update_preferences(&config_dir(&app)?)
