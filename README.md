@@ -12,7 +12,7 @@ License: GPL v3 (`LICENSE`). Contributions: `CONTRIBUTING.md`.
 
 ## Development
 
-Requirements: Node 20+, Rust stable, and the [Tauri system dependencies](https://v2.tauri.app/start/prerequisites/) (on Fedora: `webkit2gtk4.1-devel gtk3-devel librsvg2-devel libsoup3-devel`).
+Requirements: Node 26, Rust stable, and the [Tauri system dependencies](https://v2.tauri.app/start/prerequisites/) (on Fedora: `webkit2gtk4.1-devel gtk3-devel librsvg2-devel libsoup3-devel`).
 
 ```
 npm install
