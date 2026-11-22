@@ -22,21 +22,39 @@ fn exe_name() -> String {
     format!("fake-game{}", std::env::consts::EXE_SUFFIX)
 }
 
+/// The fake game (`examples/fake_game.rs`), built once per test run with the toolchain that
+/// runs the tests: where cargo puts examples differs between versions and platforms.
 fn fake_exe() -> Vec<u8> {
-    let exe = std::env::current_exe()
-        .unwrap()
-        .parent()
-        .unwrap()
-        .parent()
-        .unwrap()
-        .join("examples")
-        .join(format!("fake_game{}", std::env::consts::EXE_SUFFIX));
-    fs::read(&exe).unwrap_or_else(|_| {
-        panic!(
-            "{} is missing: `cargo test` builds the examples",
-            exe.display()
-        )
-    })
+    static EXE: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
+    let path = EXE.get_or_init(|| {
+        let output = std::process::Command::new(env!("CARGO"))
+            .args([
+                "build",
+                "--example",
+                "fake_game",
+                "--message-format=json",
+                "--manifest-path",
+            ])
+            .arg(concat!(env!("CARGO_MANIFEST_DIR"), "/Cargo.toml"))
+            .output()
+            .expect("run cargo");
+        assert!(
+            output.status.success(),
+            "building the fake game failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        String::from_utf8_lossy(&output.stdout)
+            .lines()
+            .filter_map(|line| serde_json::from_str::<serde_json::Value>(line).ok())
+            .find_map(|message| {
+                (message["reason"] == "compiler-artifact"
+                    && message["target"]["name"] == "fake_game")
+                    .then(|| message["executable"].as_str().map(PathBuf::from))
+                    .flatten()
+            })
+            .expect("cargo reports the fake game's executable")
+    });
+    fs::read(path).unwrap()
 }
 
 fn manifest(extra: &str) -> String {
