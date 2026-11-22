@@ -4,6 +4,7 @@
   import { LAUNCHER_VERSION } from "../data";
   import { launcherUpdates, type LauncherUpdates } from "../launcher/updates.svelte";
   import { errorMessage } from "../settings/api";
+  import { t } from "../i18n/index.svelte";
 
   let {
     games,
@@ -38,23 +39,30 @@
     }
   }
 
-  const labels = { idle: "Update launcher", checking: "Checking…", current: "Up to date", failed: "Update failed" };
-  const label = $derived(status === "idle" && updates.found ? `Update to v${updates.found.version}` : labels[status]);
+  const labels = $derived({
+    idle: t("shell.update.idle"),
+    checking: t("shell.update.checking"),
+    current: t("shell.update.current"),
+    failed: t("shell.update.failed"),
+  });
+  const label = $derived(
+    status === "idle" && updates.found ? t("shell.update.to", { version: updates.found.version }) : labels[status],
+  );
 </script>
 
 <aside class="sidebar">
-  <nav class="list" aria-label="Games">
+  <nav class="list" aria-label={t("shell.sidebar.games")}>
     {#each games as game (game.id)}
       <SidebarItem {game} selected={game.id === selectedId} onselect={() => onselect(game.id)} />
     {/each}
     {#if games.length === 0}
-      <p class="empty">{loading ? "Loading the game list…" : "The game list isn't available yet."}</p>
+      <p class="empty">{loading ? t("shell.sidebar.loading") : t("shell.sidebar.unavailable")}</p>
     {/if}
   </nav>
   {#if catalogError && !loading}
     <div class="note" role="status">
-      <span>{games.length ? "Showing the saved game list. " : ""}{catalogError}</span>
-      <button onclick={onretry}>Retry</button>
+      <span>{games.length ? t("shell.sidebar.savedList") : ""}{catalogError}</span>
+      <button onclick={onretry}>{t("shell.sidebar.retry")}</button>
     </div>
   {/if}
   <footer>

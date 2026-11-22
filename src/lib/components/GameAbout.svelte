@@ -4,6 +4,7 @@
   import { gameLicense, type RepositoryLicense } from "../catalog/releases";
   import { openLink, repositoryUrl, revealFile } from "../diagnostics/api";
   import type { Location } from "../settings/types";
+  import { t } from "../i18n/index.svelte";
 
   let {
     name,
@@ -35,28 +36,28 @@
 </script>
 
 <div class="group">
-  <Row label="Game"><span class="muted">{name}</span></Row>
-  {#if platform}<Row label="Console"><span class="muted">{platform}</span></Row>{/if}
-  <Row label="Installed release"><span class="muted">{tag ?? "Not installed"}</span></Row>
-  <ActionRow label="Repository" value={repository} action="Open" onrun={() => openLink(repositoryUrl(repository))} />
+  <Row label={t("game.about.game")}><span class="muted">{name}</span></Row>
+  {#if platform}<Row label={t("game.about.console")}><span class="muted">{platform}</span></Row>{/if}
+  <Row label={t("game.about.installedRelease")}><span class="muted">{tag ?? t("game.about.notInstalled")}</span></Row>
+  <ActionRow label={t("game.about.repository")} value={repository} action={t("game.about.open")} onrun={() => openLink(repositoryUrl(repository))} />
   {#if license}
     {@const link = license}
-    <ActionRow label="License" value={link.name} action="Open" onrun={() => openLink(link.url)} />
+    <ActionRow label={t("game.about.license")} value={link.name} action={t("game.about.open")} onrun={() => openLink(link.url)} />
   {:else}
-    <Row label="License"><span class="muted">{license === undefined ? "Loading…" : "Not published"}</span></Row>
+    <Row label={t("game.about.license")}><span class="muted">{license === undefined ? t("game.about.loading") : t("game.about.notPublished")}</span></Row>
   {/if}
   {#if location}
     {@const folders = location}
-    <ActionRow label="Install folder" value={folders.installDir} action="Open" onrun={() => revealFile(folders.installDir)} />
+    <ActionRow label={t("game.about.installFolder")} value={folders.installDir} action={t("game.about.open")} onrun={() => revealFile(folders.installDir)} />
     {#if folders.dataDir}
       {@const data = folders.dataDir}
-      <ActionRow label="Data folder" value={data} action="Open" onrun={() => revealFile(data)} />
+      <ActionRow label={t("game.about.dataFolder")} value={data} action={t("game.about.open")} onrun={() => revealFile(data)} />
     {/if}
   {/if}
   <ActionRow
-    label="Something went wrong?"
-    help="Creates a file you can review and paste into an issue of this game's repository."
-    action="Report a bug"
+    label={t("game.about.wentWrong")}
+    help={t("game.about.reportHelp")}
+    action={t("game.about.reportBug")}
     onrun={onreportbug}
   />
 </div>

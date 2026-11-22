@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import FolderRow from "./FolderRow.svelte";
+  import { t } from "../i18n/index.svelte";
   import { launcherFolders, setGamesFolder, type Folders } from "../launcher/api";
   import { restartNeeded } from "../launcher/restart.svelte";
   import { errorMessage } from "../settings/api";
@@ -22,17 +23,17 @@
   onMount(() => show(launcherFolders));
 </script>
 
-<h2>Storage</h2>
+<h2>{t("launcher.folders.heading")}</h2>
 <div class="group">
   <FolderRow
-    label="Games folder"
-    help="Where games are installed and keep their data. A change applies after a restart; games already installed stay where they are."
+    label={t("launcher.folders.gamesLabel")}
+    help={t("launcher.folders.gamesHelp")}
     path={folders?.configured ?? null}
     onpick={(folder) => show(() => setGamesFolder(folder))}
     onreset={() => show(() => setGamesFolder(null))}
   />
 </div>
-{#if folders}<p class="muted current">In use: {folders.inUse ?? "none, see the message below"}</p>{/if}
+{#if folders}<p class="muted current">{t("launcher.folders.inUse", { folder: folders.inUse ?? t("launcher.folders.inUseNone") })}</p>{/if}
 {#if error}<p class="error" role="alert">{error}</p>{/if}
 
 <style>

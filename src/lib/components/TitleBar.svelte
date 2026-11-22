@@ -3,6 +3,7 @@
   import Icon from "./Icon.svelte";
   import TabBar from "./TabBar.svelte";
   import { tabs, type TabId } from "../data";
+  import { t } from "../i18n/index.svelte";
 
   let { tab, onchange }: { tab: TabId; onchange: (tab: TabId) => void } = $props();
 
@@ -11,19 +12,19 @@
 </script>
 
 <header class="titlebar" data-tauri-drag-region>
-  <TabBar {tabs} value={tab} {onchange} />
+  <TabBar tabs={tabs.map((x) => ({ id: x.id, label: t(x.label) }))} value={tab} {onchange} />
   <div class="controls">
     <button
-      aria-label="Launcher settings"
+      aria-label={t("shell.titleBar.launcherSettings")}
       aria-pressed={tab === "launcher"}
       class:active={tab === "launcher"}
       onclick={() => onchange("launcher")}
     >
       <Icon name="gear" size={16} />
     </button>
-    <button aria-label="Minimize" onclick={() => win?.minimize()}><Icon name="minimize" size={16} /></button>
-    <button aria-label="Maximize" onclick={() => win?.toggleMaximize()}><Icon name="maximize" size={14} /></button>
-    <button aria-label="Close" class="close" onclick={() => win?.close()}><Icon name="close" size={16} /></button>
+    <button aria-label={t("shell.titleBar.minimize")} onclick={() => win?.minimize()}><Icon name="minimize" size={16} /></button>
+    <button aria-label={t("shell.titleBar.maximize")} onclick={() => win?.toggleMaximize()}><Icon name="maximize" size={14} /></button>
+    <button aria-label={t("shell.titleBar.close")} class="close" onclick={() => win?.close()}><Icon name="close" size={16} /></button>
   </div>
 </header>
 

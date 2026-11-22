@@ -2,6 +2,7 @@
   import { copyText, openIssues, revealFile } from "../diagnostics/api";
   import type { Diagnostic } from "../library/store.svelte";
   import { errorMessage } from "../settings/api";
+  import { t, tParts } from "../i18n/index.svelte";
 
   let { diagnostic, onclose }: { diagnostic: Diagnostic; onclose: () => void } = $props();
 
@@ -29,28 +30,31 @@
 
 <div class="backdrop">
   <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="diagnostic-title">
-    <h2 id="diagnostic-title">Diagnostic file</h2>
+    <h2 id="diagnostic-title">{t("game.diagnostic.title")}</h2>
     {#if diagnostic.file}
       {@const file = diagnostic.file}
-      <p class="warning" role="note">Review this file before you publish it: it will be public.</p>
+      <p class="warning" role="note">{t("game.diagnostic.warning")}</p>
       <p class="muted">
-        Saved as <code>{file.name}</code>. Nothing was sent: paste it into an issue of
-        <strong>{diagnostic.repository}</strong>.
+        {#each tParts("game.diagnostic.saved", ["file", "repository"]) as part, i (i)}
+          {#if typeof part !== "string"}{part.text}
+          {:else if part === "file"}<code>{file.name}</code>
+          {:else}<strong>{diagnostic.repository}</strong>{/if}
+        {/each}
       </p>
-      <pre class="preview" aria-label="File content">{file.text}</pre>
+      <pre class="preview" aria-label={t("game.diagnostic.content")}>{file.text}</pre>
     {:else}
       <p role="alert">{diagnostic.error}</p>
     {/if}
     {#if problem}<p class="problem" role="alert">{problem}</p>{/if}
-    {#if copied}<p class="muted" role="status">Copied to the clipboard.</p>{/if}
+    {#if copied}<p class="muted" role="status">{t("game.diagnostic.copied")}</p>{/if}
     <div class="buttons">
       {#if diagnostic.file}
         {@const file = diagnostic.file}
-        <button class="primary" onclick={copy}>Copy</button>
-        <button onclick={() => run(() => revealFile(file.path))}>Open folder</button>
-        <button onclick={() => run(() => openIssues(diagnostic.repository))}>Open issues</button>
+        <button class="primary" onclick={copy}>{t("game.diagnostic.copy")}</button>
+        <button onclick={() => run(() => revealFile(file.path))}>{t("game.diagnostic.openFolder")}</button>
+        <button onclick={() => run(() => openIssues(diagnostic.repository))}>{t("game.diagnostic.openIssues")}</button>
       {/if}
-      <button onclick={onclose}>Close</button>
+      <button onclick={onclose}>{t("game.diagnostic.close")}</button>
     </div>
   </div>
 </div>

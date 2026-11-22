@@ -1,6 +1,7 @@
 <script lang="ts">
   import { copyText, type DiagnosticFile } from "../diagnostics/api";
   import { errorMessage } from "../settings/api";
+  import { t } from "../i18n/index.svelte";
 
   let {
     file,
@@ -13,7 +14,7 @@
   async function copy() {
     try {
       await copyText(file.text);
-      note = "Copied.";
+      note = t("game.crash.copied");
     } catch (e) {
       note = errorMessage(e);
     }
@@ -22,12 +23,12 @@
 
 <div class="banner" role="alert">
   <div class="body">
-    <strong>The launcher stopped unexpectedly</strong>
-    <span class="muted">A diagnostic file was saved. Nothing was sent.{note ? ` ${note}` : ""}</span>
+    <strong>{t("game.crash.title")}</strong>
+    <span class="muted">{t("game.crash.saved")}{note ? ` ${note}` : ""}</span>
   </div>
-  <button onclick={onview}>View file</button>
-  <button onclick={copy}>Copy</button>
-  <button class="dismiss" aria-label="Dismiss" onclick={ondismiss}>×</button>
+  <button onclick={onview}>{t("game.crash.view")}</button>
+  <button onclick={copy}>{t("game.crash.copy")}</button>
+  <button class="dismiss" aria-label={t("game.crash.dismiss")} onclick={ondismiss}>×</button>
 </div>
 
 <style>

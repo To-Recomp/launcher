@@ -3,6 +3,7 @@
   import type { Game } from "../catalog/games";
   import { logoFor } from "../catalog/logos";
   import { loadPalette } from "../catalog/palette";
+  import { t } from "../i18n/index.svelte";
 
   let { game, selected = false, onselect }: { game: Game; selected?: boolean; onselect: () => void } = $props();
 
@@ -21,10 +22,10 @@
 
   const action = $derived(
     game.state === "ready"
-      ? { icon: "play" as const, label: "Play" }
+      ? { icon: "play" as const, label: t("shell.sidebar.play") }
       : game.state === "installed"
-        ? { icon: "settings" as const, label: "Settings" }
-        : { icon: "download" as const, label: "Install" },
+        ? { icon: "settings" as const, label: t("shell.sidebar.settings") }
+        : { icon: "download" as const, label: t("shell.sidebar.install") },
   );
 </script>
 

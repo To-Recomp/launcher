@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from "../i18n/index.svelte";
   import { restartLauncher } from "../launcher/api";
   import { errorMessage } from "../settings/api";
 
@@ -14,8 +15,8 @@
 </script>
 
 <div class="banner" role="status">
-  <span>{failure ?? "Restart the launcher to apply these changes."}</span>
-  <button onclick={restart}>Restart now</button>
+  <span>{failure ?? t("launcher.restart.message")}</span>
+  <button onclick={restart}>{t("launcher.restart.now")}</button>
 </div>
 
 <style>

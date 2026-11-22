@@ -7,6 +7,7 @@
   import { sectionsOf } from "../settings/sections";
   import type { Location, SettingInput, SettingView, SettingsView } from "../settings/types";
   import { settingsTabs, type SettingsTab } from "../data";
+  import { t, type MessageKey } from "../i18n/index.svelte";
 
   let {
     gameId,
@@ -36,6 +37,17 @@
     Saves: "saves",
     Game: "game",
     About: "about",
+  };
+
+  /** The tab names are ids matched with game manifests; only the label shown is translated. */
+  const tabLabels: Record<SettingsTab, MessageKey> = {
+    Display: "game.settings.tab.display",
+    Graphics: "game.settings.tab.graphics",
+    Audio: "game.settings.tab.audio",
+    Controls: "game.settings.tab.controls",
+    Saves: "game.settings.tab.saves",
+    Game: "game.settings.tab.game",
+    About: "game.settings.tab.about",
   };
 
   let tab = $state<SettingsTab>("Display");
@@ -92,12 +104,12 @@
 </script>
 
 <section class="settings">
-  <h1>Settings</h1>
+  <h1>{t("game.settings.title")}</h1>
 
   <div class="subtabs" role="tablist">
     {#each settingsTabs as name (name)}
       <button role="tab" aria-selected={name === tab} class:active={name === tab} onclick={() => (tab = name)}>
-        <Icon name={icons[name]} size={18} />{name}
+        <Icon name={icons[name]} size={18} />{t(tabLabels[name])}
       </button>
     {/each}
   </div>
@@ -105,20 +117,20 @@
   {#if actionError}
     <div class="error" role="alert">
       <span>{actionError}</span>
-      <button aria-label="Dismiss" onclick={() => (actionError = null)}>×</button>
+      <button aria-label={t("game.settings.dismiss")} onclick={() => (actionError = null)}>×</button>
     </div>
   {/if}
 
   {#if tab === "About"}
     <GameAbout name={gameName} {repository} {platform} {tag} {location} {onreportbug} />
   {:else if !location}
-    <p class="empty">Install and prepare {gameName} to configure it.</p>
+    <p class="empty">{t("game.settings.installFirst", { game: gameName })}</p>
   {:else if loadError}
     <p class="empty" role="alert">{loadError}</p>
   {:else if !view}
-    <p class="empty">Loading…</p>
+    <p class="empty">{t("game.settings.loading")}</p>
   {:else if sections.length === 0}
-    <p class="empty">No settings in this section.</p>
+    <p class="empty">{t("game.settings.noSettings")}</p>
   {:else}
     {#each sections as section, i (i)}
       {#if section.group}<h2>{section.group}</h2>{/if}
@@ -132,7 +144,7 @@
 
   {#if hasAdvanced && view}
     <button class="advanced" onclick={toggleAdvanced}>
-      {showAdvanced ? "Hide advanced options" : "Show advanced options"}
+      {showAdvanced ? t("game.settings.hideAdvanced") : t("game.settings.showAdvanced")}
     </button>
   {/if}
 </section>
