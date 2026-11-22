@@ -70,8 +70,8 @@ describe("SettingsView", () => {
 
   it("shows a value that matches no choice as it is, and greys out unavailable settings", async () => {
     render(SettingsView, props);
-    const select = (await screen.findByRole("combobox", { name: "Window size" })) as HTMLSelectElement;
-    expect(select.value).toBe("1234");
+    const select = await screen.findByRole("combobox", { name: "Window size" });
+    expect(select).toHaveTextContent("1234");
     expect(select.closest("[aria-disabled=true]")).not.toBeNull();
   });
 

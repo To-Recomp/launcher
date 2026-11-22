@@ -17,10 +17,10 @@
     padding: var(--space-5);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
-    background: var(--color-bg);
+    background: var(--game-bg-mid, var(--color-bg));
   }
   .card.featured {
-    background: linear-gradient(160deg, #3a3f5c, #1f2238);
+    background: linear-gradient(160deg, var(--game-card-top, #3a3f5c), var(--game-bg-mid, #1f2238));
     border-color: var(--color-border-strong);
   }
 </style>

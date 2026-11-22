@@ -6,6 +6,8 @@
   import TitleBar from "./lib/components/TitleBar.svelte";
   import { cachedCatalog, refreshCatalog } from "./lib/catalog/api";
   import { toGames, type Game } from "./lib/catalog/games";
+  import { logoFor } from "./lib/catalog/logos";
+  import { loadPalette, paletteStyle, type Palette } from "./lib/catalog/palette";
   import { NON_AFFILIATION, type TabId } from "./lib/data";
   import { instanceLocation } from "./lib/library/api";
   import { LibraryStore } from "./lib/library/store.svelte";
@@ -25,6 +27,19 @@
 
   // The first game until the player picks one (or the picked one left the catalog).
   const game = $derived(games.find((g) => g.id === selectedId) ?? games[0]);
+
+  // The page takes its colors from the game's logo; until they are read (or without a logo) the theme stays.
+  let palette = $state<Palette | null>(null);
+  $effect(() => {
+    palette = null;
+    const logo = game ? logoFor(game.name) : undefined;
+    if (!logo) return;
+    let stale = false;
+    loadPalette(logo).then((found) => {
+      if (!stale) palette = found;
+    });
+    return () => (stale = true);
+  });
 
   let platformByGame = $state<Record<string, string>>({});
   const platform = $derived(game?.platforms.find((p) => p.label === platformByGame[game.id]) ?? game?.platforms[0]);
@@ -69,7 +84,7 @@
   });
 </script>
 
-<div class="app">
+<div class="app" style={paletteStyle(palette)}>
   <Sidebar
     {games}
     selectedId={game?.id ?? ""}
@@ -100,7 +115,9 @@
     flex-direction: column;
     flex: 1;
     min-width: 0;
-    background: linear-gradient(180deg, #1d2a40 0%, #171a2b 60%, var(--color-bg) 100%);
+    background:
+      radial-gradient(720px 420px at 100% 0, var(--game-glow, transparent), transparent),
+      linear-gradient(180deg, var(--game-bg-top, #1d2a40) 0%, var(--game-bg-mid, #171a2b) 60%, var(--color-bg) 100%);
   }
   main { flex: 1; overflow-y: auto; }
   .empty { padding: var(--space-6); color: var(--color-text-muted); }
