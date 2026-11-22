@@ -5,6 +5,9 @@ import type { Catalog } from "./lib/catalog/types";
 const api = vi.hoisted(() => ({ cachedCatalog: vi.fn(), refreshCatalog: vi.fn() }));
 vi.mock("./lib/catalog/api", () => api);
 
+const releases = vi.hoisted(() => ({ gameReleases: vi.fn() }));
+vi.mock("./lib/catalog/releases", async (orig) => ({ ...(await orig<object>()), ...releases }));
+
 const library = vi.hoisted(() => ({
   librarySnapshot: vi.fn(),
   instanceLocation: vi.fn(),
@@ -40,6 +43,7 @@ const catalog: Catalog = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  releases.gameReleases.mockResolvedValue([]);
   api.cachedCatalog.mockResolvedValue(null);
   api.refreshCatalog.mockResolvedValue({ catalog, updated: true, error: null });
   library.librarySnapshot.mockResolvedValue([]);

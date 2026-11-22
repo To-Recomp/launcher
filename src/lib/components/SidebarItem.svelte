@@ -37,9 +37,13 @@
     border-radius: var(--radius-md);
     text-align: left;
   }
-  .item:hover { background: var(--color-surface-alt); }
-  .item.selected { background: var(--color-selected); border-color: var(--color-border); }
-  .item.selected::before {
+  /* Hover and selection take the page's colors (the game's logo palette, set on the app). */
+  .item:hover { background: color-mix(in srgb, var(--color-accent) 10%, transparent); }
+  .item.selected {
+    background: color-mix(in srgb, var(--color-accent) 16%, transparent);
+    border-color: color-mix(in srgb, var(--color-accent) 30%, transparent);
+  }
+  .item::before {
     content: "";
     position: absolute;
     left: -1px;
@@ -48,7 +52,9 @@
     width: 3px;
     border-radius: 2px;
     background: var(--color-accent);
+    opacity: 0;
   }
+  .item:hover::before, .item.selected::before { opacity: 1; }
   .badge {
     display: grid;
     place-items: center;

@@ -581,6 +581,15 @@ pub fn install_game(
     )
 }
 
+/// The latest releases of a game's repository, for the home page.
+#[tauri::command(async)]
+pub fn game_releases(
+    app: tauri::AppHandle,
+    repository: String,
+) -> Result<Vec<release::ReleaseNote>, String> {
+    release::recent_releases(&app_env(&app)?.api, &repository, 3)
+}
+
 #[tauri::command(async)]
 pub fn prepare_instance(
     app: tauri::AppHandle,

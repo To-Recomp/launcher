@@ -29,6 +29,7 @@ pub fn run() {
             diagnostics::panic::dismiss_panic,
             library::library_snapshot,
             library::install_game,
+            library::game_releases,
             library::prepare_instance,
             library::start_game,
             library::cancel_job,

@@ -4,7 +4,7 @@
   import Icon, { type IconName } from "./Icon.svelte";
   import type { Game, Platform } from "../catalog/games";
   import { logoFor } from "../catalog/logos";
-  import { updates } from "../data";
+  import { gameReleases, releaseDate, releaseSummary, type ReleaseNote } from "../catalog/releases";
   import { gameJob, installJob, instanceId, prepareJob } from "../library/types";
   import type { LibraryStore } from "../library/store.svelte";
 
@@ -18,7 +18,21 @@
   const title = $derived(game.name.replace(/^Tales of (the )?/, ""));
   const logo = $derived(logoFor(game.name));
 
-  const [featured, ...others] = updates;
+  /** The game's latest releases; `null` while they load. */
+  let releases = $state<ReleaseNote[] | null>(null);
+  let releasesError = $state(false);
+  $effect(() => {
+    const repository = game.repository;
+    releases = null;
+    releasesError = false;
+    let stale = false;
+    gameReleases(repository)
+      .then((found) => !stale && (releases = found))
+      .catch(() => !stale && ((releases = []), (releasesError = true)));
+    return () => (stale = true);
+  });
+  const [featured, ...others] = $derived(releases ?? []);
+  const heading = (r: ReleaseNote) => r.name ?? r.tag;
 
   const installation = $derived(library.installationOf(game.id));
   const instanceState = $derived(platform ? library.instanceState(game.id, platform) : "notPrepared");
@@ -139,21 +153,27 @@
   {/if}
 
   <h2>Latest updates</h2>
-  <div class="cards">
-    <Card featured>
-      <span class="meta accent">{featured.version} · {featured.date}</span>
-      <h3>{featured.title}</h3>
-      <p>{featured.body}</p>
-      <span class="more"><Icon name="chevron-right" size={18} /></span>
-    </Card>
-    {#each others as note (note.version)}
-      <Card>
-        <span class="meta">{note.date}</span>
-        <h3>{note.version} · {note.title}</h3>
-        <p>{note.body}</p>
+  {#if releases === null}
+    <p class="releases-empty">Loading the releases…</p>
+  {:else if !featured}
+    <p class="releases-empty">{releasesError ? "The releases can't be read right now." : "No release has been published yet."}</p>
+  {:else}
+    <div class="cards">
+      <Card featured>
+        <span class="meta accent">{[featured.tag, releaseDate(featured.publishedAt)].filter(Boolean).join(" · ")}</span>
+        <h3>{heading(featured)}</h3>
+        <p>{releaseSummary(featured.body)}</p>
+        <span class="more"><Icon name="chevron-right" size={18} /></span>
       </Card>
-    {/each}
-  </div>
+      {#each others as note (note.tag)}
+        <Card>
+          <span class="meta">{releaseDate(note.publishedAt)}</span>
+          <h3>{note.name && note.name !== note.tag ? `${note.tag} · ${note.name}` : note.tag}</h3>
+          <p>{releaseSummary(note.body)}</p>
+        </Card>
+      {/each}
+    </div>
+  {/if}
 </section>
 
 <style>
@@ -228,6 +248,7 @@
   }
   h2 { margin: auto 0 var(--space-4); padding-top: var(--space-6); font-size: 22px; }
   .cards { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: var(--space-4); }
+  .releases-empty { margin: 0; color: var(--color-text-muted); }
   h3 { margin: var(--space-2) 0 0; font-size: 20px; }
   .cards p { margin: 0; line-height: 1.5; color: var(--color-text-muted); }
   .meta { font-size: 12px; color: var(--color-text-muted); }
