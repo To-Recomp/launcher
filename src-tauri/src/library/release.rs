@@ -107,6 +107,55 @@ pub fn latest_release(api: &str, repository: &str, os: &str) -> Result<Release, 
     })
 }
 
+/// What the home page shows of one published release.
+#[derive(Debug, Clone, serde::Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ReleaseNote {
+    pub tag: String,
+    pub name: Option<String>,
+    pub published_at: Option<String>,
+    pub body: String,
+    pub prerelease: bool,
+}
+
+#[derive(Debug, Deserialize)]
+struct ApiNote {
+    tag_name: String,
+    name: Option<String>,
+    published_at: Option<String>,
+    body: Option<String>,
+    #[serde(default)]
+    draft: bool,
+    #[serde(default)]
+    prerelease: bool,
+}
+
+/// The newest published releases of `repository` (`owner/name`), newest first. A repository
+/// that doesn't exist or has no release gives an empty list.
+pub fn recent_releases(
+    api: &str,
+    repository: &str,
+    count: usize,
+) -> Result<Vec<ReleaseNote>, String> {
+    let all: Vec<ApiNote> = get_json(&format!(
+        "{api}/repos/{repository}/releases?per_page={}",
+        count + 5
+    ))?
+    .unwrap_or_default();
+    Ok(all
+        .into_iter()
+        .filter(|r| !r.draft)
+        .take(count)
+        .map(|r| ReleaseNote {
+            tag: r.tag_name,
+            name: r.name.filter(|n| !n.trim().is_empty()),
+            published_at: r.published_at,
+            body: r.body.unwrap_or_default(),
+            prerelease: r.prerelease,
+        })
+        .collect())
+}
+
 fn is_archive(name: &str) -> bool {
     let lower = name.to_ascii_lowercase();
     lower.ends_with(".zip") || lower.ends_with(".tar.gz") || lower.ends_with(".tgz")

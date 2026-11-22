@@ -21,6 +21,12 @@
   otherwise the earlier files are reused if they still exist, and asked for if not.
 - **Play**: `start` with the manifest's arguments, then the player's `args` settings; the output
   goes to `game.log`.
+- **Releases on the home page**: "Latest updates" lists the three newest published releases of
+  the selected game's repository (drafts left out), read from `GET /repos/<repo>/releases` by
+  the `game_releases` command, independently of the installation. Each card shows the tag, the
+  date, the release name and a plain-text summary of its notes. A repository without a release
+  (or one that doesn't exist) shows an empty message; a network or rate-limit error shows that
+  the releases can't be read.
 
 States: `not prepared`, `ready`, `needs rebuild` (prepared for another release, or a file listed in
 `done` is gone). The sidebar shows download, settings or play icons for not installed,

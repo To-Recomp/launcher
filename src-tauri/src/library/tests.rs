@@ -922,3 +922,28 @@ fn json_wire_format_matches_the_frontend_types() {
         "notPrepared"
     );
 }
+
+#[test]
+fn recent_releases_skip_drafts_and_a_missing_repository_has_none() {
+    let fake = Fake::new();
+    fake.route(
+        &format!("/repos/{REPO}/releases?per_page=6"),
+        200,
+        serde_json::json!([
+            { "tag_name": "v3", "draft": true },
+            { "tag_name": "v2", "name": "Second", "published_at": "2026-11-20T10:00:00Z", "body": "Fixes", "prerelease": true },
+            { "tag_name": "v1", "name": "", "body": null }
+        ])
+        .to_string()
+        .into_bytes(),
+    );
+    let notes = release::recent_releases(&fake.url, REPO, 1).unwrap();
+    assert_eq!(notes.len(), 1);
+    assert_eq!(notes[0].tag, "v2");
+    assert_eq!(notes[0].name.as_deref(), Some("Second"));
+    assert!(notes[0].prerelease);
+
+    assert!(release::recent_releases(&fake.url, "To-Recomp/none", 3)
+        .unwrap()
+        .is_empty());
+}

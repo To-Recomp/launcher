@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const api = vi.hoisted(() => ({
@@ -13,6 +13,9 @@ const api = vi.hoisted(() => ({
   pickInput: vi.fn(),
 }));
 vi.mock("../library/api", () => api);
+
+const releases = vi.hoisted(() => ({ gameReleases: vi.fn() }));
+vi.mock("../catalog/releases", async (orig) => ({ ...(await orig<object>()), ...releases }));
 
 import { LibraryStore } from "../library/store.svelte";
 import type { InstallationView, InstanceState } from "../library/types";
@@ -36,7 +39,33 @@ function show(installation: InstallationView | null) {
   return library;
 }
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  releases.gameReleases.mockResolvedValue([]);
+});
+
+describe("latest releases", () => {
+  it("shows the project's releases, newest first as the featured card", async () => {
+    releases.gameReleases.mockResolvedValue([
+      { tag: "v1.2.0", name: "Library", publishedAt: "2026-11-21T10:00:00Z", body: "## Faster startup", prerelease: false },
+      { tag: "v1.1.0", name: null, publishedAt: null, body: "", prerelease: false },
+    ]);
+    show(null);
+    expect(await screen.findByText("v1.2.0 · Nov 21, 2026")).toBeInTheDocument();
+    expect(screen.getByText("Faster startup")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 3, name: "v1.1.0" })).toBeInTheDocument();
+    expect(releases.gameReleases).toHaveBeenCalledWith(eternia.repository);
+  });
+
+  it("says so when there is no release or GitHub can't be read", async () => {
+    show(null);
+    expect(await screen.findByText("No release has been published yet.")).toBeInTheDocument();
+    cleanup();
+    releases.gameReleases.mockRejectedValue("offline");
+    show(null);
+    expect(await screen.findByText("The releases can't be read right now.")).toBeInTheDocument();
+  });
+});
 
 describe("HomeView actions", () => {
   it("offers Install for a game that isn't installed", async () => {

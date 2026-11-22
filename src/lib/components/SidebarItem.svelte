@@ -1,8 +1,23 @@
 <script lang="ts">
   import Icon from "./Icon.svelte";
   import type { Game } from "../catalog/games";
+  import { logoFor } from "../catalog/logos";
+  import { loadPalette } from "../catalog/palette";
 
   let { game, selected = false, onselect }: { game: Game; selected?: boolean; onselect: () => void } = $props();
+
+  // Each item tints itself with its own game's colors, so hovering shows that game's, not the selected one's.
+  let accent = $state<string | null>(null);
+  $effect(() => {
+    const logo = logoFor(game.name);
+    accent = null;
+    if (!logo) return;
+    let stale = false;
+    loadPalette(logo).then((found) => {
+      if (!stale) accent = found?.accent ?? null;
+    });
+    return () => (stale = true);
+  });
 
   const action = $derived(
     game.state === "ready"
@@ -13,7 +28,7 @@
   );
 </script>
 
-<button class="item" class:selected aria-current={selected ? "true" : undefined} onclick={onselect}>
+<button class="item" class:selected style:--item-accent={accent} aria-current={selected ? "true" : undefined} onclick={onselect}>
   <span class="badge">{game.icon}</span>
   <span class="text">
     <span class="name">{game.name}</span>
@@ -37,9 +52,13 @@
     border-radius: var(--radius-md);
     text-align: left;
   }
-  .item:hover { background: var(--color-surface-alt); }
-  .item.selected { background: var(--color-selected); border-color: var(--color-border); }
-  .item.selected::before {
+  /* Hover and selection take the item's own game colors (its logo palette). */
+  .item:hover { background: color-mix(in srgb, var(--item-accent, var(--color-accent)) 10%, transparent); }
+  .item.selected {
+    background: color-mix(in srgb, var(--item-accent, var(--color-accent)) 16%, transparent);
+    border-color: color-mix(in srgb, var(--item-accent, var(--color-accent)) 30%, transparent);
+  }
+  .item::before {
     content: "";
     position: absolute;
     left: -1px;
@@ -47,8 +66,10 @@
     bottom: 14px;
     width: 3px;
     border-radius: 2px;
-    background: var(--color-accent);
+    background: var(--item-accent, var(--color-accent));
+    opacity: 0;
   }
+  .item:hover::before, .item.selected::before { opacity: 1; }
   .badge {
     display: grid;
     place-items: center;
