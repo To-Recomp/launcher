@@ -4,11 +4,13 @@
   import Sidebar from "./lib/components/Sidebar.svelte";
   import TitleBar from "./lib/components/TitleBar.svelte";
   import { games, NON_AFFILIATION, type TabId } from "./lib/data";
+  import { locationFor } from "./lib/instances";
 
   let selectedId = $state("eternia");
   let tab = $state<TabId>("home");
 
   const game = $derived(games.find((g) => g.id === selectedId)!);
+  const location = $derived(locationFor(game));
 </script>
 
 <div class="app">
@@ -19,7 +21,7 @@
       {#if tab === "home"}
         <HomeView {game} />
       {:else}
-        <SettingsView />
+        <SettingsView gameId={game.id} gameName={game.name} location={location} />
       {/if}
     </main>
     <footer>{NON_AFFILIATION}</footer>

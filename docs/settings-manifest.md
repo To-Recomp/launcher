@@ -1,0 +1,46 @@
+# Settings from the manifest
+
+The launcher builds a game's Settings screens from the `config` and `settings` parts of the
+`recomplauncher.json` in its release. The format is [RecompLauncher's](https://github.com/elripalda/RecompLauncher/blob/main/docs/DEVELOPERS.md#settings-in-the-launcher),
+so one manifest serves both launchers. Fields the launcher doesn't know are ignored.
+
+## Supported
+
+| Manifest | Control |
+| --- | --- |
+| `choices` with labels Off/On (or No/Yes, Disabled/Enabled, False/True) | toggle |
+| `choices`, at most 3, short labels | segmented buttons |
+| `choices`, otherwise | dropdown |
+| `slider` (`format`: `%g`, `%d`, `%.Nf`) | slider |
+| `bindings` (`separator`, `max`, `names`, `pad`) | key chips |
+| `text` (launcher extension) | text field |
+
+Also: `group` (heading), `advanced` and `groups[].advanced` ("Show advanced options", remembered
+per game), `when` (greyed out unless the keys match), `in: "args"` (the pick is remembered in
+`<data>/launcher-settings.json` and added to the command line by `launch_args`), `defaults`.
+Config files: `toml` (edited in place, comments and unknown keys kept) and `json`; `file` may be
+a path or a list of `{path, if}`. Placeholders: `{install}`, `{data}`, `{home}`, `{documents}`,
+`{local}`, `{config}`. `ini` is rejected with a message for now.
+
+## Launcher extensions (ignored by RecompLauncher)
+
+- `tab`: sub-tab of the setting, one of `Display`, `Graphics`, `Audio`, `Controls`, `Saves`,
+  `Game` (default `Game`). `group` is the heading inside the tab.
+- `control`: `"toggle"` (exactly two choices), `"segmented"` or `"dropdown"`, to override the
+  automatic choice above.
+- `text`: `{ "key": "player/name" }`, a free-text value of at most 256 characters.
+
+## Validation
+
+A manifest with duplicate ids, several control kinds in one setting, an undeclared config, an
+unknown tab, a slider with `min >= max`, an unsupported number format, and so on is rejected as
+a whole with a message shown in place of the settings. A rejected change (value out of range,
+unknown key name, too many keys, a setting whose `when` doesn't hold) is not written and shows
+its message above the settings.
+
+## Wiring
+
+Commands (`src-tauri/src/settings`): `load_settings`, `set_setting`, `settings_launch_args`,
+each taking `{ installDir, dataDir? }`. `dataDir` defaults to `<installDir>/recompdata`.
+`src/lib/instances.ts` maps a game to that location; it returns `null` until installations
+exist (#3), and the screen then asks the player to install and prepare the game.
