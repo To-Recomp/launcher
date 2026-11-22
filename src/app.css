@@ -17,6 +17,10 @@
   --color-primary-hover: #d9403b;
   --color-info: #5984ad;
   --color-selected: #262125;
+  --color-stable: #5fae7a;
+  --color-beta: #e2c26b;
+  --color-alpha: #d9904a;
+  --color-unsupported: #7a7988;
 
   --space-1: 4px;
   --space-2: 8px;

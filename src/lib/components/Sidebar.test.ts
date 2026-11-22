@@ -1,13 +1,13 @@
 import { fireEvent, render, screen } from "@testing-library/svelte";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { games } from "../data";
+import { eternia } from "./fixtures";
 
 const updater = vi.hoisted(() => ({ updaterAvailable: vi.fn(), updateLauncher: vi.fn() }));
 vi.mock("../updater", () => updater);
 
 import Sidebar from "./Sidebar.svelte";
 
-const props = { games, selectedId: "eternia", onselect: () => {} };
+const props = { games: [eternia], selectedId: "toe", onselect: () => {} };
 
 beforeEach(() => vi.clearAllMocks());
 

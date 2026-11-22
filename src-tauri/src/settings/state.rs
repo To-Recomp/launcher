@@ -6,7 +6,7 @@ use std::fs;
 use serde_json::Value;
 
 use super::paths::Instance;
-use super::store::write_atomically;
+use crate::fs_util::write_atomically;
 
 pub type State = BTreeMap<String, Value>;
 

@@ -4,7 +4,7 @@ import Segmented from "./Segmented.svelte";
 import Toggle from "./Toggle.svelte";
 import Dropdown from "./Dropdown.svelte";
 import SidebarItem from "./SidebarItem.svelte";
-import { games } from "../data";
+import { eternia } from "./fixtures";
 
 describe("Segmented", () => {
   it("marks the current option and reports a new choice", async () => {
@@ -42,7 +42,7 @@ describe("SidebarItem", () => {
     ["installed", "Settings"],
     ["ready", "Play"],
   ] as const)("shows the %s action as %s", (state, label) => {
-    render(SidebarItem, { game: { ...games[0], state }, onselect: () => {} });
+    render(SidebarItem, { game: { ...eternia, state }, onselect: () => {} });
     expect(screen.getByRole("img", { name: label })).toBeInTheDocument();
   });
 });
