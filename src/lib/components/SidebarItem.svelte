@@ -86,6 +86,7 @@
   .chip.beta { --status-color: var(--color-beta); }
   .chip.alpha { --status-color: var(--color-alpha); }
   .chip.unsupported { --status-color: var(--color-unsupported); }
+  .chip.coming-soon { --status-color: var(--color-coming-soon); }
   .status {
     display: grid;
     place-items: center;
