@@ -18,6 +18,8 @@ import FolderRow from "./FolderRow.svelte";
 import LauncherSettingsView from "./LauncherSettingsView.svelte";
 import RestartBanner from "./RestartBanner.svelte";
 
+const props = { catalogStatus: null, refreshingCatalog: false, onrefreshcatalog: vi.fn(), onreportbug: vi.fn() };
+
 beforeEach(() => {
   vi.clearAllMocks();
   restartNeeded.needed = false;
@@ -80,7 +82,7 @@ describe("RestartBanner", () => {
 
 describe("LauncherSettingsView restart banner", () => {
   it("appears once a setting needs a restart, and not before", async () => {
-    render(LauncherSettingsView, { onreportbug: vi.fn() });
+    render(LauncherSettingsView, props);
     await screen.findByText("About");
     expect(screen.queryByText("Restart the launcher to apply these changes.")).not.toBeInTheDocument();
     restartNeeded.mark();

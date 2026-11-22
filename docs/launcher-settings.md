@@ -64,3 +64,11 @@ is updated another way.
 - **Launcher version** row: "Check now" and, when something newer exists, "Install and restart".
   The sidebar button keeps its own check-and-install click.
 - Commands: `check_launcher_update` (no install), `update_launcher`, `launcher_update_preferences`.
+
+## Game list
+
+"Game catalog" shows how the last refresh of the game list went (updated, already up to date,
+or why it failed, in which case the saved list is used) and has a Refresh button, which is the
+same refresh as the sidebar's Retry. The time is kept for the session only. The catalog source is
+not a setting: the launcher only reads the To-Recomp catalog (`TO_RECOMP_CATALOG_URL` stays a
+development switch, see `docs/catalog.md`).

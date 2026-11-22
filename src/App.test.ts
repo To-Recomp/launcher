@@ -162,6 +162,20 @@ describe("App", () => {
     expect(gear).toHaveAttribute("aria-pressed", "false");
   });
 
+  it("refreshes the game list from the launcher settings and reports how it went", async () => {
+    launcher.loadLauncherSettings.mockResolvedValue({ settings: [] });
+    launcher.launcherFolders.mockResolvedValue({ configured: null, default: "/d/games", inUse: "/d/games" });
+    render(App);
+    await screen.findByRole("button", { name: /Tales of Symphonia/ });
+    await fireEvent.click(screen.getByRole("button", { name: "Launcher settings" }));
+    expect(await screen.findByText(/^Updated at/)).toBeInTheDocument();
+
+    api.refreshCatalog.mockResolvedValue({ catalog, updated: false, error: "Can't reach the game catalog: offline" });
+    await fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+    expect(await screen.findByText(/The saved list is used\./)).toBeInTheDocument();
+    expect(api.refreshCatalog).toHaveBeenCalledTimes(2);
+  });
+
   it("always shows the launcher version and the non-affiliation notice", async () => {
     render(App);
     expect(within(screen.getByRole("complementary")).getByText("v0.1.0")).toBeInTheDocument();
