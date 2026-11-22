@@ -562,9 +562,11 @@ fn cleaning_removes_the_reports_and_nothing_else_in_the_folder() {
         .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
         .collect();
     left.sort();
-    let mut expected = vec!["launcher.log", "notes.md", "sub"];
-    #[cfg(unix)]
-    expected.insert(1, "link-diagnostic-1.md");
+    let expected = if cfg!(unix) {
+        vec!["launcher.log", "link-diagnostic-1.md", "notes.md", "sub"]
+    } else {
+        vec!["launcher.log", "notes.md", "sub"]
+    };
     assert_eq!(left, expected);
     assert!(dir.path().join("sub/x-diagnostic-1.md").exists());
     assert!(precious.exists(), "a link is never followed");
