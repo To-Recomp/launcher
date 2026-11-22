@@ -25,3 +25,7 @@ cd src-tauri && cargo fmt --check && cargo clippy --all-targets -- -D warnings &
 ```
 
 ![Home screen](docs/screenshots/home.png)
+
+## AI assistance
+
+This project is developed with the help of AI coding assistants (large language models). A large part of the code, tests, documentation and issues is written by AI agents; the maintainer directs the work and reviews it. The result can still contain mistakes: check what matters to you before relying on it. Generated code is under the same licence as the rest of the repository.
