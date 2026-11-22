@@ -524,3 +524,57 @@ mod panic_file {
         assert_eq!(files, 1);
     }
 }
+
+#[test]
+fn cleaning_removes_the_reports_and_nothing_else_in_the_folder() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let outside = tempfile::TempDir::new().unwrap();
+    let keep_file = |name: &str| std::fs::write(dir.path().join(name), "keep").unwrap();
+    std::fs::write(
+        dir.path().join("launcher-diagnostic-2026-11-22.md"),
+        "12345",
+    )
+    .unwrap();
+    std::fs::write(dir.path().join("toe-diagnostic-2026-11-21-2.md"), "123").unwrap();
+    std::fs::write(
+        dir.path().join("panic-pending"),
+        "launcher-diagnostic-2026-11-22.md",
+    )
+    .unwrap();
+    keep_file("notes.md");
+    keep_file("launcher.log");
+    std::fs::create_dir(dir.path().join("sub")).unwrap();
+    std::fs::write(
+        dir.path().join("sub").join("x-diagnostic-1.md"),
+        "kept: below the folder",
+    )
+    .unwrap();
+    let precious = outside.path().join("precious-diagnostic-1.md");
+    std::fs::write(&precious, "outside").unwrap();
+    #[cfg(unix)]
+    std::os::unix::fs::symlink(&precious, dir.path().join("link-diagnostic-1.md")).unwrap();
+
+    let cleaned = clean(dir.path());
+
+    assert_eq!(cleaned, Cleaned { files: 2, bytes: 8 });
+    let mut left: Vec<String> = std::fs::read_dir(dir.path())
+        .unwrap()
+        .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+        .collect();
+    left.sort();
+    let mut expected = vec!["launcher.log", "notes.md", "sub"];
+    #[cfg(unix)]
+    expected.insert(1, "link-diagnostic-1.md");
+    assert_eq!(left, expected);
+    assert!(dir.path().join("sub/x-diagnostic-1.md").exists());
+    assert!(precious.exists(), "a link is never followed");
+}
+
+#[test]
+fn cleaning_a_folder_that_does_not_exist_removes_nothing() {
+    let dir = tempfile::TempDir::new().unwrap();
+    assert_eq!(
+        clean(&dir.path().join("missing")),
+        Cleaned { files: 0, bytes: 0 }
+    );
+}

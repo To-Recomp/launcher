@@ -7,6 +7,7 @@
     help = null,
     value = null,
     action,
+    confirm = null,
     onrun,
   }: {
     label: string;
@@ -15,14 +16,22 @@
     value?: string | null;
     /** The button's text. */
     action: string;
+    /** For an action that can't be undone: the first click only asks, with this text, and the next one runs. */
+    confirm?: string | null;
     /** Resolves with a message to show next to the button, or nothing. Rejects with the failure's message. */
     onrun: () => Promise<string | void> | string | void;
   } = $props();
 
   let busy = $state(false);
+  let asking = $state(false);
   let result = $state<{ text: string; failed: boolean } | null>(null);
 
   async function run() {
+    if (confirm && !asking) {
+      asking = true;
+      return;
+    }
+    asking = false;
     busy = true;
     result = null;
     try {
@@ -42,7 +51,7 @@
     {#if result}
       <span class="result" class:failed={result.failed} role={result.failed ? "alert" : "status"}>{result.text}</span>
     {/if}
-    <button disabled={busy} onclick={run}>{action}</button>
+    <button disabled={busy} onclick={run} onblur={() => (asking = false)}>{asking ? confirm : action}</button>
   </div>
 </Row>
 

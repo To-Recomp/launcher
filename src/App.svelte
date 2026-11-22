@@ -129,6 +129,7 @@
           refreshingCatalog={loading}
           onrefreshcatalog={loadCatalog}
           onreportbug={() => library.reportBug()}
+          oncleaned={() => library.dismissCrash()}
         />
       {:else if !game}
         <p class="empty">{t("shell.app.pickGame")}</p>

@@ -242,6 +242,57 @@ pub fn rotate(dir: &Path, keep: usize) {
     }
 }
 
+/// What [`clean`] removed.
+#[derive(Debug, Serialize, PartialEq)]
+pub struct Cleaned {
+    pub files: usize,
+    pub bytes: u64,
+}
+
+/// Deletes every diagnostic file in `dir`, and the note that offers a crash file. Only regular
+/// files named like the ones this module writes: nothing else in the folder, nothing below it,
+/// and no link is followed.
+pub fn clean(dir: &Path) -> Cleaned {
+    let mut cleaned = Cleaned { files: 0, bytes: 0 };
+    let Ok(entries) = fs::read_dir(dir) else {
+        return cleaned;
+    };
+    for entry in entries.flatten() {
+        let name = entry.file_name().to_string_lossy().into_owned();
+        let Ok(meta) = fs::symlink_metadata(entry.path()) else {
+            continue;
+        };
+        let is_report = name.contains(FILE_MARK) && name.ends_with(".md");
+        if meta.is_file() && is_report && fs::remove_file(entry.path()).is_ok() {
+            cleaned.files += 1;
+            cleaned.bytes += meta.len();
+        }
+    }
+    panic::dismiss(dir);
+    cleaned
+}
+
+/// The folder the reports are kept in, created when it doesn't exist yet.
+#[tauri::command(async)]
+pub fn diagnostics_folder(app: tauri::AppHandle) -> Result<String, String> {
+    let dir = app
+        .path()
+        .app_log_dir()
+        .map_err(|e| format!("No place to keep the diagnostic files: {e}"))?;
+    fs::create_dir_all(&dir).map_err(|e| format!("Can't create {}: {e}", dir.display()))?;
+    Ok(dir.to_string_lossy().into_owned())
+}
+
+/// Deletes the saved diagnostic files.
+#[tauri::command(async)]
+pub fn clean_diagnostics(app: tauri::AppHandle) -> Result<Cleaned, String> {
+    let dir = app
+        .path()
+        .app_log_dir()
+        .map_err(|e| format!("No place to keep the diagnostic files: {e}"))?;
+    Ok(clean(&dir))
+}
+
 fn env_names(keys: &[&str]) -> Vec<String> {
     keys.iter()
         .filter_map(|key| std::env::var(key).ok())

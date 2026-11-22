@@ -4,6 +4,7 @@
   import LauncherAbout from "./LauncherAbout.svelte";
   import LauncherBehavior from "./LauncherBehavior.svelte";
   import LauncherCatalog from "./LauncherCatalog.svelte";
+  import LauncherDiagnostics from "./LauncherDiagnostics.svelte";
   import LauncherFolders from "./LauncherFolders.svelte";
   import LauncherUpdates from "./LauncherUpdates.svelte";
   import RestartBanner from "./RestartBanner.svelte";
@@ -24,11 +25,14 @@
     refreshingCatalog,
     onrefreshcatalog,
     onreportbug,
+    oncleaned,
   }: {
     catalogStatus: CatalogStatus | null;
     refreshingCatalog: boolean;
     onrefreshcatalog: () => Promise<void>;
     onreportbug: () => Promise<void> | void;
+    /** Saved diagnostic files were deleted. */
+    oncleaned: () => void;
   } = $props();
 
   let view = $state<SettingsView | null>(null);
@@ -97,6 +101,8 @@
   <LauncherCatalog status={catalogStatus} refreshing={refreshingCatalog} onrefresh={onrefreshcatalog} />
 
   <LauncherFolders />
+
+  <LauncherDiagnostics {oncleaned} />
 
   <LauncherAbout {onreportbug} />
 </section>
