@@ -26,7 +26,6 @@ BuildRequires:  pkgconfig(javascriptcoregtk-4.1)
 
 Requires:       webkit2gtk4.1
 Requires:       gtk3
-Requires:       libsoup3
 Requires:       hicolor-icon-theme
 
 %description
