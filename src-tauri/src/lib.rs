@@ -1,6 +1,7 @@
 mod catalog;
 mod diagnostics;
 mod fs_util;
+mod launcher_settings;
 mod library;
 mod settings;
 mod updater;
@@ -39,6 +40,8 @@ pub fn run() {
             settings::load_settings,
             settings::set_setting,
             settings::settings_launch_args,
+            launcher_settings::load_launcher_settings,
+            launcher_settings::set_launcher_setting,
             updater::updater_available,
             updater::update_launcher
         ])

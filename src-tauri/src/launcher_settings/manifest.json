@@ -1,0 +1,6 @@
+{
+  "config": [
+    { "id": "main", "format": "json", "file": "{data}/launcher.json" }
+  ],
+  "settings": []
+}

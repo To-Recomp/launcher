@@ -13,6 +13,14 @@
 <header class="titlebar" data-tauri-drag-region>
   <TabBar {tabs} value={tab} {onchange} />
   <div class="controls">
+    <button
+      aria-label="Launcher settings"
+      aria-pressed={tab === "launcher"}
+      class:active={tab === "launcher"}
+      onclick={() => onchange("launcher")}
+    >
+      <Icon name="gear" size={16} />
+    </button>
     <button aria-label="Minimize" onclick={() => win?.minimize()}><Icon name="minimize" size={16} /></button>
     <button aria-label="Maximize" onclick={() => win?.toggleMaximize()}><Icon name="maximize" size={14} /></button>
     <button aria-label="Close" class="close" onclick={() => win?.close()}><Icon name="close" size={16} /></button>
@@ -39,6 +47,6 @@
     background: none;
     color: var(--color-text-muted);
   }
-  .controls button:hover { background: var(--color-surface-alt); color: var(--color-text); }
+  .controls button:hover, .controls button.active { background: var(--color-surface-alt); color: var(--color-text); }
   .controls .close:hover { background: var(--color-primary); color: #fff; }
 </style>

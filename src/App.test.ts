@@ -26,6 +26,9 @@ const diagnostics = vi.hoisted(() => ({
 }));
 vi.mock("./lib/diagnostics/api", () => diagnostics);
 
+const launcher = vi.hoisted(() => ({ loadLauncherSettings: vi.fn(), setLauncherSetting: vi.fn() }));
+vi.mock("./lib/launcher/api", () => launcher);
+
 import App from "./App.svelte";
 
 const game = (id: string, name: string, year: number, platforms: Catalog["games"][0]["platforms"]) => ({
@@ -140,6 +143,22 @@ describe("App", () => {
     expect(screen.getByText("Install and prepare Tales of Eternia to configure it.")).toBeInTheDocument();
     await fireEvent.click(screen.getByRole("tab", { name: "Home" }));
     expect(screen.getByText("Action status")).toBeInTheDocument();
+  });
+
+  it("opens the launcher's own settings from the gear, even before the game list loads, and leaves them when a game is picked", async () => {
+    api.refreshCatalog.mockResolvedValue({ catalog: null, updated: false, error: "Can't reach the game catalog: offline" });
+    launcher.loadLauncherSettings.mockResolvedValue({ settings: [] });
+    render(App);
+    const gear = await screen.findByRole("button", { name: "Launcher settings" });
+    await fireEvent.click(gear);
+    expect(screen.getByRole("heading", { level: 1, name: "Launcher settings" })).toBeInTheDocument();
+    expect(gear).toHaveAttribute("aria-pressed", "true");
+
+    api.refreshCatalog.mockResolvedValue({ catalog, updated: true, error: null });
+    await fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    await fireEvent.click(await screen.findByRole("button", { name: /Tales of Symphonia/ }));
+    expect(screen.getByRole("heading", { level: 1, name: "Symphonia" })).toBeInTheDocument();
+    expect(gear).toHaveAttribute("aria-pressed", "false");
   });
 
   it("always shows the launcher version and the non-affiliation notice", async () => {

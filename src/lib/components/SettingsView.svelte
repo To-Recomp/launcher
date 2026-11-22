@@ -3,6 +3,7 @@
   import Icon, { type IconName } from "./Icon.svelte";
   import SettingRow from "./SettingRow.svelte";
   import { errorMessage, loadSettings, setSetting } from "../settings/api";
+  import { sectionsOf } from "../settings/sections";
   import type { Location, SettingInput, SettingView, SettingsView } from "../settings/types";
   import { LAUNCHER_VERSION, NON_AFFILIATION, settingsTabs, type SettingsTab } from "../data";
 
@@ -73,15 +74,7 @@
   const hasAdvanced = $derived(inTab.some((s) => s.advanced));
   const visible = $derived(inTab.filter((s) => showAdvanced || !s.advanced));
 
-  /** Consecutive settings of the same group share a card under one heading. */
-  const sections = $derived(
-    visible.reduce<{ group: string | null; items: SettingView[] }[]>((acc, setting) => {
-      const last = acc.at(-1);
-      if (last && last.group === setting.group) last.items.push(setting);
-      else acc.push({ group: setting.group, items: [setting] });
-      return acc;
-    }, []),
-  );
+  const sections = $derived(sectionsOf(visible));
 </script>
 
 <section class="settings">
