@@ -7,7 +7,16 @@
     help = null,
     path,
     onpick,
-  }: { label: string; help?: string | null; path: string | null; onpick: (path: string) => void } = $props();
+    onreset,
+  }: {
+    label: string;
+    help?: string | null;
+    /** The chosen folder; `null` while the default is used. */
+    path: string | null;
+    onpick: (path: string) => void;
+    /** Goes back to the default; offered only while a folder is chosen. */
+    onreset?: () => void;
+  } = $props();
 
   async function choose() {
     const picked = await pickFolder(label);
@@ -19,6 +28,7 @@
   <div class="pick">
     <span class="path" title={path ?? undefined}>{path ?? "Default"}</span>
     <button onclick={choose}>Choose…</button>
+    {#if path !== null && onreset}<button onclick={onreset}>Use default</button>{/if}
   </div>
 </Row>
 

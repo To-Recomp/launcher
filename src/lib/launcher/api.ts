@@ -17,3 +17,17 @@ export async function pickFolder(title: string): Promise<string | null> {
   const picked = await open({ title, multiple: false, directory: true });
   return typeof picked === "string" ? picked : null;
 }
+
+/** Where the games are kept (src-tauri/src/launcher_settings/folders.rs). */
+export interface Folders {
+  /** The player's choice; `null` while the default is used. */
+  configured: string | null;
+  default: string;
+  /** What this session uses; `null` when it couldn't be opened. */
+  inUse: string | null;
+}
+
+export const launcherFolders = () => invoke<Folders>("launcher_folders");
+
+/** Chooses the games folder (`null`: the default); it applies on the next start. */
+export const setGamesFolder = (folder: string | null) => invoke<Folders>("set_games_folder", { folder });
