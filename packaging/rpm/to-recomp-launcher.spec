@@ -26,6 +26,7 @@ BuildRequires:  pkgconfig(javascriptcoregtk-4.1)
 
 Requires:       webkit2gtk4.1
 Requires:       gtk3
+Requires:       libayatana-appindicator-gtk3
 Requires:       hicolor-icon-theme
 
 %description

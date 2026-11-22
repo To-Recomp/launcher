@@ -677,7 +677,15 @@ pub fn start_game(
             serde_json::json!({ "job": key, "code": code }),
         );
         drop(guard); // the game can be started again
-    })
+    })?;
+    // The game runs on its own: the launcher only has to stay for what it reports afterwards.
+    let quits = crate::launcher_settings::config_dir(&app)
+        .and_then(|dir| crate::launcher_settings::behavior(&dir))
+        .is_ok_and(|b| b.close_on_launch);
+    if quits {
+        app.exit(0);
+    }
+    Ok(())
 }
 
 /// Stops an install or a preparation.

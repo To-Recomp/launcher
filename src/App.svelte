@@ -15,6 +15,7 @@
   import { nonAffiliation, type TabId } from "./lib/data";
   import { t } from "./lib/i18n/index.svelte";
   import { instanceLocation } from "./lib/library/api";
+  import { syncTray } from "./lib/launcher/tray";
   import { launcherUpdates } from "./lib/launcher/updates.svelte";
   import { LibraryStore } from "./lib/library/store.svelte";
   import type { Location } from "./lib/settings/types";
@@ -93,6 +94,7 @@
   onMount(() => {
     library.start();
     launcherUpdates.start();
+    syncTray().catch(() => {}); // no notification area where there is no Tauri runtime
     loadCatalog();
     return () => library.stop();
   });

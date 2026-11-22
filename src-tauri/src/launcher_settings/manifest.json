@@ -81,6 +81,51 @@
       "defaults": {
         "updates/channel": "\"stable\""
       }
+    },
+    {
+      "id": "minimizeToTray",
+      "label": "Keep running in the notification area",
+      "help": "Closing the window hides it there instead of quitting. Needs a notification area: GNOME shows none without an extension.",
+      "group": "Behavior",
+      "choices": [
+        {
+          "label": "Off",
+          "set": {
+            "behavior/tray": "false"
+          }
+        },
+        {
+          "label": "On",
+          "set": {
+            "behavior/tray": "true"
+          }
+        }
+      ],
+      "defaults": {
+        "behavior/tray": "false"
+      }
+    },
+    {
+      "id": "closeOnLaunch",
+      "label": "Close the launcher when a game starts",
+      "group": "Behavior",
+      "choices": [
+        {
+          "label": "Off",
+          "set": {
+            "behavior/closeOnLaunch": "false"
+          }
+        },
+        {
+          "label": "On",
+          "set": {
+            "behavior/closeOnLaunch": "true"
+          }
+        }
+      ],
+      "defaults": {
+        "behavior/closeOnLaunch": "false"
+      }
     }
   ]
 }

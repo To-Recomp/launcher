@@ -26,7 +26,7 @@ const diagnostics = vi.hoisted(() => ({
 }));
 vi.mock("./lib/diagnostics/api", () => diagnostics);
 
-const launcher = vi.hoisted(() => ({ loadLauncherSettings: vi.fn(), setLauncherSetting: vi.fn(), launcherFolders: vi.fn(), setGamesFolder: vi.fn() }));
+const launcher = vi.hoisted(() => ({ loadLauncherSettings: vi.fn(), setLauncherSetting: vi.fn(), launcherFolders: vi.fn(), setGamesFolder: vi.fn(), applyBehavior: vi.fn().mockResolvedValue(undefined), autostartSupported: vi.fn().mockResolvedValue(false), autostartEnabled: vi.fn(), setAutostart: vi.fn() }));
 vi.mock("./lib/launcher/api", () => launcher);
 
 import App from "./App.svelte";

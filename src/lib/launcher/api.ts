@@ -34,3 +34,20 @@ export const setGamesFolder = (folder: string | null) => invoke<Folders>("set_ga
 
 /** The language the player chose for the interface; `null` to follow the system's. */
 export const launcherLanguage = () => invoke<string | null>("launcher_language");
+
+/** The tray menu's texts, in the interface language (the backend has no translations). */
+export interface TrayLabels {
+  show: string;
+  quit: string;
+}
+
+/** Puts the notification area icon on or off as the settings say. */
+export const applyBehavior = (labels: TrayLabels) => invoke<void>("apply_behavior", { labels });
+
+/** Whether the launcher can be started with the system on this OS. */
+export const autostartSupported = () => invoke<boolean>("autostart_supported");
+
+export const autostartEnabled = () => invoke<boolean>("autostart_enabled");
+
+/** Resolves with what the system says afterwards. */
+export const setAutostart = (enabled: boolean) => invoke<boolean>("set_autostart", { enabled });
