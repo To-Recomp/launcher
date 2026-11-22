@@ -184,19 +184,32 @@ fn stamp(now: SystemTime) -> String {
 /// Writes the file into `dir` as `<base>-diagnostic-<stamp>.md` and drops the oldest ones beyond
 /// [`KEEP_FILES`].
 pub fn write_file(dir: &Path, base: &str, text: &str, now: SystemTime) -> Result<PathBuf, String> {
-    let fail = |e: std::io::Error| format!("Can't write the diagnostic file in {}: {e}", dir.display());
+    let fail =
+        |e: std::io::Error| format!("Can't write the diagnostic file in {}: {e}", dir.display());
     fs::create_dir_all(dir).map_err(fail)?;
     let base: String = base
         .chars()
         .filter(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || *c == '-')
         .collect();
-    let base = if base.is_empty() { "launcher".to_string() } else { base };
+    let base = if base.is_empty() {
+        "launcher".to_string()
+    } else {
+        base
+    };
     let stamp = stamp(now);
     let mut n = 1;
     let path = loop {
-        let suffix = if n == 1 { String::new() } else { format!("-{n}") };
+        let suffix = if n == 1 {
+            String::new()
+        } else {
+            format!("-{n}")
+        };
         let path = dir.join(format!("{base}{FILE_MARK}{stamp}{suffix}.md"));
-        match fs::OpenOptions::new().write(true).create_new(true).open(&path) {
+        match fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&path)
+        {
             Ok(mut file) => {
                 std::io::Write::write_all(&mut file, text.as_bytes()).map_err(fail)?;
                 break path;
@@ -211,7 +224,9 @@ pub fn write_file(dir: &Path, base: &str, text: &str, now: SystemTime) -> Result
 
 /// Deletes the oldest diagnostic files so that `keep` remain.
 pub fn rotate(dir: &Path, keep: usize) {
-    let Ok(entries) = fs::read_dir(dir) else { return };
+    let Ok(entries) = fs::read_dir(dir) else {
+        return;
+    };
     let mut files: Vec<(SystemTime, String, PathBuf)> = entries
         .flatten()
         .filter_map(|entry| {
@@ -247,7 +262,9 @@ pub fn local_scrub() -> Scrub {
             known.users.push(name.to_string_lossy().into_owned());
         }
     }
-    known.users.extend(env_names(&["USER", "USERNAME", "LOGNAME"]));
+    known
+        .users
+        .extend(env_names(&["USER", "USERNAME", "LOGNAME"]));
     known.hosts.extend(env_names(&["HOSTNAME", "COMPUTERNAME"]));
     if let Ok(host) = fs::read_to_string("/etc/hostname") {
         known.hosts.push(host.trim().to_string());
@@ -357,7 +374,11 @@ pub fn build_report(app: tauri::AppHandle, request: Request) -> Result<Created, 
     let base = subject.as_ref().map_or("launcher", |s| s.game.id.as_str());
     let path = write_file(&dir, base, &text, SystemTime::now())?;
     Ok(Created {
-        name: path.file_name().unwrap_or_default().to_string_lossy().into_owned(),
+        name: path
+            .file_name()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .into_owned(),
         path: path.to_string_lossy().into_owned(),
         folder: dir.to_string_lossy().into_owned(),
         text,

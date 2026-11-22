@@ -36,9 +36,8 @@ fn regex(pattern: &str) -> Regex {
 /// A path segment: stops at separators, whitespace, quotes and our own `<placeholder>` marks.
 const SEG: &str = r#"[^\\/\s"'<>|?*:]+"#;
 
-static ANSI: LazyLock<Regex> = LazyLock::new(|| {
-    regex(r"\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)")
-});
+static ANSI: LazyLock<Regex> =
+    LazyLock::new(|| regex(r"\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)"));
 static WSL_HOME: LazyLock<Regex> = LazyLock::new(|| {
     regex(&format!(
         r"(?i)[\\/]{{2}}wsl(?:\$|\.localhost)[\\/]{SEG}[\\/]home[\\/]{SEG}"
@@ -49,12 +48,10 @@ static WINDOWS_USERS: LazyLock<Regex> = LazyLock::new(|| {
         r"(?i)(?:\b[a-z]:|/mnt/[a-z])[\\/]+Users[\\/]+{SEG}"
     ))
 });
-static UNIX_HOME: LazyLock<Regex> =
-    LazyLock::new(|| regex(&format!(r"(?i)/(?:home|Users)/{SEG}")));
+static UNIX_HOME: LazyLock<Regex> = LazyLock::new(|| regex(&format!(r"(?i)/(?:home|Users)/{SEG}")));
 static MEDIA: LazyLock<Regex> =
     LazyLock::new(|| regex(&format!(r"(?i)/(?:run/media|media)/{SEG}/{SEG}")));
-static UNC: LazyLock<Regex> =
-    LazyLock::new(|| regex(&format!(r"\\\\{SEG}\\{SEG}")));
+static UNC: LazyLock<Regex> = LazyLock::new(|| regex(&format!(r"\\\\{SEG}\\{SEG}")));
 
 static URL_CREDENTIALS: LazyLock<Regex> =
     LazyLock::new(|| regex(r#"(?i)\b([a-z][a-z0-9+.\-]*://)[^/\s@"'<>]+@"#));
@@ -63,7 +60,9 @@ static URL_QUERY: LazyLock<Regex> =
 static EMAIL: LazyLock<Regex> =
     LazyLock::new(|| regex(r"[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(?:\.[A-Za-z0-9\-]+)+"));
 static TOKEN: LazyLock<Regex> = LazyLock::new(|| {
-    regex(r"\bgithub_pat_[A-Za-z0-9_]{20,}|\bgh[pousr]_[A-Za-z0-9]{20,}|\b(?:AKIA|ASIA)[A-Z0-9]{16}\b")
+    regex(
+        r"\bgithub_pat_[A-Za-z0-9_]{20,}|\bgh[pousr]_[A-Za-z0-9]{20,}|\b(?:AKIA|ASIA)[A-Z0-9]{16}\b",
+    )
 });
 static MAC: LazyLock<Regex> =
     LazyLock::new(|| regex(r"\b[0-9A-Fa-f]{2}(?:[:-][0-9A-Fa-f]{2}){5}\b"));
@@ -75,8 +74,7 @@ static IPV6: LazyLock<Regex> = LazyLock::new(|| {
     ))
 });
 static HEX_RUN: LazyLock<Regex> = LazyLock::new(|| regex(r"[0-9A-Fa-f]{32,}"));
-static BASE64_RUN: LazyLock<Regex> =
-    LazyLock::new(|| regex(r"[A-Za-z0-9+_\-]{32,}={0,2}"));
+static BASE64_RUN: LazyLock<Regex> = LazyLock::new(|| regex(r"[A-Za-z0-9+_\-]{32,}={0,2}"));
 
 /// `<user>`, `{data}`, `{input:x}`: text we wrote ourselves, never to be rewritten.
 fn inside_placeholder(text: &str, m: &Match) -> bool {
@@ -121,10 +119,7 @@ fn path_regex(path: &str) -> Option<Regex> {
     if path.is_empty() {
         return None;
     }
-    let parts: Vec<String> = path
-        .split(['/', '\\'])
-        .map(regex::escape)
-        .collect();
+    let parts: Vec<String> = path.split(['/', '\\']).map(regex::escape).collect();
     Regex::new(&format!("(?i){}", parts.join(r"[\\/]+"))).ok()
 }
 
@@ -199,7 +194,9 @@ fn patterns(text: &str) -> String {
     let text = replace_if(&text, &IPV4, "<ip>", |_, m| !valid_ipv4(m.as_str()));
     let text = replace_if(&text, &IPV6, "<ip>", |t, m| !valid_ipv6(m.as_str(), m, t));
     let text = replace_if(&text, &HEX_RUN, "<secret>", |_, _| false);
-    replace_if(&text, &BASE64_RUN, "<secret>", |_, m| !is_secret_run(m.as_str()))
+    replace_if(&text, &BASE64_RUN, "<secret>", |_, m| {
+        !is_secret_run(m.as_str())
+    })
 }
 
 /// Keeps the end of `text`: at most `max_lines` lines and `max_bytes` bytes, cut at a line start.
@@ -214,7 +211,9 @@ pub fn limit_tail(text: &str, max_lines: usize, max_bytes: usize) -> String {
         start += 1;
     }
     match kept[start..].find('\n') {
-        Some(newline) if kept.as_bytes()[start - 1] != b'\n' => kept[start + newline + 1..].to_string(),
+        Some(newline) if kept.as_bytes()[start - 1] != b'\n' => {
+            kept[start + newline + 1..].to_string()
+        }
         _ => kept[start..].to_string(),
     }
 }

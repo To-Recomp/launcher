@@ -51,7 +51,12 @@ fn message(info: &PanicHookInfo) -> String {
         .or_else(|| payload.downcast_ref::<String>().cloned())
         .unwrap_or_else(|| "(no message)".to_string());
     match info.location() {
-        Some(at) => format!("The launcher panicked: {text}\nat {}:{}:{}", at.file(), at.line(), at.column()),
+        Some(at) => format!(
+            "The launcher panicked: {text}\nat {}:{}:{}",
+            at.file(),
+            at.line(),
+            at.column()
+        ),
         None => format!("The launcher panicked: {text}"),
     }
 }
@@ -72,7 +77,11 @@ pub fn record(dir: &Path, known: &Scrub, error: &str, now: SystemTime) -> Result
         known,
     );
     let path = write_file(dir, "launcher", &text, now)?;
-    let name = path.file_name().unwrap_or_default().to_string_lossy().into_owned();
+    let name = path
+        .file_name()
+        .unwrap_or_default()
+        .to_string_lossy()
+        .into_owned();
     crate::fs_util::write_atomically(&dir.join(MARKER), &name)?;
     Ok(path)
 }

@@ -50,7 +50,10 @@ pub fn parse_lspci(text: &str) -> Vec<String> {
             continue;
         };
         let class = class.to_ascii_lowercase();
-        if !(class.contains("vga") || class.contains("3d controller") || class.contains("display controller")) {
+        if !(class.contains("vga")
+            || class.contains("3d controller")
+            || class.contains("display controller"))
+        {
             continue;
         }
         let name = format!("{vendor} {device}");

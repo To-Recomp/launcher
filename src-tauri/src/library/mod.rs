@@ -705,8 +705,14 @@ pub fn diagnostic_subject(
     };
     if let Some(record) = env.library.installation(game_id)? {
         let location = env.library.location(game_id, &instance_id)?;
-        paths.push((location.data.to_string_lossy().into_owned(), "{data}".to_string()));
-        paths.push((location.install.to_string_lossy().into_owned(), "{install}".to_string()));
+        paths.push((
+            location.data.to_string_lossy().into_owned(),
+            "{data}".to_string(),
+        ));
+        paths.push((
+            location.install.to_string_lossy().into_owned(),
+            "{install}".to_string(),
+        ));
         game.release = Some(record.tag.clone());
         game.state = "unknown".to_string();
         let instance = env
@@ -720,12 +726,13 @@ pub fn diagnostic_subject(
                 paths.push((path.clone(), format!("{{input:{id}}}")));
             }
             if let Ok(manifest) = read_manifest(&env.library.release_dir(game_id)?) {
-                game.state = match store::instance_state(&manifest, &record, &instance, &location) {
-                    InstanceState::NotPrepared => "not prepared",
-                    InstanceState::Ready => "ready",
-                    InstanceState::NeedsRebuild => "needs rebuild",
-                }
-                .to_string();
+                game.state =
+                    match store::instance_state(&manifest, &record, &instance, &location) {
+                        InstanceState::NotPrepared => "not prepared",
+                        InstanceState::Ready => "ready",
+                        InstanceState::NeedsRebuild => "needs rebuild",
+                    }
+                    .to_string();
             }
         } else {
             game.state = "not prepared".to_string();
