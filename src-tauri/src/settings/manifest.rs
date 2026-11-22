@@ -4,6 +4,9 @@
 //! fields are launcher extensions that RecompLauncher ignores in turn: `tab` (which settings
 //! sub-tab a setting belongs to), `control` (a presentation hint for `choices`) and the
 //! `text` control (a free-text value).
+//!
+//! The same file also says how to run the game: `inputs`, `start` and `prepare` (see
+//! `library`).
 
 use std::collections::{BTreeMap, HashSet};
 
@@ -27,6 +30,69 @@ pub struct Manifest {
     pub settings: Vec<Setting>,
     #[serde(default)]
     pub groups: Vec<Group>,
+    #[serde(default)]
+    pub inputs: Vec<Input>,
+    pub start: Option<Start>,
+    pub prepare: Option<Prepare>,
+}
+
+/// A file or folder the player gives (a disc image).
+#[derive(Debug, Clone, Deserialize)]
+pub struct Input {
+    pub id: String,
+    pub label: Option<String>,
+    /// `game` (default), `disc`, `dlc`, `update`, ...
+    pub role: Option<String>,
+    #[serde(default)]
+    pub optional: bool,
+    #[serde(default)]
+    pub formats: Vec<InputFormat>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct InputFormat {
+    /// `file` or `folder`.
+    #[serde(rename = "type")]
+    pub kind: String,
+    #[serde(default)]
+    pub extensions: Vec<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct Start {
+    /// Paths inside the release, tried in order; the first that exists runs.
+    pub program: Vec<String>,
+    #[serde(default)]
+    pub args: Vec<String>,
+    #[serde(default)]
+    pub env: BTreeMap<String, String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct Prepare {
+    pub program: Vec<String>,
+    #[serde(default)]
+    pub args: Vec<String>,
+    #[serde(default)]
+    pub env: BTreeMap<String, String>,
+    pub label: Option<String>,
+    /// Files the step leaves when it has finished.
+    #[serde(default)]
+    pub done: Vec<String>,
+    /// The step can run again from what it kept, without the player's copy.
+    #[serde(default)]
+    pub keeps_copy: bool,
+}
+
+impl Input {
+    pub fn role(&self) -> &str {
+        self.role.as_deref().unwrap_or("game")
+    }
+
+    /// The copy of the game itself (not DLC or an update): left out when a rebuild keeps it.
+    pub fn is_copy(&self) -> bool {
+        matches!(self.role(), "game" | "disc")
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -175,6 +241,22 @@ impl Manifest {
     }
 
     fn validate(&self) -> Result<(), String> {
+        let mut input_ids = HashSet::new();
+        for input in &self.inputs {
+            if input.id.is_empty() || !input_ids.insert(input.id.as_str()) {
+                return Err(invalid(format!(
+                    "input id `{}` is empty or declared twice",
+                    input.id
+                )));
+            }
+        }
+        if let Some(start) = &self.start {
+            validate_command("start", &start.program, &start.env)?;
+        }
+        if let Some(prepare) = &self.prepare {
+            validate_command("prepare", &prepare.program, &prepare.env)?;
+        }
+
         let mut config_ids = HashSet::new();
         for config in &self.config {
             if !config_ids.insert(config.id.as_str()) {
@@ -296,6 +378,33 @@ impl Setting {
     pub fn tab(&self) -> &str {
         self.tab.as_deref().unwrap_or(DEFAULT_TAB)
     }
+}
+
+/// Environment names the game may not set: system ones and the launcher's own.
+const RESERVED_ENV: [&str; 6] = [
+    "PATH",
+    "HOME",
+    "USER",
+    "LD_PRELOAD",
+    "LD_LIBRARY_PATH",
+    "TMPDIR",
+];
+
+fn validate_command(
+    what: &str,
+    program: &[String],
+    env: &BTreeMap<String, String>,
+) -> Result<(), String> {
+    if program.is_empty() {
+        return Err(invalid(format!("`{what}.program` is empty")));
+    }
+    for name in env.keys() {
+        let plain = !name.is_empty() && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_');
+        if !plain || RESERVED_ENV.contains(&name.as_str()) || name.starts_with("RECOMPLAUNCHER") {
+            return Err(invalid(format!("`{what}.env`: `{name}` can't be set")));
+        }
+    }
+    Ok(())
 }
 
 fn invalid(msg: String) -> String {

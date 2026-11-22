@@ -1,0 +1,170 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { Game, Platform } from "../catalog/games";
+
+const api = vi.hoisted(() => ({
+  librarySnapshot: vi.fn(),
+  installGame: vi.fn(),
+  prepareInstance: vi.fn(),
+  startGame: vi.fn(),
+  cancelJob: vi.fn(),
+  readInstanceLog: vi.fn(),
+  onProgress: vi.fn(),
+  onGameExited: vi.fn(),
+  pickInput: vi.fn(),
+}));
+vi.mock("./api", () => api);
+
+import { LibraryStore } from "./store.svelte";
+import { CANCELLED, instanceId, type InstallationView, type InstanceState } from "./types";
+
+const platform: Platform = { platform: "GameCube", region: "France (PAL)", status: "beta", tested: false, label: "GameCube · France (PAL)" };
+const game: Game = { id: "tos", icon: "S", name: "Tales of Symphonia", repository: "To-Recomp/tos-recomp", year: 2003, state: "not-installed", platforms: [platform] };
+
+const disc = (id: string, optional = false) => ({ id, label: `Label ${id}`, role: "disc", optional, kinds: ["file"], extensions: ["iso"] });
+function installation(state: InstanceState | null, extra: Partial<InstallationView> = {}): InstallationView {
+  return {
+    gameId: "tos", repository: game.repository, tag: "v1", inputs: [disc("disc1"), disc("disc2"), disc("dlc", true)],
+    prepareLabel: "Building the game", canPrepare: true, keepsCopy: true,
+    instances: state ? [{ id: "gamecube-france-pal", platform: "GameCube", region: "France (PAL)", state }] : [],
+    ...extra,
+  };
+}
+
+let progressListener: (e: { job: string; fraction: number | null; message: string }) => void;
+let exitListener: (e: { job: string; code: number | null }) => Promise<void> | void;
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  api.librarySnapshot.mockResolvedValue([]);
+  api.onProgress.mockImplementation(async (l) => ((progressListener = l), () => {}));
+  api.onGameExited.mockImplementation(async (l) => ((exitListener = l), () => {}));
+});
+
+describe("instanceId", () => {
+  it.each([
+    ["GameCube", "France (PAL)", "gamecube-france-pal"],
+    ["PS1", "USA", "ps1-usa"],
+    ["Xbox 360", "../../etc", "xbox-360-etc"],
+    ["日本", "Japan", "x-japan"],
+  ])("%s / %s -> %s (same as the backend)", (p, r, expected) => {
+    expect(instanceId(p, r)).toBe(expected);
+  });
+});
+
+describe("LibraryStore state", () => {
+  it("maps installations to the sidebar state and the instance state", async () => {
+    const store = new LibraryStore();
+    api.librarySnapshot.mockResolvedValue([installation("needsRebuild")]);
+    await store.start();
+    expect(store.gameState("tos")).toBe("installed");
+    expect(store.gameState("other")).toBe("not-installed");
+    expect(store.instanceState("tos", platform)).toBe("needsRebuild");
+    expect(store.instanceState("tos", { ...platform, region: "Japan" })).toBe("notPrepared");
+
+    api.librarySnapshot.mockResolvedValue([installation("ready")]);
+    await store.refresh();
+    expect(store.gameState("tos")).toBe("ready");
+  });
+
+  it("follows the backend's progress and the end of a game", async () => {
+    const store = new LibraryStore();
+    await store.start();
+    progressListener({ job: "prepare:tos/x", fraction: 0.5, message: "Compiling" });
+    expect(store.isRunning("prepare:tos/x")).toBe(true);
+    expect(store.progress["prepare:tos/x"].message).toBe("Compiling");
+
+    progressListener({ job: "game:tos/x", fraction: null, message: "running" });
+    api.librarySnapshot.mockResolvedValue([installation("ready")]);
+    await exitListener({ job: "game:tos/x", code: 3 });
+    expect(store.isRunning("game:tos/x")).toBe(false);
+    expect(store.status).toEqual({ tone: "error", text: "The game stopped with exit code 3. Check the log." });
+    expect(store.gameState("tos")).toBe("ready");
+  });
+});
+
+describe("LibraryStore actions", () => {
+  it("installs a game from its repository and reports it", async () => {
+    const store = new LibraryStore();
+    api.installGame.mockResolvedValue(installation(null, { tag: "v1.2.0" }));
+    api.librarySnapshot.mockResolvedValue([installation(null, { tag: "v1.2.0" })]);
+    await store.install(game);
+    expect(api.installGame).toHaveBeenCalledWith("tos", "To-Recomp/tos-recomp");
+    expect(store.status).toEqual({ tone: "success", text: "Installed Tales of Symphonia v1.2.0." });
+    expect(store.isRunning("install:tos")).toBe(false);
+    expect(store.gameState("tos")).toBe("installed");
+  });
+
+  it("shows a failure, and a cancel as information", async () => {
+    const store = new LibraryStore();
+    api.installGame.mockRejectedValue("The downloaded file doesn't match the checksum GitHub publishes");
+    await store.install(game);
+    expect(store.status).toEqual({ tone: "error", text: "The downloaded file doesn't match the checksum GitHub publishes" });
+    api.installGame.mockRejectedValue(CANCELLED);
+    await store.install(game);
+    expect(store.status).toEqual({ tone: "info", text: "Cancelled." });
+    expect(store.isRunning("install:tos")).toBe(false);
+  });
+
+  it("asks only for the files the game requires, then prepares", async () => {
+    const store = new LibraryStore();
+    api.librarySnapshot.mockResolvedValue([installation(null)]);
+    await store.refresh();
+    api.pickInput.mockImplementation(async (input) => `/discs/${input.id}.iso`);
+    api.prepareInstance.mockResolvedValue({ id: "x", platform: "GameCube", region: "France (PAL)", state: "ready" });
+    await store.prepare(game, platform);
+    expect(api.pickInput).toHaveBeenCalledTimes(2);
+    expect(api.prepareInstance).toHaveBeenCalledWith("tos", "GameCube", "France (PAL)", { disc1: "/discs/disc1.iso", disc2: "/discs/disc2.iso" });
+    expect(store.status).toEqual({ tone: "success", text: "Tales of Symphonia is ready to play." });
+  });
+
+  it("changes nothing when the player closes the file dialog", async () => {
+    const store = new LibraryStore();
+    api.librarySnapshot.mockResolvedValue([installation(null)]);
+    await store.refresh();
+    api.pickInput.mockResolvedValueOnce("/discs/disc1.iso").mockResolvedValueOnce(null);
+    await store.prepare(game, platform);
+    expect(api.prepareInstance).not.toHaveBeenCalled();
+    expect(store.status?.tone).toBe("info");
+  });
+
+  it("rebuilds after an update without asking, and asks only if a file is missing", async () => {
+    const store = new LibraryStore();
+    api.librarySnapshot.mockResolvedValue([installation("needsRebuild")]);
+    await store.refresh();
+    api.prepareInstance.mockResolvedValueOnce({ state: "ready" });
+    await store.prepare(game, platform);
+    expect(api.prepareInstance).toHaveBeenCalledWith("tos", "GameCube", "France (PAL)", {});
+    expect(api.pickInput).not.toHaveBeenCalled();
+
+    api.prepareInstance.mockRejectedValueOnce("Missing file: Label disc2.").mockResolvedValueOnce({ state: "ready" });
+    api.pickInput.mockImplementation(async (input) => `/discs/${input.id}.iso`);
+    await store.prepare(game, platform);
+    expect(api.pickInput).toHaveBeenCalledTimes(2);
+    expect(api.prepareInstance).toHaveBeenLastCalledWith("tos", "GameCube", "France (PAL)", { disc1: "/discs/disc1.iso", disc2: "/discs/disc2.iso" });
+    expect(store.status?.tone).toBe("success");
+  });
+
+  it("starts the game and reports a failure to start", async () => {
+    const store = new LibraryStore();
+    api.startGame.mockResolvedValue(undefined);
+    await store.play(game, platform);
+    expect(api.startGame).toHaveBeenCalledWith("tos", "GameCube", "France (PAL)");
+    expect(store.isRunning("game:tos/gamecube-france-pal")).toBe(true);
+
+    api.startGame.mockRejectedValue("This game isn't ready: prepare it first.");
+    await store.play(game, platform);
+    expect(store.isRunning("game:tos/gamecube-france-pal")).toBe(false);
+    expect(store.status).toEqual({ tone: "error", text: "This game isn't ready: prepare it first." });
+  });
+
+  it("reads a log", async () => {
+    const store = new LibraryStore();
+    api.readInstanceLog.mockResolvedValue("line 1\nline 2");
+    await store.showLog(game, platform, "prepare");
+    expect(api.readInstanceLog).toHaveBeenCalledWith("tos", "GameCube", "France (PAL)", "prepare");
+    expect(store.log).toBe("line 1\nline 2");
+    api.readInstanceLog.mockResolvedValue("");
+    await store.showLog(game, platform, "game");
+    expect(store.log).toBe("The log is empty.");
+  });
+});

@@ -41,6 +41,6 @@ its message above the settings.
 ## Wiring
 
 Commands (`src-tauri/src/settings`): `load_settings`, `set_setting`, `settings_launch_args`,
-each taking `{ installDir, dataDir? }`. `dataDir` defaults to `<installDir>/recompdata`.
-`src/lib/instances.ts` maps a game to that location; it returns `null` until installations
-exist (#3), and the screen then asks the player to install and prepare the game.
+each taking `{ installDir, dataDir? }`. The library (`docs/library.md`) supplies that location
+for the selected game and platform (`instance_location`), and adds the `args` settings to the
+command line when it starts the game.

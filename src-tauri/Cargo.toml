@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "To Recomp Launcher"
 license = "GPL-3.0-only"
 edition = "2021"
-rust-version = "1.77"
+rust-version = "1.85"
 
 [lib]
 name = "to_recomp_launcher_lib"
@@ -20,13 +20,19 @@ updater = ["dep:tauri-plugin-updater"]
 
 [dependencies]
 dirs = "7.0.0"
+flate2 = "1.1.11"
+fs4 = "1.1.0"
 jsonschema = { version = "0.33.0", default-features = false }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
+sha2 = "0.10.9"
+tar = "0.4.46"
 tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
 tauri-plugin-updater = { version = "2", optional = true }
 toml_edit = "0.25.5"
-ureq = "3"
+ureq = { version = "3", features = ["json"] }
+zip = { version = "9", default-features = false, features = ["deflate"] }
 
 [dev-dependencies]
 tempfile = "3.27.0"
@@ -34,3 +40,6 @@ tiny_http = "0.12.0"
 
 [profile.release]
 strip = true
+
+[target."cfg(unix)".dependencies]
+libc = "0.2.191"

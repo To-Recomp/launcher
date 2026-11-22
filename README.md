@@ -8,7 +8,7 @@ Status: M0, scaffold (static layout, no backend features yet). UI references are
 
 Not affiliated with or endorsed by Bandai Namco Entertainment, Sony Interactive Entertainment, Nintendo or any game publisher or developer. This project contains no game files; you bring your own copy of the game.
 
-Releases, checksums, the updater and the Fedora package: `docs/releasing.md`. Settings manifest: `docs/settings-manifest.md`. Game catalog: `docs/catalog.md`.
+Releases, checksums, the updater and the Fedora package: `docs/releasing.md`. Settings manifest: `docs/settings-manifest.md`. Game catalog: `docs/catalog.md`. Installations and instances: `docs/library.md`.
 
 License: GPL v3 (`LICENSE`). Contributions: `CONTRIBUTING.md`.
 

@@ -7,8 +7,8 @@
 
 mod format;
 mod keys;
-mod manifest;
-mod paths;
+pub(crate) mod manifest;
+pub(crate) mod paths;
 mod state;
 mod store;
 
@@ -537,7 +537,7 @@ pub fn launch_args(instance: &Instance) -> Result<Vec<String>, String> {
     Ok(args)
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Location {
     pub install_dir: String,

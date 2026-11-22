@@ -1,15 +1,25 @@
 mod catalog;
 mod fs_util;
+mod library;
 mod settings;
 mod updater;
 
 pub fn run() {
-    let builder = tauri::Builder::default();
+    let builder = tauri::Builder::default()
+        .manage(library::Jobs::default())
+        .plugin(tauri_plugin_dialog::init());
     #[cfg(feature = "updater")]
     let builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
     builder
         .invoke_handler(tauri::generate_handler![
             catalog::cached_catalog,
+            library::library_snapshot,
+            library::install_game,
+            library::prepare_instance,
+            library::start_game,
+            library::cancel_job,
+            library::read_instance_log,
+            library::instance_location,
             catalog::refresh_catalog,
             settings::load_settings,
             settings::set_setting,

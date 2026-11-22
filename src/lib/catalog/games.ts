@@ -12,6 +12,8 @@ export interface Game {
   /** Letters shown in place of artwork. */
   icon: string;
   name: string;
+  /** `owner/name` of the game's recomp repository, where its releases are. */
+  repository: string;
   year: number;
   /** Installations arrive with #3; until then no game is installed. */
   state: GameState;
@@ -31,6 +33,7 @@ export function toGames(catalog: Catalog): Game[] {
     id: g.id,
     icon: initials(g.name),
     name: g.name,
+    repository: g.repository,
     year: g.japanReleaseYear,
     state: "not-installed",
     platforms: g.platforms.map((p) => ({ ...p, label: `${p.platform} · ${p.region}` })),
