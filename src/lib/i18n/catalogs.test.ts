@@ -25,6 +25,12 @@ describe("message catalogs", () => {
     }
   });
 
+  it("French translates every message", () => {
+    const english = Object.keys(catalogs[FALLBACK_LOCALE]);
+    const french = Object.keys(catalogs.fr);
+    expect(english.filter((key) => !french.includes(key))).toEqual([]);
+  });
+
   it("change the text on screen when the language changes, falling back to English for the rest", async () => {
     catalogs.xx = { "launcher.restart.message": "Redémarrez pour appliquer." } as Catalog;
     render(RestartBanner);

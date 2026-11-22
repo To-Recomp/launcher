@@ -1,11 +1,12 @@
 import { en } from "./en";
+import { fr } from "./fr";
 
 /** Every message of the interface; English is the source, other languages translate what they can. */
 export type MessageKey = keyof typeof en;
 export type Catalog = Partial<Record<MessageKey, string>>;
 
 /** The languages the launcher ships, by code. Adding one is adding its catalog here. */
-export const catalogs: Record<string, Catalog> = { en };
+export const catalogs: Record<string, Catalog> = { en, fr };
 
 export const FALLBACK_LOCALE = "en";
 
@@ -13,6 +14,9 @@ class Language {
   code = $state(FALLBACK_LOCALE);
 }
 const language = new Language();
+
+/** Whether `key` is an interface message (for keys built from data, like a setting's id). */
+export const hasMessage = (key: string): key is MessageKey => key in en;
 
 /** The language of the interface. */
 export const locale = () => language.code;

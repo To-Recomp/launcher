@@ -1,18 +1,63 @@
 {
   "config": [
-    { "id": "main", "format": "json", "file": "{data}/launcher.json" }
+    {
+      "id": "main",
+      "format": "json",
+      "file": "{data}/launcher.json"
+    }
   ],
   "settings": [
+    {
+      "id": "language",
+      "label": "Language",
+      "help": "Applies after a restart.",
+      "group": "Interface",
+      "choices": [
+        {
+          "label": "System",
+          "set": {
+            "language": "\"auto\""
+          }
+        },
+        {
+          "label": "English",
+          "set": {
+            "language": "\"en\""
+          }
+        },
+        {
+          "label": "Français",
+          "set": {
+            "language": "\"fr\""
+          }
+        }
+      ],
+      "defaults": {
+        "language": "\"auto\""
+      }
+    },
     {
       "id": "autoUpdate",
       "label": "Check for updates",
       "help": "When the launcher starts. It only tells you; installing is up to you.",
       "group": "Updates",
       "choices": [
-        { "label": "Off", "set": { "updates/auto": "false" } },
-        { "label": "On", "set": { "updates/auto": "true" } }
+        {
+          "label": "Off",
+          "set": {
+            "updates/auto": "false"
+          }
+        },
+        {
+          "label": "On",
+          "set": {
+            "updates/auto": "true"
+          }
+        }
       ],
-      "defaults": { "updates/auto": "true" }
+      "defaults": {
+        "updates/auto": "true"
+      }
     },
     {
       "id": "updateChannel",
@@ -20,10 +65,22 @@
       "help": "Pre-releases are tested less: they may have bugs.",
       "group": "Updates",
       "choices": [
-        { "label": "Stable", "set": { "updates/channel": "\"stable\"" } },
-        { "label": "Pre-release", "set": { "updates/channel": "\"prerelease\"" } }
+        {
+          "label": "Stable",
+          "set": {
+            "updates/channel": "\"stable\""
+          }
+        },
+        {
+          "label": "Pre-release",
+          "set": {
+            "updates/channel": "\"prerelease\""
+          }
+        }
       ],
-      "defaults": { "updates/channel": "\"stable\"" }
+      "defaults": {
+        "updates/channel": "\"stable\""
+      }
     }
   ]
 }

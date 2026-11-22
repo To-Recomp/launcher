@@ -178,3 +178,29 @@ fn update_preferences_default_to_a_stable_check_and_follow_what_the_settings_wri
         }
     );
 }
+
+#[test]
+fn the_language_follows_the_system_until_one_is_chosen() {
+    let dir = TempDir::new().unwrap();
+    assert_eq!(language(dir.path()).unwrap(), None);
+
+    let manifest = manifest().unwrap();
+    let instance = instance(dir.path());
+    // System, English, Français
+    settings::apply_with(
+        &instance,
+        &manifest,
+        "language",
+        SettingInput::Choice { index: 2 },
+    )
+    .unwrap();
+    assert_eq!(language(dir.path()).unwrap().as_deref(), Some("fr"));
+    settings::apply_with(
+        &instance,
+        &manifest,
+        "language",
+        SettingInput::Choice { index: 0 },
+    )
+    .unwrap();
+    assert_eq!(language(dir.path()).unwrap(), None);
+}

@@ -33,7 +33,8 @@ describe("i18n", () => {
 
   it("picks the shipped language closest to the system's preferences", () => {
     catalogs.xx = {};
-    expect(detectLocale(["fr-FR", "xx-YY", "en-GB"])).toBe("xx");
+    expect(detectLocale(["de-DE", "xx-YY", "en-GB"])).toBe("xx");
+    expect(detectLocale(["fr-CA", "en-GB"])).toBe("fr");
     expect(detectLocale(["en-GB"])).toBe("en");
     expect(detectLocale(["ja-JP"])).toBe("en");
     expect(detectLocale([])).toBe("en");

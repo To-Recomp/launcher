@@ -39,4 +39,22 @@ export const launcher = {
   "launcher.updates.available": "Version {version} is available",
   "launcher.updates.restartHelp": "The launcher restarts when it is installed.",
   "launcher.updates.install": "Install and restart",
+
+  // The launcher's own settings come from a manifest built into the launcher (Rust), in English:
+  // what they show is looked up here by setting id, group and option (see launcher/localize.ts).
+  "launcher.group.Interface": "Interface",
+  "launcher.group.Updates": "Updates",
+  "launcher.setting.language.label": "Language",
+  "launcher.setting.language.help": "Applies after a restart.",
+  "launcher.setting.autoUpdate.label": "Check for updates",
+  "launcher.setting.autoUpdate.help": "When the launcher starts. It only tells you; installing is up to you.",
+  "launcher.setting.updateChannel.label": "Releases",
+  "launcher.setting.updateChannel.help": "Pre-releases are tested less: they may have bugs.",
+  "launcher.option.System": "System",
+  "launcher.option.English": "English",
+  "launcher.option.Français": "Français",
+  "launcher.option.Off": "Off",
+  "launcher.option.On": "On",
+  "launcher.option.Stable": "Stable",
+  "launcher.option.Pre-release": "Pre-release",
 } as const satisfies Record<string, string>;

@@ -1,4 +1,4 @@
-import { t } from "../i18n/index.svelte";
+import { locale, t } from "../i18n/index.svelte";
 
 /** How the last refresh of the game list went. */
 export interface CatalogStatus {
@@ -9,7 +9,7 @@ export interface CatalogStatus {
   error: string | null;
 }
 
-const clock = (at: Date) => at.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+const clock = (at: Date) => at.toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit" });
 
 /** One line for the settings: what happened at the last refresh, or that one is under way. */
 export function describeCatalog(status: CatalogStatus | null, refreshing: boolean): string {

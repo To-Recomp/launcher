@@ -1,3 +1,4 @@
+import { locale } from "../i18n/index.svelte";
 import { invoke } from "@tauri-apps/api/core";
 
 /** One published release of a game's repository. */
@@ -28,7 +29,7 @@ export const gameLicense = (repository: string) => invoke<RepositoryLicense | nu
 export function releaseDate(iso: string | null): string {
   const date = iso ? new Date(iso) : null;
   if (!date || Number.isNaN(date.getTime())) return "";
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+  return date.toLocaleDateString(locale(), { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
 }
 
 /** The release body as one short plain-text paragraph. */
