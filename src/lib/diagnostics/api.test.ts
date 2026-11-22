@@ -7,7 +7,7 @@ vi.mock("@tauri-apps/plugin-opener", () => opener);
 const core = vi.hoisted(() => ({ invoke: vi.fn() }));
 vi.mock("@tauri-apps/api/core", () => core);
 
-import { buildReport, copyText, dismissPanic, pendingPanic, issuesUrl, openIssues, revealFile } from "./api";
+import { buildReport, copyText, dismissPanic, pendingPanic, issuesUrl, openIssues, openLink, repositoryUrl, revealFile } from "./api";
 
 const web = vi.fn();
 beforeEach(() => {
@@ -49,5 +49,13 @@ describe("backend and opener calls", () => {
     expect(core.invoke).toHaveBeenLastCalledWith("pending_panic");
     await dismissPanic();
     expect(core.invoke).toHaveBeenLastCalledWith("dismiss_panic");
+  });
+});
+
+describe("links", () => {
+  it("point at the repository's page and open github.com pages through the opener", async () => {
+    expect(repositoryUrl("To-Recomp/toe")).toBe("https://github.com/To-Recomp/toe");
+    await openLink(repositoryUrl("To-Recomp/toe"));
+    expect(opener.openUrl).toHaveBeenCalledWith("https://github.com/To-Recomp/toe");
   });
 });
