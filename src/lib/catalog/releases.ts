@@ -32,15 +32,23 @@ export function releaseDate(iso: string | null): string {
   return date.toLocaleDateString(locale(), { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
 }
 
-/** The release body as one short plain-text paragraph. */
+/** The release body as one short plain-text line: one entry per markdown line, joined by " · ". */
 export function releaseSummary(body: string, max = 160): string {
-  const text = body
-    .replace(/```[\s\S]*?```/g, " ")
+  const lines = body
+    .replace(/```[\s\S]*?```/g, "\n")
     .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")
     .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
-    .replace(/^\s{0,3}(#{1,6}|[-*+>]|\d+\.)\s+/gm, "")
-    .replace(/[*_`~]/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
+    .split("\n")
+    .map((line) =>
+      line
+        .replace(/^\s{0,3}(#{1,6}|[-*+>]|\d+\.)\s+/, "")
+        .replace(/\s+by @[\w-]+(\[bot\])?\s+in\s+https?:\/\/\S+/gi, "") // GitHub's generated "by @user in <pull request>"
+        .replace(/https?:\/\/\S+/g, "")
+        .replace(/[*_`~]/g, "")
+        .replace(/\s+/g, " ")
+        .trim(),
+    )
+    .filter((line) => line && !/^(what's changed|full changelog\b.*)$/i.test(line));
+  const text = lines.join(" · ");
   return text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text;
 }
