@@ -146,6 +146,8 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0   # the whole history and the tags: the description lists every commit since the last release
       - uses: actions/setup-node@v4
         with:
           node-version: 26
@@ -176,10 +178,13 @@ jobs:
           mv ../SHA256SUMS SHA256SUMS
           cat SHA256SUMS
 
+      - name: Release description
+        run: node scripts/release-notes.mjs --tag "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" > release-notes.md
+
       - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          flags=(--title "To Recomp Launcher $GITHUB_REF_NAME" --generate-notes)
+          flags=(--title "To Recomp Launcher $GITHUB_REF_NAME" --notes-file release-notes.md)
           case "$GITHUB_REF_NAME" in *-*) flags+=(--prerelease) ;; esac
           gh release create "$GITHUB_REF_NAME" release-assets/* "${flags[@]}"

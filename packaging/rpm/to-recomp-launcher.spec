@@ -6,7 +6,7 @@
 
 Name:           to-recomp-launcher
 Version:        0.1.0
-Release:        1%{?dist}
+Release:        0.1.rc.1%{?dist}
 Summary:        Install, prepare, configure and launch the Tales of recompilations
 License:        GPL-3.0-only
 URL:            https://github.com/To-Recomp/launcher
@@ -66,5 +66,8 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/org.torecomp.launcher
 %{_datadir}/icons/hicolor/*/apps/org.torecomp.launcher.png
 
 %changelog
+* Mon Nov 23 2026 To Recomp maintainers <noreply@users.noreply.github.com> - 0.1.0-0.1.rc.1
+- First pre-release (0.1.0-rc.1), to try the release flow.
+
 * Sun Nov 22 2026 To Recomp maintainers <noreply@users.noreply.github.com> - 0.1.0-1
 - Initial package

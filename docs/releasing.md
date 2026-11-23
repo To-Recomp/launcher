@@ -14,6 +14,12 @@ Pushing a tag `vX.Y.Z` (or `vX.Y.Z-rc.1`, published as a pre-release) runs
 | `SHA256SUMS` | checksums of every asset above |
 | `latest.json` | what the in-app updater reads (only when the build is signed) |
 
+The release description is built by `scripts/release-notes.mjs` from the commits since the previous
+release (every commit for the first one), grouped by conventional-commit type, with the
+pull request numbers and a link to the comparison. Preview it locally from a checkout with the
+tags: `node scripts/release-notes.mjs --tag vX.Y.Z --repo To-Recomp/launcher` (the tag must exist;
+use a temporary local tag to preview).
+
 Binaries are unsigned for the operating system (no Windows code signing certificate); the
 checksums are the way to verify a download: `sha256sum -c SHA256SUMS --ignore-missing`.
 
