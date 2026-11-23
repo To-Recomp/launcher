@@ -10,14 +10,37 @@ use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
 
+use serde::Serialize;
+
 use crate::settings::manifest::Manifest;
 use crate::settings::Instance;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct Progress {
     /// 0 to 1, when the step reports one.
     pub fraction: Option<f64>,
     pub message: String,
+    /// A line of the step's own list of tasks (`stage-start`, `stage-progress`, `stage-end`).
+    pub stage: Option<Stage>,
+}
+
+/// One task of the step's list, as the step reports it.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct Stage {
+    pub id: String,
+    #[serde(flatten)]
+    pub event: StageEvent,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(tag = "event", rename_all = "lowercase")]
+pub enum StageEvent {
+    /// `stage-start extract 2/5 Copying the game files`
+    Start { index: u32, count: u32, title: String },
+    /// `stage-progress extract 734003200/2919956480 Copying the files of disc 1`
+    Progress { done: u64, total: u64, text: String },
+    /// `stage-end extract ok 41.3` (`ok`, `skipped`, `failed` or `cancelled`, then the seconds)
+    End { status: String, seconds: f64 },
 }
 
 /// What a command line's placeholders are filled from.
@@ -147,7 +170,48 @@ pub fn parse_progress(line: &str) -> Option<Progress> {
     Some(Progress {
         fraction: Some(fraction.clamp(0.0, 1.0)),
         message: message.trim().to_string(),
+        stage: None,
     })
+}
+
+/// `a/b` as two numbers.
+fn ratio<T: std::str::FromStr>(text: &str) -> Option<(T, T)> {
+    let (a, b) = text.split_once('/')?;
+    Some((a.parse().ok()?, b.parse().ok()?))
+}
+
+/// The task lines of a step that reports a list of tasks:
+/// `stage-start <id> <i>/<n> <title>`, `stage-progress <id> <done>/<total> <text>`,
+/// `stage-end <id> <status> <seconds>`.
+pub fn parse_stage(line: &str) -> Option<Progress> {
+    let line = line.trim();
+    let (kind, rest) = line.split_once(' ')?;
+    let (id, rest) = rest.split_once(' ')?;
+    let (second, text) = rest.split_once(' ').unwrap_or((rest, ""));
+    let event = match kind {
+        "stage-start" => {
+            let (index, count) = ratio(second)?;
+            StageEvent::Start { index, count, title: text.trim().to_string() }
+        }
+        "stage-progress" => {
+            let (done, total) = ratio(second)?;
+            StageEvent::Progress { done, total, text: text.trim().to_string() }
+        }
+        "stage-end" => StageEvent::End {
+            status: second.to_string(),
+            seconds: text.trim().parse().ok()?,
+        },
+        _ => return None,
+    };
+    Some(Progress {
+        stage: Some(Stage { id: id.to_string(), event }),
+        ..Progress::default()
+    })
+}
+
+/// What a line of a step's output reports, if anything.
+pub fn parse_line(line: &str) -> Option<Progress> {
+    parse_progress(line).or_else(|| parse_stage(line))
 }
 
 fn pump(mut reader: impl Read, tx: mpsc::Sender<String>) {
@@ -261,7 +325,7 @@ fn run_to_end(
 
     let mut handle = |line: String, log: &mut File| {
         log_line(log, &line);
-        if let Some(progress) = parse_progress(&line) {
+        if let Some(progress) = parse_line(&line) {
             on_progress(progress);
         }
     };
@@ -342,7 +406,8 @@ mod tests {
             parse_progress("progress 0.4 Unpacking menu art"),
             Some(Progress {
                 fraction: Some(0.4),
-                message: "Unpacking menu art".into()
+                message: "Unpacking menu art".into(),
+                stage: None,
             })
         );
         assert_eq!(
@@ -353,6 +418,34 @@ mod tests {
         assert_eq!(parse_progress("progress 0.5").unwrap().message, "");
         assert_eq!(parse_progress("progress soon"), None);
         assert_eq!(parse_progress("compiling progress 0.5"), None);
+    }
+
+    #[test]
+    fn parses_the_task_lines_of_a_step() {
+        let stage = |line| parse_line(line).and_then(|p| p.stage);
+        assert_eq!(
+            stage("stage-start extract 2/5 Copying the game files from the discs"),
+            Some(Stage {
+                id: "extract".into(),
+                event: StageEvent::Start { index: 2, count: 5, title: "Copying the game files from the discs".into() }
+            })
+        );
+        assert_eq!(
+            stage("stage-progress compile 12/37 Compiling the game (12/37 files)"),
+            Some(Stage {
+                id: "compile".into(),
+                event: StageEvent::Progress { done: 12, total: 37, text: "Compiling the game (12/37 files)".into() }
+            })
+        );
+        assert_eq!(
+            stage("stage-end verify ok 36.6"),
+            Some(Stage { id: "verify".into(), event: StageEvent::End { status: "ok".into(), seconds: 36.6 } })
+        );
+        // A task line carries no overall fraction: it must not reset the bar.
+        assert_eq!(parse_line("stage-end verify ok 1.0").unwrap().fraction, None);
+        assert_eq!(parse_line("stage-start extract soon x"), None);
+        assert_eq!(parse_line("stage-end verify ok slowly"), None);
+        assert_eq!(parse_line("warn something"), None);
     }
 
     #[test]

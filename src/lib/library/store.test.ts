@@ -18,7 +18,7 @@ const diagnostics = vi.hoisted(() => ({ buildReport: vi.fn(), pendingPanic: vi.f
 vi.mock("../diagnostics/api", () => diagnostics);
 
 import { LibraryStore } from "./store.svelte";
-import { CANCELLED, instanceId, type InstallationView, type InstanceState } from "./types";
+import { CANCELLED, instanceId, type InstallationView, type InstanceState, type StageEvent } from "./types";
 
 const platform: Platform = { platform: "GameCube", regions: ["France (PAL)", "Japan"], state: "playable", maturity: "beta" };
 const game: Game = { id: "tos", icon: "S", name: "Tales of Symphonia", repository: "To-Recomp/tos-recomp", year: 2003, state: "not-installed", platforms: [platform] };
@@ -33,7 +33,7 @@ function installation(state: InstanceState | null, extra: Partial<InstallationVi
   };
 }
 
-let progressListener: (e: { job: string; fraction: number | null; message: string }) => void;
+let progressListener: (e: { job: string; fraction: number | null; message: string; stage?: StageEvent | null }) => void;
 let exitListener: (e: { job: string; code: number | null }) => Promise<void> | void;
 
 beforeEach(() => {
@@ -85,6 +85,24 @@ describe("LibraryStore state", () => {
     expect(store.isRunning("game:tos/x")).toBe(false);
     expect(store.status).toEqual({ tone: "error", text: "The game stopped with exit code 3. Check the log." });
     expect(store.gameState("tos")).toBe("ready");
+  });
+
+  it("keeps the list of tasks a step reports, apart from the overall progress", async () => {
+    const store = new LibraryStore();
+    await store.start();
+    const job = "prepare:tos/x";
+    progressListener({ job, fraction: 0.2, message: "Copying", stage: null });
+    progressListener({ job, fraction: null, message: "", stage: { id: "verify", event: "start", index: 1, count: 2, title: "Checking the discs" } });
+    progressListener({ job, fraction: null, message: "", stage: { id: "verify", event: "end", status: "ok", seconds: 3.5 } });
+    progressListener({ job, fraction: null, message: "", stage: { id: "compile", event: "start", index: 2, count: 2, title: "Compiling" } });
+    progressListener({ job, fraction: null, message: "", stage: { id: "compile", event: "progress", done: 12, total: 48, text: "12/48 files" } });
+    progressListener({ job, fraction: null, message: "", stage: { id: "other", event: "end", status: "ok", seconds: 1 } }); // never started: ignored
+
+    expect(store.progress[job]).toMatchObject({ fraction: 0.2, message: "Copying" });
+    expect(store.tasks[job]).toEqual([
+      { id: "verify", title: "Checking the discs", index: 1, count: 2, state: "ok", fraction: 1, text: "", seconds: 3.5 },
+      { id: "compile", title: "Compiling", index: 2, count: 2, state: "running", fraction: 0.25, text: "12/48 files", seconds: null },
+    ]);
   });
 });
 

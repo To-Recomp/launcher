@@ -96,6 +96,8 @@ pub struct ProgressEvent {
     pub job: String,
     pub fraction: Option<f64>,
     pub message: String,
+    /// A task of the step's own list, when the event is about one.
+    pub stage: Option<run::Stage>,
 }
 
 fn read_manifest(release_dir: &Path) -> Result<Manifest, String> {
@@ -187,6 +189,7 @@ pub fn install(
     progress(Progress {
         fraction: None,
         message: "Looking for the latest release".into(),
+        ..Progress::default()
     });
     let release = release::latest_release(&env.api, repository, env.os)?;
 
@@ -195,6 +198,7 @@ pub fn install(
             progress(Progress {
                 fraction: Some(1.0),
                 message: format!("{} is already installed", release.tag),
+                ..Progress::default()
             });
             return installation_view(env, game_id, &current);
         }
@@ -230,6 +234,7 @@ fn download_and_unpack(
             progress(Progress {
                 fraction,
                 message: message.clone(),
+                ..Progress::default()
             });
         },
     )?;
@@ -237,6 +242,7 @@ fn download_and_unpack(
     progress(Progress {
         fraction: Some(0.92),
         message: "Unpacking".into(),
+        ..Progress::default()
     });
     let unpacked = work.join("release");
     release::extract(&archive, &unpacked)?;
@@ -264,6 +270,7 @@ fn download_and_unpack(
     progress(Progress {
         fraction: Some(1.0),
         message: format!("Installed {}", release.tag),
+        ..Progress::default()
     });
     installation_view(env, game_id, &record)
 }
@@ -370,6 +377,7 @@ pub fn prepare(
                 .label
                 .clone()
                 .unwrap_or_else(|| "Preparing the game".into()),
+            ..Progress::default()
         });
         run::run_prepare(&launch, &release_dir, &tmp, &log, cancel, progress).map_err(
             |e| match e {
@@ -402,6 +410,7 @@ pub fn prepare(
     progress(Progress {
         fraction: Some(1.0),
         message: "Ready to play".into(),
+        ..Progress::default()
     });
     Ok(InstanceView {
         id,
@@ -587,6 +596,7 @@ fn reporter(app: &tauri::AppHandle, job: &str) -> impl FnMut(Progress) {
                 job: job.clone(),
                 fraction: p.fraction,
                 message: p.message,
+                stage: p.stage,
             },
         );
     }

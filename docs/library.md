@@ -15,6 +15,11 @@
   logs everything to `prepare.log`, needs 1 GB free, and can cancel (the program and what it
   started are killed). Afterwards **the game starts without the files**, unless its `start`
   arguments name an input.
+  A step that works in several tasks can report them (a launcher extension, ignored by
+  RecompLauncher): `stage-start <id> <i>/<n> <title>`, `stage-progress <id> <done>/<total> <text>`
+  and `stage-end <id> ok|skipped|failed|cancelled <seconds>`. The Home page then lists each task
+  with its position, its own percentage and bar while it runs, and its duration once done, under
+  the overall bar (which still follows `progress`). `tos-prepare` prints these lines.
 - **Update**: installing a newer release replaces the release folder only. Instances stay, and
   show `needs rebuild`. With `prepare.keeps_copy` the rebuild starts from what the last run kept
   in the instance, not from the dump (the launcher leaves out arguments naming the copy);

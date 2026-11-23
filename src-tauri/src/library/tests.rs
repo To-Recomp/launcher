@@ -912,10 +912,27 @@ fn json_wire_format_matches_the_frontend_types() {
         serde_json::to_value(ProgressEvent {
             job: "install:tos".into(),
             fraction: Some(0.5),
-            message: "x".into()
+            message: "x".into(),
+            stage: None
         })
         .unwrap(),
-        serde_json::json!({ "job": "install:tos", "fraction": 0.5, "message": "x" })
+        serde_json::json!({ "job": "install:tos", "fraction": 0.5, "message": "x", "stage": null })
+    );
+    assert_eq!(
+        serde_json::to_value(ProgressEvent {
+            job: "prepare:tos/gc".into(),
+            fraction: None,
+            message: "".into(),
+            stage: Some(run::Stage {
+                id: "compile".into(),
+                event: run::StageEvent::Progress { done: 12, total: 37, text: "Compiling".into() }
+            })
+        })
+        .unwrap(),
+        serde_json::json!({
+            "job": "prepare:tos/gc", "fraction": null, "message": "",
+            "stage": { "id": "compile", "event": "progress", "done": 12, "total": 37, "text": "Compiling" }
+        })
     );
     assert_eq!(
         serde_json::to_value(InstanceState::NotPrepared).unwrap(),

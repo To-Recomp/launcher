@@ -114,6 +114,26 @@ describe("HomeView status", () => {
     expect(api.cancelJob).toHaveBeenCalledWith("prepare:toe/ps1");
   });
 
+  it("lists the tasks of the running step with their progress", async () => {
+    const library = show(installed(null));
+    const job = "prepare:toe/ps1";
+    library.progress[job] = { job, fraction: 0.6, message: "Compiling the game" };
+    library.tasks[job] = [
+      { id: "verify", title: "Checking the discs", index: 1, count: 3, state: "ok", fraction: 1, text: "", seconds: 36.6 },
+      { id: "extract", title: "Copying the game files", index: 2, count: 3, state: "skipped", fraction: null, text: "", seconds: 0 },
+      { id: "compile", title: "Compiling the game", index: 3, count: 3, state: "running", fraction: 0.25, text: "12/48 files", seconds: null },
+    ];
+    const list = await screen.findByRole("list", { name: "Tasks" });
+    const items = Array.from(list.querySelectorAll("li"));
+    expect(items).toHaveLength(3);
+    expect(items[0]).toHaveTextContent("1/3 · Checking the discs");
+    expect(items[0]).toHaveTextContent("37 s");
+    expect(items[1]).toHaveTextContent("Skipped");
+    expect(items[2]).toHaveTextContent("25%");
+    expect(items[2]).toHaveTextContent("12/48 files");
+    expect(screen.getByRole("progressbar", { name: "Compiling the game" })).toHaveAttribute("aria-valuenow", "25");
+  });
+
   it("shows the last result and the logs on demand", async () => {
     const library = show(installed("ready"));
     library.status = { tone: "error", text: "The preparation failed (exit code 7)." };

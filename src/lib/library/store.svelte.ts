@@ -13,6 +13,8 @@ import {
   type InstallationView,
   type InstanceState,
   type ProgressEvent,
+  type StageEvent,
+  type TaskView,
 } from "./types";
 
 export type Tone = "info" | "success" | "error";
@@ -44,6 +46,8 @@ export class LibraryStore {
   installations = $state<InstallationView[]>([]);
   /** Progress of the running jobs, by job key. */
   progress = $state<Record<string, ProgressEvent>>({});
+  /** The tasks a running step has reported, by job key, in the order they started. */
+  tasks = $state<Record<string, TaskView[]>>({});
   status = $state<Status | null>(null);
   log = $state<string | null>(null);
   failure = $state<Failure | null>(null);
@@ -59,7 +63,7 @@ export class LibraryStore {
   async start() {
     try {
       this.#unlisten.push(
-        await api.onProgress((e) => (this.progress[e.job] = e)),
+        await api.onProgress((e) => (e.stage ? this.#task(e.job, e.stage) : (this.progress[e.job] = e))),
         await api.onGameExited(async (e) => {
           delete this.progress[e.job];
           const started = this.#started[e.job];
@@ -121,6 +125,29 @@ export class LibraryStore {
     return api.cancelJob(job);
   }
 
+  /** Applies one `stage-*` line of a running step to the list of its tasks. */
+  #task(job: string, e: StageEvent) {
+    this.tasks[job] ??= [];
+    const list = this.tasks[job];
+    if (e.event === "start") {
+      const view: TaskView = { id: e.id, title: e.title, index: e.index, count: e.count, state: "running", fraction: null, text: "", seconds: null };
+      const at = list.findIndex((task) => task.id === e.id);
+      if (at >= 0) list[at] = view;
+      else list.push(view);
+      return;
+    }
+    const task = list.find((candidate) => candidate.id === e.id);
+    if (!task) return;
+    if (e.event === "progress") {
+      task.fraction = e.total > 0 ? Math.min(1, e.done / e.total) : null;
+      task.text = e.text;
+    } else {
+      task.state = (["ok", "skipped", "failed", "cancelled"] as const).find((s) => s === e.status) ?? "ok";
+      task.fraction = task.state === "ok" ? 1 : task.fraction;
+      task.seconds = e.seconds;
+    }
+  }
+
   /** Runs one job: progress under its key while it lasts, the result in `status`. */
   async #run<T>(
     job: string,
@@ -130,6 +157,7 @@ export class LibraryStore {
     done: (result: T) => string,
   ): Promise<T | null> {
     this.progress[job] = { job, fraction: null, message: doing };
+    delete this.tasks[job];
     this.status = null;
     this.failure = null;
     this.log = null;
@@ -149,6 +177,7 @@ export class LibraryStore {
       return null;
     } finally {
       delete this.progress[job];
+      delete this.tasks[job];
       await this.refresh();
     }
   }
