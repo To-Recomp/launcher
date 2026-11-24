@@ -2,7 +2,7 @@
   export type IconName =
     | "download" | "settings" | "play" | "chevron-down" | "chevron-right" | "folder"
     | "info" | "minimize" | "maximize" | "close" | "display" | "graphics" | "audio"
-    | "controls" | "saves" | "game" | "about" | "gear";
+    | "controls" | "saves" | "game" | "about" | "gear" | "trash";
 </script>
 
 <script lang="ts">
@@ -11,6 +11,7 @@
   const paths: Record<IconName, string> = {
     download: "M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2",
     settings: "M4 7h9m4 0h3M4 17h3m4 0h9M15 4v6M9 14v6",
+    trash: "M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 002 2h6a2 2 0 002-2l1-12M9 7V4h6v3",
     play: "M7 4.5v15l12-7.5z",
     "chevron-down": "M6 9l6 6 6-6",
     "chevron-right": "M9 6l6 6-6 6",

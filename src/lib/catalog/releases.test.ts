@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { releaseDate, releaseSummary } from "./releases";
+import { releaseDate, releaseEntries } from "./releases";
 
-describe("releaseSummary", () => {
-  it("flattens markdown to a short plain line", () => {
-    expect(releaseSummary("## New\n- **Faster** startup, see [notes](http://x)\n\n```\ncode\n```")).toBe("New · Faster startup, see notes");
+describe("releaseEntries", () => {
+  it("makes one entry per list item, without headings, links or code", () => {
+    const body = "## New\n- **Faster** startup, see [notes](http://x)\n\n```\ncode\n```\n- plain line";
+    expect(releaseEntries(body)).toEqual({ entries: ["Faster startup, see notes", "plain line"], more: 0 });
   });
   it("drops what GitHub generates around the entries", () => {
     const body = [
@@ -13,18 +14,20 @@ describe("releaseSummary", () => {
       "",
       "**Full Changelog**: https://github.com/To-Recomp/tos-recomp/commits/v0.1.0",
     ].join("\n");
-    expect(releaseSummary(body)).toBe("chore: add Dependabot, CODEOWNERS and PR template · docs: disclose AI assistance");
+    expect(releaseEntries(body).entries).toEqual(["chore: add Dependabot, CODEOWNERS and PR template", "docs: disclose AI assistance"]);
   });
-  it("cuts long text with an ellipsis", () => {
-    const out = releaseSummary("word ".repeat(100), 20);
-    expect(out.length).toBeLessThanOrEqual(20);
-    expect(out.endsWith("…")).toBe(true);
+  it("keeps the first entries and counts the rest", () => {
+    const body = Array.from({ length: 7 }, (_, i) => `- fix: item ${i + 1}`).join("\n");
+    const { entries, more } = releaseEntries(body, 3);
+    expect(entries).toEqual(["fix: item 1", "fix: item 2", "fix: item 3"]);
+    expect(more).toBe(4);
+    expect(releaseEntries("").entries).toEqual([]);
   });
 });
 
 describe("releaseDate", () => {
   it("formats an ISO date and tolerates a missing one", () => {
-    expect(releaseDate("2026-11-21T23:30:00Z")).toBe("Nov 21, 2026");
+    expect(releaseDate("2026-11-21T10:00:00Z")).toBe("Nov 21, 2026");
     expect(releaseDate(null)).toBe("");
     expect(releaseDate("nope")).toBe("");
   });

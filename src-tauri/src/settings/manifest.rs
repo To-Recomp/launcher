@@ -32,6 +32,9 @@ pub struct Manifest {
     pub groups: Vec<Group>,
     #[serde(default)]
     pub inputs: Vec<Input>,
+    /// Paths of the game's saves (`{data}/saves`), kept when a build is deleted.
+    #[serde(default)]
+    pub saves: Vec<String>,
     pub start: Option<Start>,
     pub prepare: Option<Prepare>,
 }

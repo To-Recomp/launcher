@@ -7,6 +7,8 @@ const api = vi.hoisted(() => ({
   prepareInstance: vi.fn(),
   startGame: vi.fn(),
   cancelJob: vi.fn(),
+  deleteBuild: vi.fn(),
+  confirmDeletion: vi.fn(),
   readInstanceLog: vi.fn(),
   onProgress: vi.fn(),
   onGameExited: vi.fn(),
@@ -47,12 +49,14 @@ beforeEach(() => {
 describe("latest releases", () => {
   it("shows the project's releases, newest first as the featured card", async () => {
     releases.gameReleases.mockResolvedValue([
-      { tag: "v1.2.0", name: "Library", publishedAt: "2026-11-21T10:00:00Z", body: "## Faster startup", prerelease: false },
+      { tag: "v1.2.0", name: "Library", publishedAt: "2026-11-21T10:00:00Z", body: "## What's Changed\n* feat(ui): Faster startup by @me in https://github.com/x/y/pull/1\n* fix: Crisper text", prerelease: false },
       { tag: "v1.1.0", name: null, publishedAt: null, body: "", prerelease: false },
     ]);
     show(null);
     expect(await screen.findByText("v1.2.0 · Nov 21, 2026")).toBeInTheDocument();
-    expect(screen.getByText("Faster startup")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 3, name: "Library" })).toBeInTheDocument();
+    expect(screen.getByText("feat(ui): Faster startup")).toBeInTheDocument();
+    expect(screen.getByText("fix: Crisper text")).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 3, name: "v1.1.0" })).toBeInTheDocument();
     expect(releases.gameReleases).toHaveBeenCalledWith(eternia.repository);
   });
@@ -101,6 +105,27 @@ describe("HomeView actions", () => {
     expect(screen.getByText("The game needs a new build after the update.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Rebuild" })).toBeInTheDocument();
   });
+
+  it("deletes the build of a prepared instance only after the player confirms", async () => {
+    const library = show(installed("ready"));
+    api.librarySnapshot.mockResolvedValue([installed(null)]);
+    api.deleteBuild.mockResolvedValue(undefined);
+
+    api.confirmDeletion.mockResolvedValue(false);
+    await fireEvent.click(screen.getByRole("button", { name: "Delete the build" }));
+    await waitFor(() => expect(api.confirmDeletion).toHaveBeenCalledTimes(1));
+    expect(api.deleteBuild).not.toHaveBeenCalled();
+
+    api.confirmDeletion.mockResolvedValue(true);
+    await fireEvent.click(screen.getByRole("button", { name: "Delete the build" }));
+    await waitFor(() => expect(api.deleteBuild).toHaveBeenCalledWith("toe", "PS1"));
+    await waitFor(() => expect(library.status?.text).toMatch(/build of .* was deleted/));
+  });
+
+  it("offers no build to delete before the game is prepared", () => {
+    show(installed(null));
+    expect(screen.queryByRole("button", { name: "Delete the build" })).not.toBeInTheDocument();
+  });
 });
 
 describe("HomeView status", () => {
@@ -126,12 +151,28 @@ describe("HomeView status", () => {
     const list = await screen.findByRole("list", { name: "Tasks" });
     const items = Array.from(list.querySelectorAll("li"));
     expect(items).toHaveLength(3);
-    expect(items[0]).toHaveTextContent("1/3 · Checking the discs");
+    expect(items[0]).toHaveTextContent("1/3 Checking the discs");
     expect(items[0]).toHaveTextContent("37 s");
     expect(items[1]).toHaveTextContent("Skipped");
     expect(items[2]).toHaveTextContent("25%");
     expect(items[2]).toHaveTextContent("12/48 files");
     expect(screen.getByRole("progressbar", { name: "Compiling the game" })).toHaveAttribute("aria-valuenow", "25");
+  });
+
+  it("shows the preparation's log live while it runs, and keeps the last lines when it ends", async () => {
+    const library = show(installed(null));
+    const job = "prepare:toe/ps1";
+    library.progress[job] = { job, fraction: 0.4, message: "Compiling" };
+    api.readInstanceLog.mockResolvedValue("stage-start compile 4/5 Building the game");
+    await fireEvent.click(await screen.findByRole("button", { name: "Live log" }));
+    expect(await screen.findByLabelText("Log")).toHaveTextContent("stage-start compile");
+    expect(api.readInstanceLog).toHaveBeenCalledWith("toe", "PS1", "prepare");
+    expect(screen.getByRole("button", { name: "Hide live log" })).toHaveAttribute("aria-pressed", "true");
+
+    api.readInstanceLog.mockResolvedValue("stage-start compile 4/5 Building the game\nresult ready 0 done");
+    delete library.progress[job];
+    await waitFor(() => expect(screen.getByLabelText("Log")).toHaveTextContent("result ready 0 done"));
+    expect(screen.queryByRole("button", { name: /live log/i })).not.toBeInTheDocument();
   });
 
   it("shows the last result and the logs on demand", async () => {
