@@ -198,7 +198,8 @@ pub fn install(
         message: "Looking for the latest release".into(),
         ..Progress::default()
     });
-    let release = release::latest_release(&env.api, repository, env.os, &env.cache)?;
+    // An install asks GitHub even within the cache's TTL, so it never misses a release just published.
+    let release = release::latest_release(&env.api, repository, env.os, &env.cache, true)?;
 
     if let Some(current) = env.library.installation(game_id)? {
         if current.tag == release.tag && env.library.release_dir(game_id)?.exists() {
@@ -717,11 +718,13 @@ pub fn game_license(
 }
 
 /// The release an install would fetch now (the newest one with a build for this OS), to tell an
-/// installed game that a newer one exists. It reads the same GitHub answer as `install`.
+/// installed game that a newer one exists. It reads the same cached GitHub listing as the home page's
+/// notes, so an update check costs a request at most every 15 minutes.
 #[tauri::command(async)]
 pub fn latest_release_tag(app: tauri::AppHandle, repository: String) -> Result<String, String> {
     let env = app_env(&app)?;
-    release::latest_release(&env.api, &repository, env.os, &env.cache).map(|release| release.tag)
+    release::latest_release(&env.api, &repository, env.os, &env.cache, false)
+        .map(|release| release.tag)
 }
 
 #[tauri::command(async)]

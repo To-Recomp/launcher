@@ -2,7 +2,7 @@
   import Card from "./Card.svelte";
   import Dropdown from "./Dropdown.svelte";
   import Icon, { type IconName } from "./Icon.svelte";
-  import type { Game, Platform } from "../catalog/games";
+  import { hasRepository, type Game, type Platform } from "../catalog/games";
   import { logoFor } from "../catalog/logos";
   import { loadLogoMetrics, type LogoMetrics } from "../catalog/logoMetrics";
   import { cachedReleases, gameReleases, releaseDate, releaseEntries, type ReleaseNote } from "../catalog/releases";
@@ -54,6 +54,11 @@
   let releasesError = $state(false);
   $effect(() => {
     const repository = game.repository;
+    if (!hasRepository(game)) {
+      releases = []; // nothing is published for a planned game: no request
+      releasesError = false;
+      return;
+    }
     releases = cachedReleases(repository) ?? null; // coming back to a game shows what was read, with no reload
     releasesError = false;
     let stale = false;

@@ -20,6 +20,8 @@ struct ApiRelease {
     #[serde(default)]
     draft: bool,
     #[serde(default)]
+    prerelease: bool,
+    #[serde(default)]
     assets: Vec<ApiAsset>,
 }
 
@@ -101,33 +103,36 @@ fn get_json<T: for<'de> Deserialize<'de>>(
         .transpose()
 }
 
-/// The newest release of `repository` (`owner/name`) with an asset for `os`. A repository that
-/// only has pre-releases has no "latest" one: its newest release is taken then.
+/// How many releases the one listing of a repository holds: enough to find its newest stable
+/// release among pre-releases, and for the home page's notes.
+const LIST_SIZE: usize = 20;
+
+/// The one GitHub call every release lookup of a repository reads (the newest release for an install
+/// or an update check, the notes of the home page), so a repository costs one request and one
+/// cache entry whatever is asked.
+fn list_url(api: &str, repository: &str) -> String {
+    format!("{api}/repos/{repository}/releases?per_page={LIST_SIZE}")
+}
+
+/// The newest release of `repository` (`owner/name`) with an asset for `os`: the newest published
+/// release that isn't a pre-release, as GitHub's "latest"; a repository that only has pre-releases
+/// has no "latest" one, and its newest release is taken then. `fresh` asks GitHub even within the
+/// cache's TTL (what an install needs); an update check can do without.
 pub fn latest_release(
     api: &str,
     repository: &str,
     os: &str,
     cache: &Cache,
+    fresh: bool,
 ) -> Result<Release, String> {
-    let latest: Option<ApiRelease> = get_json(
-        cache,
-        &format!("{api}/repos/{repository}/releases/latest"),
-        true,
-    )?;
-    let release = match latest {
-        Some(release) => release,
-        None => {
-            let all: Vec<ApiRelease> = get_json(
-                cache,
-                &format!("{api}/repos/{repository}/releases?per_page=10"),
-                true,
-            )?
-            .ok_or_else(|| format!("{repository} doesn't exist or has no releases."))?;
-            all.into_iter()
-                .find(|r| !r.draft)
-                .ok_or_else(|| format!("{repository} has no release yet."))?
-        }
-    };
+    let all: Vec<ApiRelease> = get_json(cache, &list_url(api, repository), fresh)?
+        .ok_or_else(|| format!("{repository} doesn't exist or has no releases."))?;
+    let published: Vec<&ApiRelease> = all.iter().filter(|r| !r.draft).collect();
+    let release = published
+        .iter()
+        .find(|r| !r.prerelease)
+        .or(published.first())
+        .ok_or_else(|| format!("{repository} has no release yet."))?;
     let asset = pick_asset(&release.assets, os)?.clone();
     let digest = asset
         .digest
@@ -142,7 +147,7 @@ pub fn latest_release(
         })?
         .to_ascii_lowercase();
     Ok(Release {
-        tag: release.tag_name,
+        tag: release.tag_name.clone(),
         asset,
         sha256: digest,
     })
@@ -180,12 +185,7 @@ pub fn recent_releases(
     cache: &Cache,
     fresh: bool,
 ) -> Result<Vec<ReleaseNote>, String> {
-    let all: Vec<ApiNote> = get_json(
-        cache,
-        &format!("{api}/repos/{repository}/releases?per_page={}", count + 5),
-        fresh,
-    )?
-    .unwrap_or_default();
+    let all: Vec<ApiNote> = get_json(cache, &list_url(api, repository), fresh)?.unwrap_or_default();
     Ok(all
         .into_iter()
         .filter(|r| !r.draft)

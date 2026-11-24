@@ -166,12 +166,12 @@ impl Fake {
     fn publish(&self, tag: &str, archive: &[u8], digest: Option<String>) {
         let name = format!("fake-{tag}-{}-x86_64.zip", std::env::consts::OS);
         let digest = digest.map(|d| format!("sha256:{d}"));
-        let body = serde_json::json!({
+        let body = serde_json::json!([{
             "tag_name": tag,
             "assets": [{ "name": name, "size": archive.len(), "browser_download_url": format!("{}/download/{name}", self.url), "digest": digest }],
-        });
+        }]);
         self.route(
-            &format!("/repos/{REPO}/releases/latest"),
+            &format!("/repos/{REPO}/releases?per_page=20"),
             200,
             body.to_string().into_bytes(),
         );
@@ -383,10 +383,8 @@ fn a_repository_with_only_pre_releases_installs_its_newest() {
         { "tag_name": "v0.2.0-draft", "draft": true, "assets": [] },
         { "tag_name": "v0.1.0-rc.1", "assets": [{ "name": name, "size": 1, "browser_download_url": format!("{}/download/{name}", s.fake.url), "digest": format!("sha256:{}", sha(&archive)) }] },
     ]);
-    s.fake
-        .route(&format!("/repos/{REPO}/releases/latest"), 404, Vec::new());
     s.fake.route(
-        &format!("/repos/{REPO}/releases?per_page=10"),
+        &format!("/repos/{REPO}/releases?per_page=20"),
         200,
         list.to_string().into_bytes(),
     );
@@ -1011,7 +1009,7 @@ fn json_wire_format_matches_the_frontend_types() {
 fn recent_releases_skip_drafts_and_a_missing_repository_has_none() {
     let fake = Fake::new();
     fake.route(
-        &format!("/repos/{REPO}/releases?per_page=6"),
+        &format!("/repos/{REPO}/releases?per_page=20"),
         200,
         serde_json::json!([
             { "tag_name": "v3", "draft": true },
@@ -1186,7 +1184,7 @@ fn an_old_answer_is_served_when_github_cannot_be_asked() {
 }
 
 #[test]
-fn a_missing_repository_is_none_and_forgets_the_saved_answer() {
+fn a_missing_repository_is_none_replaces_the_saved_answer_and_is_remembered_for_an_hour() {
     let dir = TempDir::new().unwrap();
     let now = Arc::new(std::sync::atomic::AtomicU64::new(1_000));
     let cache = clocked(dir.path(), &now);
@@ -1197,7 +1195,17 @@ fn a_missing_repository_is_none_and_forgets_the_saved_answer() {
         cache.get(url, false, |_| Ok(Reply::NotFound)).unwrap(),
         None
     );
-    assert!(cache.get(url, false, |_| Err("down".to_string())).is_err());
+
+    // Known as missing: not asked again for four TTLs.
+    let asked_again = |_: Option<&str>| -> Result<Reply, String> { panic!("asked again") };
+    assert_eq!(cache.get(url, false, asked_again).unwrap(), None);
+
+    // After that, and with GitHub out of reach, "missing" is what is still known.
+    now.store(5_000 + 4 * 15 * 60, Ordering::Relaxed);
+    assert_eq!(
+        cache.get(url, false, |_| Err("down".to_string())).unwrap(),
+        None
+    );
 }
 
 #[test]
@@ -1207,7 +1215,7 @@ fn recent_releases_hit_github_once_within_the_ttl_and_refresh_asks_again() {
     let cache = clocked(dir.path(), &now);
     let fake = Fake::new();
     fake.route(
-        &format!("/repos/{REPO}/releases?per_page=6"),
+        &format!("/repos/{REPO}/releases?per_page=20"),
         200,
         serde_json::json!([{ "tag_name": "v1" }])
             .to_string()
@@ -1225,7 +1233,7 @@ fn recent_releases_hit_github_once_within_the_ttl_and_refresh_asks_again() {
     // GitHub goes away after the TTL: the saved notes still show.
     now.store(10_000, Ordering::Relaxed);
     fake.route(
-        &format!("/repos/{REPO}/releases?per_page=6"),
+        &format!("/repos/{REPO}/releases?per_page=20"),
         403,
         Vec::new(),
     );
@@ -1241,11 +1249,126 @@ fn an_install_sees_the_newest_release_despite_a_young_cache() {
     let fake = Fake::new();
     let archive = good_release(&manifest(""));
     fake.publish_ok("v1.0.0", &archive);
-    let first = release::latest_release(&fake.url, REPO, std::env::consts::OS, &cache).unwrap();
+    let first =
+        release::latest_release(&fake.url, REPO, std::env::consts::OS, &cache, true).unwrap();
     assert_eq!(first.tag, "v1.0.0");
     fake.publish_ok("v1.1.0", &archive);
-    let second = release::latest_release(&fake.url, REPO, std::env::consts::OS, &cache).unwrap();
+    let second =
+        release::latest_release(&fake.url, REPO, std::env::consts::OS, &cache, true).unwrap();
     assert_eq!(second.tag, "v1.1.0");
+}
+
+#[test]
+fn a_missing_repository_is_asked_about_once_an_hour_not_at_every_visit() {
+    let dir = TempDir::new().unwrap();
+    let now = Arc::new(std::sync::atomic::AtomicU64::new(1_000));
+    let cache = clocked(dir.path(), &now);
+    let fake = Fake::new(); // every repository is a 404
+    let hits = || fake.hits.lock().unwrap().len();
+    for _ in 0..5 {
+        assert!(
+            release::recent_releases(&fake.url, "To-Recomp/top-recomp", 3, &cache, false)
+                .unwrap()
+                .is_empty()
+        );
+    }
+    assert_eq!(hits(), 1);
+
+    // Still known as missing just under an hour later, asked again after it.
+    now.store(1_000 + 59 * 60, Ordering::Relaxed);
+    release::recent_releases(&fake.url, "To-Recomp/top-recomp", 3, &cache, false).unwrap();
+    assert_eq!(hits(), 1);
+    now.store(1_000 + 60 * 60, Ordering::Relaxed);
+    release::recent_releases(&fake.url, "To-Recomp/top-recomp", 3, &cache, false).unwrap();
+    assert_eq!(hits(), 2);
+
+    // An install doesn't trust it: the repository may have just been created.
+    assert!(release::latest_release(
+        &fake.url,
+        "To-Recomp/top-recomp",
+        std::env::consts::OS,
+        &cache,
+        true
+    )
+    .is_err());
+    assert_eq!(hits(), 3);
+
+    // A repository that appears is found at the next look.
+    let archive = good_release(&manifest(""));
+    fake.publish_ok("v1.0.0", &archive);
+    now.store(1_000 + 2 * 60 * 60, Ordering::Relaxed);
+    assert_eq!(
+        release::recent_releases(&fake.url, REPO, 3, &cache, false).unwrap()[0].tag,
+        "v1.0.0"
+    );
+}
+
+#[test]
+fn the_notes_and_the_latest_release_share_one_request_and_an_update_check_respects_the_ttl() {
+    let dir = TempDir::new().unwrap();
+    let now = Arc::new(std::sync::atomic::AtomicU64::new(1_000));
+    let cache = clocked(dir.path(), &now);
+    let fake = Fake::new();
+    let archive = good_release(&manifest(""));
+    fake.publish_ok("v1.0.0", &archive);
+    let hits = || {
+        fake.hits
+            .lock()
+            .unwrap()
+            .iter()
+            .filter(|u| u.contains("/releases"))
+            .count()
+    };
+
+    release::recent_releases(&fake.url, REPO, 3, &cache, false).unwrap();
+    let os = std::env::consts::OS;
+    assert_eq!(
+        release::latest_release(&fake.url, REPO, os, &cache, false)
+            .unwrap()
+            .tag,
+        "v1.0.0"
+    );
+    release::latest_release(&fake.url, REPO, os, &cache, false).unwrap();
+    assert_eq!(hits(), 1);
+
+    // An install does ask, whatever the age of the saved answer.
+    release::latest_release(&fake.url, REPO, os, &cache, true).unwrap();
+    assert_eq!(hits(), 2);
+}
+
+#[test]
+fn the_latest_release_is_the_newest_stable_one_even_when_a_pre_release_is_newer() {
+    let dir = TempDir::new().unwrap();
+    let now = Arc::new(std::sync::atomic::AtomicU64::new(1_000));
+    let cache = clocked(dir.path(), &now);
+    let fake = Fake::new();
+    let archive = good_release(&manifest(""));
+    let asset = |tag: &str| {
+        let name = format!("fake-{tag}-{}-x86_64.zip", std::env::consts::OS);
+        serde_json::json!([{ "name": name, "size": 1, "browser_download_url": format!("{}/download/{name}", fake.url), "digest": format!("sha256:{}", sha(&archive)) }])
+    };
+    fake.route(
+        &format!("/repos/{REPO}/releases?per_page=20"),
+        200,
+        serde_json::json!([
+            { "tag_name": "v2.0.0-rc.1", "prerelease": true, "assets": asset("v2.0.0-rc.1") },
+            { "tag_name": "v1.0.0", "assets": asset("v1.0.0") },
+        ])
+        .to_string()
+        .into_bytes(),
+    );
+    let os = std::env::consts::OS;
+    assert_eq!(
+        release::latest_release(&fake.url, REPO, os, &cache, false)
+            .unwrap()
+            .tag,
+        "v1.0.0"
+    );
+    // The home page still lists the pre-release first.
+    assert_eq!(
+        release::recent_releases(&fake.url, REPO, 3, &cache, false).unwrap()[0].tag,
+        "v2.0.0-rc.1"
+    );
 }
 
 /// The limit is process-wide: the tests that set it take turns.
@@ -1318,14 +1441,14 @@ fn real_tos_release_prepares_from_real_discs() {
     let mut s = setup();
     s.env.min_free_bytes = 3 << 30;
     let name = format!("tos-recomp-test-{}-x86_64.tar.gz", std::env::consts::OS);
-    let body = serde_json::json!({
+    let body = serde_json::json!([{
         "tag_name": "v-test",
         "assets": [{ "name": name, "size": archive.len(),
             "browser_download_url": format!("{}/download/{name}", s.fake.url),
             "digest": format!("sha256:{}", sha(&archive)) }],
-    });
+    }]);
     s.fake.route(
-        &format!("/repos/{REPO}/releases/latest"),
+        &format!("/repos/{REPO}/releases?per_page=20"),
         200,
         body.to_string().into_bytes(),
     );

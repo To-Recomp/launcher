@@ -78,6 +78,14 @@ describe("latest releases", () => {
     expect(links.openLink).toHaveBeenCalledTimes(2);
   });
 
+  it("doesn't ask GitHub about a game whose consoles are all planned, since it has no repository yet", async () => {
+    const library = new LibraryStore();
+    const planned = { ...eternia, platforms: [{ ...platform, state: "planned" as const, maturity: null }] };
+    render(HomeView, { game: planned, platform: planned.platforms[0], library, platformSizing: [], onplatform: () => {}, onsettings });
+    expect(await screen.findByText("No release has been published yet.")).toBeInTheDocument();
+    expect(releases.gameReleases).not.toHaveBeenCalled();
+  });
+
   it("says so when there is no release or GitHub can't be read", async () => {
     show(null);
     expect(await screen.findByText("No release has been published yet.")).toBeInTheDocument();

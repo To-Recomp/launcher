@@ -21,11 +21,11 @@
   and `stage-end <id> ok|skipped|failed|cancelled <seconds>`. The Home page then lists each task
   with its position, its own percentage and bar while it runs, and its duration once done, under
   the overall bar (which still follows `progress`). `tos-prepare` prints these lines.
-- **Update detection:** once per session, each installed game asks GitHub for the release an install
-  would fetch now (`latest_release_tag`, the same answer as `install`, through the ETag cache). When
-  it isn't the installed tag the game's page shows an **Update** button next to the main one and
-  says which release is available; the main button keeps playing the installed one meanwhile. A
-  failed check (offline, rate limit) is tried again at the next change of the library.
+- **Update detection:** each installed game asks for the release an install would fetch now
+  (`latest_release_tag`, read from the same cached listing as the home page's notes) when the
+  library changes or the game is opened, but at most every 15 minutes (a minute after a failure).
+  When it isn't the installed tag the game's page shows an **Update** button next to the main one
+  and says which release is available; the main button keeps playing the installed one meanwhile.
 - **Update**: installing a newer release replaces the release folder only. Instances stay, and
   show `needs rebuild`. With `prepare.keeps_copy` the rebuild starts from what the last run kept
   in the instance, not from the dump (the launcher leaves out arguments naming the copy);
@@ -39,20 +39,25 @@
   installed release is untouched.
 - **Releases on the home page**: "Latest updates" lists the three newest published releases of
   the selected game's repository (drafts left out), read from `GET /repos/<repo>/releases` by
-  the `game_releases` command, independently of the installation. Each card shows the tag, the
+  the `game_releases` command, independently of the installation. A game whose consoles are all
+  `planned` has no repository yet, so GitHub isn't asked at all (`hasRepository`); the page
+  keeps what it read for 15 minutes, so coming back to a game shows it at once. Each card shows the tag, the
   date, the release name and up to four entries of its notes, one line per list item and without
   headings, links or what GitHub generates ("What's Changed", "by @user in <pull request>", "Full
   Changelog"), then "+ N more" for the rest. A repository without a release
   (or one that doesn't exist) shows an empty message; a network or rate-limit error shows that
   the releases can't be read.
 - **GitHub answer cache**: GitHub allows 60 unauthenticated API requests an hour, so every GET
-  to the API (release notes, license, latest release) is kept in `<app data>/github/<sha256 of
-  the URL>.json` (body, `ETag`, fetch time). Within 15 minutes the saved body is served with no
-  request. After that a conditional request (`If-None-Match`) is made: a `304` (free of quota)
-  renews the entry, a `200` replaces it, a `404` is "doesn't exist" and drops the entry. When
-  GitHub can't be asked (rate limit, network, other errors) the saved body is served even if old;
-  with nothing saved the error shows. Installing skips the 15 minutes (the newest release, its
-  asset URL and checksum are always asked for, with the `ETag`); `game_releases` accepts
+  to the API is kept in `<app data>/github/<sha256 of the URL>.json` (body, `ETag`, fetch time).
+  A repository costs **one** request: the notes, an install and an update check all read
+  `releases?per_page=20` (the newest stable release is picked from it, a pre-release only when
+  there is no stable one). Within 15 minutes the saved body is served with no request. After that
+  a conditional request (`If-None-Match`) is made: a `304` (free of quota) renews the entry and a
+  `200` replaces it. A `404` (a repository that doesn't exist yet) is kept too, for an hour, so it
+  isn't asked about at every visit. When GitHub can't be asked (rate limit, network, other
+  errors) the saved answer is served even if old; with nothing saved the error shows. Installing
+  skips the wait (the newest release, its asset URL and checksum are always asked for, with the
+  `ETag`, and a repository once missing is looked up again); `game_releases` accepts
   `refresh: true` to do the same for the notes.
 
 States: `not prepared`, `ready`, `needs rebuild` (prepared for another release, or a file listed in

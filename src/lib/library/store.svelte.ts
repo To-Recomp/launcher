@@ -42,6 +42,10 @@ export interface Diagnostic {
   error: string | null;
 }
 
+/** How often a game is asked about a newer release (the backend keeps GitHub's answer as long), and the wait after a failure. */
+const UPDATE_CHECK_MS = 15 * 60 * 1000;
+const UPDATE_RETRY_MS = 60 * 1000;
+
 /** Installations, instances and what the launcher is doing with them, for the screens. */
 export class LibraryStore {
   installations = $state<InstallationView[]>([]);
@@ -61,6 +65,8 @@ export class LibraryStore {
 
   #unlisten: (() => void)[] = [];
   #checking = new Set<string>();
+  /** When each game's update check may run again (epoch ms). */
+  #dueAt = new Map<string, number>();
   /** The games started by this session, to say which instance a non-zero exit belongs to. */
   #started: Record<string, { game: Game; platform: Platform }> = {};
 
@@ -110,14 +116,19 @@ export class LibraryStore {
     return this.installations.find((i) => i.gameId === gameId);
   }
 
-  /** Asks GitHub for the newest release of an installed game, once per session unless the check failed. */
+  /**
+   * Asks GitHub for the newest release of an installed game, at most every 15 minutes (a minute after a
+   * failure). The backend answers from its own cache within that time, so asking often costs nothing.
+   */
   async checkUpdate(game: Game) {
-    if (this.#checking.has(game.id) || game.id in this.latest || !this.installationOf(game.id)) return;
+    if (this.#checking.has(game.id) || !this.installationOf(game.id)) return;
+    if (Date.now() < (this.#dueAt.get(game.id) ?? 0)) return;
     this.#checking.add(game.id);
     try {
       this.latest[game.id] = await api.latestReleaseTag(game.repository);
+      this.#dueAt.set(game.id, Date.now() + UPDATE_CHECK_MS);
     } catch {
-      // Offline or limited by GitHub: the next change of the library tries again.
+      this.#dueAt.set(game.id, Date.now() + UPDATE_RETRY_MS); // offline or limited by GitHub
     } finally {
       this.#checking.delete(game.id);
     }

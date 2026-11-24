@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { lastPlayedPlatform } from "./lastPlayed";
 import type { Game, Platform } from "../catalog/games";
 
@@ -60,7 +60,10 @@ describe("instanceId", () => {
 });
 
 describe("LibraryStore state", () => {
-  it("offers an update only when the newest release isn't the installed one, and checks a game once", async () => {
+  afterEach(() => vi.useRealTimers());
+
+  it("offers an update only when the newest release isn't the installed one, and asks again only after 15 minutes", async () => {
+    vi.useFakeTimers();
     const store = new LibraryStore();
     api.librarySnapshot.mockResolvedValue([installation("ready")]);
     await store.start();
@@ -68,15 +71,24 @@ describe("LibraryStore state", () => {
     await store.checkUpdate(game);
     expect(store.updateAvailable("tos")).toBeNull();
 
+    vi.advanceTimersByTime(14 * 60 * 1000);
     await store.checkUpdate(game);
     expect(api.latestReleaseTag).toHaveBeenCalledTimes(1);
 
     api.librarySnapshot.mockResolvedValue([installation("ready", { tag: "v0" })]);
     await store.refresh();
     expect(store.updateAvailable("tos")).toBe("v1");
+
+    // A release published meanwhile shows at the next check.
+    api.latestReleaseTag.mockResolvedValue("v2");
+    vi.advanceTimersByTime(2 * 60 * 1000);
+    await store.checkUpdate(game);
+    expect(api.latestReleaseTag).toHaveBeenCalledTimes(2);
+    expect(store.updateAvailable("tos")).toBe("v2");
   });
 
-  it("checks again after a failed check, and never checks a game that isn't installed", async () => {
+  it("tries again a minute after a failed check, and never checks a game that isn't installed", async () => {
+    vi.useFakeTimers();
     const store = new LibraryStore();
     await store.checkUpdate(game);
     expect(api.latestReleaseTag).not.toHaveBeenCalled();
@@ -86,6 +98,10 @@ describe("LibraryStore state", () => {
     api.latestReleaseTag.mockRejectedValueOnce("offline").mockResolvedValue("v2");
     await store.checkUpdate(game);
     expect(store.updateAvailable("tos")).toBeNull();
+
+    await store.checkUpdate(game); // too soon: GitHub isn't asked again
+    expect(api.latestReleaseTag).toHaveBeenCalledTimes(1);
+    vi.advanceTimersByTime(61 * 1000);
     await store.checkUpdate(game);
     expect(store.updateAvailable("tos")).toBe("v2");
   });

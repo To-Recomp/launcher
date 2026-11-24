@@ -38,6 +38,14 @@ export function defaultPlatform(game: Game, lastPlayed: string | null = null): P
   return playable.find((p) => p.platform === lastPlayed) ?? playable[0] ?? game.platforms[0];
 }
 
+/**
+ * Whether GitHub is worth asking about the game: a console that is only planned has no repository
+ * yet (most of the catalog), so a game with nothing but planned consoles is never looked up.
+ */
+export function hasRepository(game: Game): boolean {
+  return game.platforms.some((p) => p.state !== "planned");
+}
+
 /** The console quick play starts: the one last played if it is ready, else the most recent ready one. */
 export function quickPlayPlatform(game: Game, isReady: (platform: Platform) => boolean, lastPlayed: string | null): Platform | undefined {
   const ready = game.platforms.filter(isReady);
