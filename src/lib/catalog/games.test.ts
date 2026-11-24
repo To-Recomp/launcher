@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { initials, toGames } from "./games";
+import type { CatalogPlatform } from "./types";
+import { defaultPlatform, initials, toGames } from "./games";
 
 describe("initials", () => {
   it.each([
@@ -44,5 +45,25 @@ describe("toGames", () => {
       ],
     });
     expect(game.platforms.map((p) => [p.platform, p.year])).toEqual([["PS3", 2013], ["Wii", 2013], ["PS2", 2004], ["GameCube", 2003]]);
+  });
+});
+
+describe("defaultPlatform", () => {
+  const platform = (name: string, state: "planned" | "playable", year: number): CatalogPlatform => ({
+    platform: name, regions: ["Japan"], state, maturity: state === "playable" ? "beta" : null, releaseYear: year,
+  });
+  const game = (...platforms: CatalogPlatform[]) =>
+    toGames({ games: [{ id: "tos", name: "Tales of Symphonia", japanReleaseYear: 2003, repository: "To-Recomp/tos", platforms }] })[0];
+
+  it("is the first playable console, even when a more recent one is only planned", () => {
+    expect(defaultPlatform(game(platform("Switch", "planned", 2023), platform("GameCube", "playable", 2003)))?.platform).toBe("GameCube");
+  });
+
+  it("is the most recent playable console when several are", () => {
+    expect(defaultPlatform(game(platform("GameCube", "playable", 2003), platform("PS3", "playable", 2013)))?.platform).toBe("PS3");
+  });
+
+  it("is the most recent console when none is playable", () => {
+    expect(defaultPlatform(game(platform("PS2", "planned", 2004), platform("Switch", "planned", 2023)))?.platform).toBe("Switch");
   });
 });
