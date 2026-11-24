@@ -203,7 +203,9 @@ describe("SettingsView", () => {
     const current = [{ label: "Disc 1", path: "/iso/eternia.iso" }, { label: "Disc 2", path: null }];
     render(SettingsView, { ...props, files: { hasInputs: true, current, busy: false, onchange } });
     await openTab("Files");
-    expect(screen.getByText("/iso/eternia.iso")).toBeInTheDocument();
+    const path = screen.getByTitle("/iso/eternia.iso"); // the folder is cut first, the file name always shows
+    expect(path.querySelector(".folder")?.textContent).toBe("/iso/");
+    expect(path.querySelector(".name")?.textContent).toBe("eternia.iso");
     expect(screen.getByText("Disc 2")).toBeInTheDocument();
     expect(screen.getByText("Not chosen")).toBeInTheDocument();
     await fireEvent.click(screen.getByRole("button", { name: "Change game files" }));

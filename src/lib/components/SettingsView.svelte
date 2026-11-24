@@ -96,6 +96,12 @@
     if (current) reload(current);
   });
 
+  /** "/games/a/b.iso" -> ["/games/a/", "b.iso"] (Windows paths too). */
+  function splitPath(path: string): [string, string] {
+    const cut = path.search(/[^/\\]*$/);
+    return [path.slice(0, cut), path.slice(cut)];
+  }
+
   async function apply(setting: SettingView, input: SettingInput) {
     if (!location) return;
     try {
@@ -144,7 +150,10 @@
           <div class="file">
             <span class="file-label" title={file.label}>{file.label}</span>
             {#if file.path}
-              <span class="path" title={file.path}><bdi>{file.path}</bdi></span>
+              {@const [folder, name] = splitPath(file.path)}
+              <span class="path" title={file.path}>
+                <span class="folder">{folder}</span><span class="name">{name}</span>
+              </span>
             {:else}
               <span class="path none">{t("game.settings.files.notChosen")}</span>
             {/if}
@@ -246,17 +255,11 @@
   .file + .file { border-top: 1px solid var(--color-border); }
   /* A long label is cut after two lines (the full text is its tooltip). */
   .file-label { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
-  .path {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    direction: rtl; /* a long path keeps its end (the file name) in view; <bdi> keeps its slashes in place */
-    text-align: left;
-    user-select: text;
-    color: var(--color-text-muted);
-  }
-  .path.none { direction: ltr; font-style: italic; }
+  /* The folder gives way first, with an ellipsis; the file name stays in view. */
+  .path { display: flex; min-width: 0; user-select: text; color: var(--color-text-muted); white-space: nowrap; }
+  .folder { flex: 0 100 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .name { flex: 0 1 auto; min-width: 12ch; overflow: hidden; text-overflow: ellipsis; }
+  .path.none { font-style: italic; }
   .empty { margin-top: var(--space-5); color: var(--color-text-muted); }
   .error {
     display: flex;
