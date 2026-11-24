@@ -328,7 +328,7 @@
   {:else}
     <div class="cards">
       {#each releases ?? [] as note, i (note.tag)}
-        {@const { entries, more } = releaseEntries(note.body, 3)}
+        {@const { entries, more } = releaseEntries(note.body, 2)}
         <Card featured={i === 0}>
           <span class="meta" class:accent={i === 0}>
             {(i === 0 ? [note.tag, releaseDate(note.publishedAt)] : [releaseDate(note.publishedAt)]).filter(Boolean).join(" · ")}
@@ -346,7 +346,11 @@
               {/if}
             </ul>
           {/if}
-          {#if i === 0}<span class="more"><Icon name="chevron-right" size={18} /></span>{/if}
+          {#if i === 0}
+            <button class="more" aria-label={t("game.home.openRelease")} title={t("game.home.openRelease")} onclick={() => openLink(releaseUrl(note))}>
+              <Icon name="chevron-right" size={16} />
+            </button>
+          {/if}
         </Card>
       {/each}
     </div>
@@ -516,11 +520,11 @@
   h2 { margin: auto 0 var(--space-4); padding-top: var(--space-6); font-size: 22px; }
   .cards { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: var(--space-4); }
   .releases-empty { margin: 0; color: var(--color-text-muted); }
-  h3 { margin: var(--space-2) 0 0; font-size: 20px; }
+  h3 { margin: var(--space-1) 0 0; font-size: 18px; }
   .entries { display: grid; gap: var(--space-1); margin: var(--space-1) 0 0; padding: 0 0 0 var(--space-4); line-height: 1.45; color: var(--color-text-muted); }
   .entries li { overflow-wrap: anywhere; }
-  /* A long entry is cut after two lines, a long release after three entries: the rest is on GitHub. */
-  .clamp { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
+  /* A long entry is cut after one line, a long release after two entries: the rest is on GitHub. */
+  .clamp { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 1; line-clamp: 1; overflow: hidden; }
   .entries li.entries-more { list-style: none; margin-left: calc(-1 * var(--space-4)); font-size: 12px; }
   .entries-more button { padding: 0; border: 0; background: none; color: var(--color-accent); font-size: 12px; opacity: 0.85; }
   .entries-more button:hover { opacity: 1; text-decoration: underline; }
@@ -529,13 +533,16 @@
   .more {
     position: absolute;
     right: var(--space-4);
-    bottom: var(--space-4);
+    top: var(--space-4);
     display: grid;
     place-items: center;
-    width: 42px;
-    height: 42px;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 0;
     border-radius: 50%;
     background: var(--color-accent);
     color: var(--color-bg);
   }
+  .more:hover { filter: brightness(1.12); }
 </style>

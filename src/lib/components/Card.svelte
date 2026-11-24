@@ -14,9 +14,9 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-2);
-    max-height: 250px;
+    max-height: 190px;
     overflow: hidden;
-    padding: var(--space-5);
+    padding: var(--space-4) var(--space-5);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
     background: var(--game-bg-mid, var(--color-bg));

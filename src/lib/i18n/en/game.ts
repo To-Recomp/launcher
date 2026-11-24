@@ -39,6 +39,7 @@ export const game = {
   "game.home.releasesError": "The releases can't be read right now.",
   "game.home.releasesNone": "No release has been published yet.",
   "game.home.releaseMore": "+ {count} more on GitHub",
+  "game.home.openRelease": "View this release on GitHub",
   "game.home.settings": "Game settings",
   "game.home.moreActions": "More actions",
 

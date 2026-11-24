@@ -77,6 +77,7 @@ export const fr: Catalog = {
   "game.home.releasesError": "Les versions ne peuvent pas être lues pour le moment.",
   "game.home.releasesNone": "Aucune version n'a encore été publiée.",
   "game.home.releaseMore": "+ {count} de plus sur GitHub",
+  "game.home.openRelease": "Voir cette version sur GitHub",
   "game.home.settings": "Paramètres du jeu",
   "game.home.moreActions": "Autres actions",
 
