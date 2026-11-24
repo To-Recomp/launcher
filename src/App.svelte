@@ -133,6 +133,14 @@
     };
   });
 
+  // Each installed game is checked once for a newer release; the game's page then offers the update.
+  $effect(() => {
+    for (const installation of library.installations) {
+      const installed = catalog.find((g) => g.id === installation.gameId);
+      if (installed) void library.checkUpdate(installed);
+    }
+  });
+
   /** Quick play from the sidebar: starts the console the game was last played on (else its most recent ready one). */
   function quickPlay(id: string) {
     const target = games.find((g) => g.id === id);

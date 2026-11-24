@@ -116,6 +116,22 @@ describe("HomeView actions", () => {
     expect(api.startGame).toHaveBeenCalledWith("toe", "PS1");
   });
 
+  it("offers an update when a newer release exists, then Rebuild once it is downloaded", async () => {
+    const library = show(installed("ready", { keepsCopy: true }));
+    expect(screen.queryByRole("button", { name: "Update" })).not.toBeInTheDocument();
+
+    library.latest["toe"] = "v2";
+    expect(await screen.findByText("v2 is available (installed: v1). Update, then rebuild the game.")).toBeInTheDocument();
+    api.installGame.mockResolvedValue(installed("needsRebuild", { tag: "v2", keepsCopy: true }));
+    api.librarySnapshot.mockResolvedValue([installed("needsRebuild", { tag: "v2", keepsCopy: true })]);
+    await fireEvent.click(screen.getByRole("button", { name: "Update" }));
+    expect(api.installGame).toHaveBeenCalledWith("toe", "To-Recomp/toe");
+
+    expect(await screen.findByRole("button", { name: "Rebuild" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Update" })).not.toBeInTheDocument();
+    expect(screen.getByText("The game needs a new build after the update.")).toBeInTheDocument();
+  });
+
   it("opens the game's settings once the game is installed, not before", async () => {
     show(null);
     expect(screen.getByRole("button", { name: "Game settings" })).toBeDisabled();

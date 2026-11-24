@@ -9,6 +9,9 @@ export const librarySnapshot = () => invoke<InstallationView[]>("library_snapsho
 export const installGame = (gameId: string, repository: string) =>
   invoke<InstallationView>("install_game", { gameId, repository });
 
+/** The tag an install would fetch now; rejects when GitHub can't be reached. */
+export const latestReleaseTag = (repository: string) => invoke<string>("latest_release_tag", { repository });
+
 export const prepareInstance = (gameId: string, platform: string, inputs: Record<string, string>) =>
   invoke<InstanceView>("prepare_instance", { gameId, platform, inputs });
 

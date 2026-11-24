@@ -139,9 +139,14 @@
           : null,
   );
 
+  /** The newest release, when the installed one isn't it. */
+  const newer = $derived(library.updateAvailable(game.id));
+
   const hint = $derived(
     unavailable ??
-      (!installation
+      (newer && installation
+        ? t("game.home.hintUpdate", { tag: newer, current: installation.tag })
+        : !installation
         ? t("game.home.hintInstall")
         : instanceState === "ready"
           ? t("game.home.hintReady")
@@ -238,6 +243,11 @@
         {/if}
       {/if}
     </div>
+    {#if newer}
+      <button class="update" disabled={busy} title={t("game.home.updateTo", { tag: newer })} onclick={() => library.install(game)}>
+        <Icon name="download" size={18} />{t("game.home.update")}
+      </button>
+    {/if}
     <button
       class="icon-button"
       disabled={!installation}
@@ -426,6 +436,19 @@
     text-align: left;
   }
   .menu button:hover { background: color-mix(in srgb, var(--color-accent) 16%, transparent); color: rgb(230 90 86); }
+  .update {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 0 var(--space-4);
+    border: 1px solid color-mix(in srgb, var(--color-accent) 55%, transparent);
+    border-radius: var(--radius-md);
+    background: color-mix(in srgb, var(--color-accent) 14%, transparent);
+    color: var(--color-accent);
+    font-weight: 600;
+  }
+  .update:hover:not(:disabled) { background: color-mix(in srgb, var(--color-accent) 24%, transparent); }
+  .update:disabled { opacity: 0.5; cursor: default; }
   .icon-button {
     display: inline-grid;
     place-items: center;

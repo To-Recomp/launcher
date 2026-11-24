@@ -4,6 +4,7 @@ import type { Game, Platform } from "../catalog/games";
 
 const api = vi.hoisted(() => ({
   librarySnapshot: vi.fn(),
+  latestReleaseTag: vi.fn(),
   installGame: vi.fn(),
   prepareInstance: vi.fn(),
   startGame: vi.fn(),
@@ -59,6 +60,36 @@ describe("instanceId", () => {
 });
 
 describe("LibraryStore state", () => {
+  it("offers an update only when the newest release isn't the installed one, and checks a game once", async () => {
+    const store = new LibraryStore();
+    api.librarySnapshot.mockResolvedValue([installation("ready")]);
+    await store.start();
+    api.latestReleaseTag.mockResolvedValue("v1");
+    await store.checkUpdate(game);
+    expect(store.updateAvailable("tos")).toBeNull();
+
+    await store.checkUpdate(game);
+    expect(api.latestReleaseTag).toHaveBeenCalledTimes(1);
+
+    api.librarySnapshot.mockResolvedValue([installation("ready", { tag: "v0" })]);
+    await store.refresh();
+    expect(store.updateAvailable("tos")).toBe("v1");
+  });
+
+  it("checks again after a failed check, and never checks a game that isn't installed", async () => {
+    const store = new LibraryStore();
+    await store.checkUpdate(game);
+    expect(api.latestReleaseTag).not.toHaveBeenCalled();
+
+    api.librarySnapshot.mockResolvedValue([installation("ready", { tag: "v0" })]);
+    await store.start();
+    api.latestReleaseTag.mockRejectedValueOnce("offline").mockResolvedValue("v2");
+    await store.checkUpdate(game);
+    expect(store.updateAvailable("tos")).toBeNull();
+    await store.checkUpdate(game);
+    expect(store.updateAvailable("tos")).toBe("v2");
+  });
+
   it("maps installations to the sidebar state and the instance state", async () => {
     const store = new LibraryStore();
     api.librarySnapshot.mockResolvedValue([installation("needsRebuild")]);
