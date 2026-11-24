@@ -11,7 +11,8 @@
   (`{data}`: settings, saves, the prepared game), the player's files and a log.
 - **Prepare**: the release's `prepare` command, run once with the player's files (`inputs` of the
   manifest, asked with a file or folder dialog). The launcher passes `{input:<id>}`, `{data}`,
-  `RECOMPLAUNCHER*` variables and a scratch `TMPDIR`, shows the step's `progress 0.4 text` lines,
+  `RECOMPLAUNCHER*` variables and a scratch `TMPDIR`, shows the step's `progress 0.4 text` lines (and, when it fails, the text of its
+  `result failed <code> <text>` line in the error),
   logs everything to `prepare.log`, needs 1 GB free, and can cancel (the program and what it
   started are killed). Afterwards **the game starts without the files**, unless its `start`
   arguments name an input.
