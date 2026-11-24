@@ -30,10 +30,35 @@ export interface InstallationView {
   instances: InstanceView[];
 }
 
+/** A task of a step's own list, as the backend forwards the step's `stage-*` lines. */
+export type StageEvent = { id: string } & (
+  | { event: "start"; index: number; count: number; title: string }
+  | { event: "progress"; done: number; total: number; text: string }
+  | { event: "end"; status: string; seconds: number }
+);
+
 export interface ProgressEvent {
   job: string;
   fraction: number | null;
   message: string;
+  /** Set when the event is about one task of the step's list; then `fraction` and `message` are empty. */
+  stage?: StageEvent | null;
+}
+
+/** One task of a running step, for the list under the progress bar. */
+export interface TaskView {
+  id: string;
+  title: string;
+  /** 1-based position and number of tasks of the step. */
+  index: number;
+  count: number;
+  state: "running" | "ok" | "skipped" | "failed" | "cancelled";
+  /** 0 to 1 while running, when the task counts its work. */
+  fraction: number | null;
+  /** What the task is doing right now. */
+  text: string;
+  /** How long it took, once ended. */
+  seconds: number | null;
 }
 
 /** What the backend rejects with when the player cancels. */

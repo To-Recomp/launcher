@@ -47,6 +47,19 @@
     [jobs.install, jobs.prepare, jobs.game].find((job) => library.isRunning(job)),
   );
   const active = $derived(activeJob ? library.progress[activeJob] : undefined);
+  const tasks = $derived(activeJob ? (library.tasks[activeJob] ?? []) : []);
+  const taskMarks = { running: "…", ok: "✓", skipped: "–", failed: "✕", cancelled: "■" } as const;
+  const taskState = (state: keyof typeof taskMarks) =>
+    ({
+      running: t("game.home.task.running"),
+      ok: t("game.home.task.ok"),
+      skipped: t("game.home.task.skipped"),
+      failed: t("game.home.task.failed"),
+      cancelled: t("game.home.task.cancelled"),
+    })[state];
+  /** "0.9 s", "36 s", "2 min 5 s". */
+  const duration = (seconds: number) =>
+    seconds < 10 ? `${seconds.toFixed(1)} s` : seconds < 60 ? `${Math.round(seconds)} s` : `${Math.floor(seconds / 60)} min ${Math.round(seconds % 60)} s`;
   const busy = $derived(activeJob !== undefined);
 
   const required = $derived(installation?.inputs.filter((i) => !i.optional) ?? []);
@@ -134,6 +147,33 @@
         >
           <span class:indeterminate={active.fraction === null} style:width="{(active.fraction ?? 0.3) * 100}%"></span>
         </div>
+        {#if tasks.length > 0}
+          <ol class="tasks" aria-label={t("game.home.tasks")}>
+            {#each tasks as task (task.id)}
+              <li class={task.state}>
+                <span class="task-mark" role="img" aria-label={taskState(task.state)}>{taskMarks[task.state]}</span>
+                <span class="task-title">{task.index}/{task.count} · {task.title}</span>
+                <span class="task-detail">
+                  {#if task.state === "running"}
+                    {task.fraction !== null ? `${Math.round(task.fraction * 100)}%` : ""}
+                  {:else if task.seconds !== null && task.state !== "skipped"}
+                    {duration(task.seconds)}
+                  {:else if task.state === "skipped"}
+                    {taskState("skipped")}
+                  {/if}
+                </span>
+                {#if task.state === "running"}
+                  {#if task.text}<span class="task-text">{task.text}</span>{/if}
+                  {#if task.fraction !== null}
+                    <div class="bar" role="progressbar" aria-label={task.title} aria-valuemin="0" aria-valuemax="100" aria-valuenow={Math.round(task.fraction * 100)}>
+                      <span style:width="{task.fraction * 100}%"></span>
+                    </div>
+                  {/if}
+                {/if}
+              </li>
+            {/each}
+          </ol>
+        {/if}
       {:else if library.status}
         <p>{library.status.text}</p>
       {:else}
@@ -240,6 +280,16 @@
   .bar { height: 6px; margin-top: var(--space-2); border-radius: 3px; background: var(--color-bg-sunken); overflow: hidden; }
   .bar span { display: block; height: 100%; background: var(--color-accent); transition: width 0.2s; }
   .bar span.indeterminate { animation: slide 1.2s ease-in-out infinite alternate; }
+  .tasks { display: grid; gap: var(--space-2); margin: var(--space-3) 0 0; padding: 0; list-style: none; }
+  .tasks li { display: grid; grid-template-columns: 18px 1fr auto; column-gap: var(--space-2); align-items: baseline; font-size: 12px; }
+  .task-mark { text-align: center; color: var(--color-text-muted); }
+  .tasks li.ok .task-mark { color: var(--color-success, var(--color-accent)); }
+  .tasks li.failed .task-mark { color: rgb(200 48 44); }
+  .tasks li.running .task-title { font-weight: 600; }
+  .tasks li:not(.running) .task-title { color: var(--color-text-muted); }
+  .task-detail { color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
+  .task-text { grid-column: 2 / 4; color: var(--color-text-muted); }
+  .tasks .bar { grid-column: 2 / 4; margin-top: 2px; height: 4px; }
   @keyframes slide { from { margin-left: 0; } to { margin-left: 70%; } }
   .log {
     max-height: 200px;
