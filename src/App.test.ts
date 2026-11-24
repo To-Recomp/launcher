@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/svelte";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/svelte";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Catalog } from "./lib/catalog/types";
 
@@ -36,10 +36,10 @@ const game = (id: string, name: string, year: number, platforms: Catalog["games"
 });
 const catalog: Catalog = {
   games: [
-    game("toe", "Tales of Eternia", 2000, [{ platform: "PS1", regions: ["USA"], state: "playable", maturity: "alpha" }]),
+    game("toe", "Tales of Eternia", 2000, [{ platform: "PS1", regions: ["USA"], state: "playable", maturity: "alpha", releaseYear: null }]),
     game("tos", "Tales of Symphonia", 2003, [
-      { platform: "GameCube", regions: ["France (PAL)", "Japan"], state: "playable", maturity: "beta" },
-      { platform: "PlayStation 2", regions: ["Japan"], state: "planned", maturity: null },
+      { platform: "PlayStation 2", regions: ["Japan"], state: "planned", maturity: null, releaseYear: 2002 },
+      { platform: "GameCube", regions: ["France (PAL)", "Japan"], state: "playable", maturity: "beta", releaseYear: null },
     ]),
   ],
 };
@@ -67,11 +67,11 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: /Tales of Eternia/ })).toHaveAttribute("aria-current", "true");
   });
 
-  it("lists consoles in the selector, not their regions", async () => {
+  it("lists consoles in the selector with the year the game came out on each, most recent first", async () => {
     render(App);
     await fireEvent.click(await screen.findByRole("button", { name: /Tales of Symphonia/ }));
     await fireEvent.click(screen.getByRole("combobox", { name: "Platform" }));
-    expect(screen.getAllByRole("option").map((o) => o.textContent?.trim())).toEqual(["GameCube", "PlayStation 2"]);
+    expect(screen.getAllByRole("option").map((o) => o.textContent?.trim())).toEqual(["2003 · GameCube", "2002 · PlayStation 2"]);
   });
 
   it("shows the saved list at once, then the downloaded one", async () => {
@@ -119,29 +119,37 @@ describe("App", () => {
   it("shows what is installed in the sidebar and finds the settings of the selected platform", async () => {
     library.librarySnapshot.mockResolvedValue([
       { gameId: "tos", repository: "To-Recomp/tos", tag: "v1", inputs: [], prepareLabel: null, canPrepare: false, keepsCopy: false,
-        instances: [{ id: "gamecube", platform: "GameCube", state: "ready" }] },
+        instances: [{ id: "gamecube", platform: "GameCube", state: "ready", inputs: {} }] },
     ]);
     library.instanceLocation.mockImplementation(async (game: string, platform: string) =>
       game === "tos" ? { installDir: `/lib/${game}/release`, dataDir: `/lib/${game}/${platform}` } : null);
     render(App);
     await fireEvent.click(await screen.findByRole("button", { name: /Tales of Symphonia/ }));
-    expect(screen.getByRole("img", { name: "Play" })).toBeInTheDocument();
-    expect(screen.getByRole("img", { name: "Install" })).toBeInTheDocument(); // Eternia
+    expect(screen.getAllByRole("img", { name: "Play" })).toHaveLength(1); // only a game that can be played at once has an icon
     expect(library.instanceLocation).toHaveBeenCalledWith("tos", "GameCube");
 
     await fireEvent.click(screen.getByRole("combobox", { name: "Platform" }));
-    await fireEvent.click(screen.getByRole("option", { name: "PlayStation 2" }));
+    await fireEvent.click(screen.getByRole("option", { name: /PlayStation 2/ }));
     await waitFor(() => expect(library.instanceLocation).toHaveBeenLastCalledWith("tos", "PlayStation 2"));
   });
 
-  it("does not expose the hidden Mods tab and switches between Home and Settings", async () => {
+  it("opens the settings of an installed game from its page and goes back", async () => {
     render(App);
     await screen.findByRole("heading", { level: 1, name: "Eternia" });
-    expect(screen.queryByRole("tab", { name: "Mods" })).not.toBeInTheDocument();
-    await fireEvent.click(screen.getByRole("tab", { name: "Settings" }));
+    expect(screen.queryByRole("tab", { name: "Settings" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Game settings" })).toBeDisabled(); // not installed
+    cleanup();
+
+    library.librarySnapshot.mockResolvedValue([
+      { gameId: "toe", repository: "To-Recomp/toe", tag: "v1", inputs: [], prepareLabel: null, canPrepare: false, keepsCopy: false, instances: [] },
+    ]);
+    render(App);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Game settings" })).toBeEnabled());
+    await fireEvent.click(screen.getByRole("button", { name: "Game settings" }));
     expect(screen.getByRole("heading", { level: 1, name: "Settings" })).toBeInTheDocument();
-    expect(screen.getByText("Install and prepare Tales of Eternia to configure it.")).toBeInTheDocument();
-    await fireEvent.click(screen.getByRole("tab", { name: "Home" }));
+    await fireEvent.click(screen.getByRole("tab", { name: "Files" }));
+    expect(screen.getByText("This game doesn't use files of your own.")).toBeInTheDocument();
+    await fireEvent.click(screen.getByRole("button", { name: "Back" }));
     expect(screen.getByText("Action status")).toBeInTheDocument();
   });
 

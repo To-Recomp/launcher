@@ -79,6 +79,14 @@ describe("paletteFromPixels", () => {
     expect(paletteFromPixels(data)).toBeNull();
   });
 
+  it("takes the hue of a logo made of muted tints, such as slate lettering with a silver face", () => {
+    const slate = hslToRgb(190, 0.12, 0.35);
+    const silver = hslToRgb(215, 0.08, 0.88);
+    const palette = paletteFromPixels([...pixels(300, [...slate, 255]), ...pixels(300, [...silver, 255]), ...pixels(200, [255, 255, 255, 255])])!;
+    expect(palette).not.toBeNull();
+    expect(Math.abs(hue(palette.primary) - 190)).toBeLessThan(15);
+  });
+
   it("ignores a speck of color in a mostly grey logo", () => {
     expect(paletteFromPixels([...pixels(500, [128, 128, 128, 255]), ...pixels(2, [200, 40, 40, 255])])).toBeNull();
   });

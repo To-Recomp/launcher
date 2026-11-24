@@ -2,8 +2,11 @@ import type { Catalog, CatalogPlatform } from "./types";
 
 export type GameState = "not-installed" | "installed" | "ready";
 
-/** One console of a game: the selector lists these, and an instance is one of them. */
-export type Platform = CatalogPlatform;
+/**
+ * One console of a game: the selector lists these, and an instance is one of them. `year` is when
+ * the game came out on it (the game's first Japanese release when the catalog doesn't say).
+ */
+export type Platform = CatalogPlatform & { year: number };
 
 export interface Game {
   id: string;
@@ -26,6 +29,15 @@ export function initials(name: string): string {
   return (first + (/^\d+$/.test(last) ? last : "")).toUpperCase();
 }
 
+/**
+ * The console a game opens on: the one it was last played on (if it is still playable), else the
+ * first playable one, else the most recent (the list is ordered that way).
+ */
+export function defaultPlatform(game: Game, lastPlayed: string | null = null): Platform | undefined {
+  const playable = game.platforms.filter((p) => p.state === "playable");
+  return playable.find((p) => p.platform === lastPlayed) ?? playable[0] ?? game.platforms[0];
+}
+
 export function toGames(catalog: Catalog): Game[] {
   return catalog.games.map((g) => ({
     id: g.id,
@@ -34,6 +46,9 @@ export function toGames(catalog: Catalog): Game[] {
     repository: g.repository,
     year: g.japanReleaseYear,
     state: "not-installed",
-    platforms: g.platforms,
+    // Most recent first; the catalog's order breaks ties.
+    platforms: g.platforms
+      .map((p): Platform => ({ ...p, year: p.releaseYear ?? g.japanReleaseYear }))
+      .sort((a, b) => b.year - a.year),
   }));
 }

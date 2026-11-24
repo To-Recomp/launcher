@@ -10,6 +10,8 @@ use std::time::Duration;
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
 
+use super::github_cache::{Cache, Reply};
+
 pub const CANCELLED: &str = "Cancelled.";
 
 #[derive(Debug, Deserialize)]
@@ -47,23 +49,37 @@ fn agent() -> Result<ureq::Agent, String> {
         .into())
 }
 
-fn get_json<T: for<'de> Deserialize<'de>>(url: &str) -> Result<Option<T>, String> {
-    let mut response = agent()?
+fn request(url: &str, etag: Option<&str>) -> Result<Reply, String> {
+    let mut request = agent()?
         .get(url)
         .header("Accept", "application/vnd.github+json")
         .header(
             "User-Agent",
             concat!("to-recomp-launcher/", env!("CARGO_PKG_VERSION")),
-        )
+        );
+    if let Some(etag) = etag {
+        request = request.header("If-None-Match", etag);
+    }
+    let mut response = request
         .call()
         .map_err(|e| format!("Can't reach GitHub: {e}"))?;
     match response.status().as_u16() {
-        200 => response
-            .body_mut()
-            .read_json()
-            .map(Some)
-            .map_err(|e| format!("GitHub's answer is unreadable: {e}")),
-        404 => Ok(None),
+        200 => {
+            let etag = response
+                .headers()
+                .get("etag")
+                .and_then(|v| v.to_str().ok())
+                .map(str::to_string);
+            let text = response
+                .body_mut()
+                .read_to_string()
+                .map_err(|e| format!("GitHub's answer is unreadable: {e}"))?;
+            serde_json::from_str::<serde::de::IgnoredAny>(&text)
+                .map_err(|e| format!("GitHub's answer is unreadable: {e}"))?;
+            Ok(Reply::Body { text, etag })
+        }
+        304 => Ok(Reply::NotModified),
+        404 => Ok(Reply::NotFound),
         403 | 429 => {
             Err("GitHub is limiting requests from this connection; try again later.".to_string())
         }
@@ -71,17 +87,42 @@ fn get_json<T: for<'de> Deserialize<'de>>(url: &str) -> Result<Option<T>, String
     }
 }
 
+/// `fresh` skips the cache's TTL, for what an installation depends on.
+fn get_json<T: for<'de> Deserialize<'de>>(
+    cache: &Cache,
+    url: &str,
+    fresh: bool,
+) -> Result<Option<T>, String> {
+    cache
+        .get(url, fresh, |etag| request(url, etag))?
+        .map(|text| {
+            serde_json::from_str(&text).map_err(|e| format!("GitHub's answer is unreadable: {e}"))
+        })
+        .transpose()
+}
+
 /// The newest release of `repository` (`owner/name`) with an asset for `os`. A repository that
 /// only has pre-releases has no "latest" one: its newest release is taken then.
-pub fn latest_release(api: &str, repository: &str, os: &str) -> Result<Release, String> {
-    let latest: Option<ApiRelease> =
-        get_json(&format!("{api}/repos/{repository}/releases/latest"))?;
+pub fn latest_release(
+    api: &str,
+    repository: &str,
+    os: &str,
+    cache: &Cache,
+) -> Result<Release, String> {
+    let latest: Option<ApiRelease> = get_json(
+        cache,
+        &format!("{api}/repos/{repository}/releases/latest"),
+        true,
+    )?;
     let release = match latest {
         Some(release) => release,
         None => {
-            let all: Vec<ApiRelease> =
-                get_json(&format!("{api}/repos/{repository}/releases?per_page=10"))?
-                    .ok_or_else(|| format!("{repository} doesn't exist or has no releases."))?;
+            let all: Vec<ApiRelease> = get_json(
+                cache,
+                &format!("{api}/repos/{repository}/releases?per_page=10"),
+                true,
+            )?
+            .ok_or_else(|| format!("{repository} doesn't exist or has no releases."))?;
             all.into_iter()
                 .find(|r| !r.draft)
                 .ok_or_else(|| format!("{repository} has no release yet."))?
@@ -136,11 +177,14 @@ pub fn recent_releases(
     api: &str,
     repository: &str,
     count: usize,
+    cache: &Cache,
+    fresh: bool,
 ) -> Result<Vec<ReleaseNote>, String> {
-    let all: Vec<ApiNote> = get_json(&format!(
-        "{api}/repos/{repository}/releases?per_page={}",
-        count + 5
-    ))?
+    let all: Vec<ApiNote> = get_json(
+        cache,
+        &format!("{api}/repos/{repository}/releases?per_page={}", count + 5),
+        fresh,
+    )?
     .unwrap_or_default();
     Ok(all
         .into_iter()
@@ -180,8 +224,10 @@ struct ApiLicense {
 pub fn repository_license(
     api: &str,
     repository: &str,
+    cache: &Cache,
 ) -> Result<Option<RepositoryLicense>, String> {
-    let file: Option<ApiLicenseFile> = get_json(&format!("{api}/repos/{repository}/license"))?;
+    let file: Option<ApiLicenseFile> =
+        get_json(cache, &format!("{api}/repos/{repository}/license"), false)?;
     Ok(file.and_then(|f| {
         Some(RepositoryLicense {
             name: f.license?.name,

@@ -25,7 +25,8 @@ a path or a list of `{path, if}`. Placeholders: `{install}`, `{data}`, `{home}`,
 ## Launcher extensions (ignored by RecompLauncher)
 
 - `tab`: sub-tab of the setting, one of `Display`, `Graphics`, `Audio`, `Controls`, `Saves`,
-  `Game` (default `Game`). `group` is the heading inside the tab.
+  `Game` (default `Game`). `group` is the heading inside the tab. The launcher adds two tabs of
+  its own that manifests don't fill: `Files` (change the game files) and `About`.
 - `control`: `"toggle"` (exactly two choices), `"segmented"` or `"dropdown"`, to override the
   automatic choice above.
 - `text`: `{ "key": "player/name" }`, a free-text value of at most 256 characters.

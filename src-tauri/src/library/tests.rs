@@ -959,6 +959,7 @@ fn json_wire_format_matches_the_frontend_types() {
             id: "gc".into(),
             platform: "GC".into(),
             state: InstanceState::NeedsRebuild,
+            inputs: BTreeMap::from([("disc1".to_string(), "/iso/tos.iso".to_string())]),
         }],
     };
     assert_eq!(
@@ -967,7 +968,7 @@ fn json_wire_format_matches_the_frontend_types() {
             "gameId": "tos", "repository": "To-Recomp/tos-recomp", "tag": "v1",
             "inputs": [{ "id": "disc1", "label": "Disc 1", "role": "disc", "optional": false, "kinds": ["file"], "extensions": ["iso"] }],
             "prepareLabel": null, "canPrepare": true, "keepsCopy": true,
-            "instances": [{ "id": "gc", "platform": "GC", "state": "needsRebuild" }]
+            "instances": [{ "id": "gc", "platform": "GC", "state": "needsRebuild", "inputs": { "disc1": "/iso/tos.iso" } }]
         })
     );
     assert_eq!(
@@ -1020,15 +1021,18 @@ fn recent_releases_skip_drafts_and_a_missing_repository_has_none() {
         .to_string()
         .into_bytes(),
     );
-    let notes = release::recent_releases(&fake.url, REPO, 1).unwrap();
+    let off = github_cache::Cache::disabled();
+    let notes = release::recent_releases(&fake.url, REPO, 1, &off, false).unwrap();
     assert_eq!(notes.len(), 1);
     assert_eq!(notes[0].tag, "v2");
     assert_eq!(notes[0].name.as_deref(), Some("Second"));
     assert!(notes[0].prerelease);
 
-    assert!(release::recent_releases(&fake.url, "To-Recomp/none", 3)
-        .unwrap()
-        .is_empty());
+    assert!(
+        release::recent_releases(&fake.url, "To-Recomp/none", 3, &off, false)
+            .unwrap()
+            .is_empty()
+    );
 }
 
 #[test]
@@ -1045,16 +1049,203 @@ fn a_repository_license_has_a_name_and_a_link_and_none_is_not_an_error() {
         .into_bytes(),
     );
     assert_eq!(
-        release::repository_license(&fake.url, REPO).unwrap(),
+        release::repository_license(&fake.url, REPO, &github_cache::Cache::disabled()).unwrap(),
         Some(release::RepositoryLicense {
             name: "GNU General Public License v3.0".into(),
             url: "https://github.com/To-Recomp/tos-recomp/blob/main/LICENSE".into(),
         })
     );
     assert_eq!(
-        release::repository_license(&fake.url, "To-Recomp/none").unwrap(),
+        release::repository_license(
+            &fake.url,
+            "To-Recomp/none",
+            &github_cache::Cache::disabled()
+        )
+        .unwrap(),
         None
     );
+}
+
+// ---- GitHub answer cache ----
+
+use github_cache::{Cache, Reply};
+
+fn clocked(dir: &Path, now: &Arc<std::sync::atomic::AtomicU64>) -> Cache {
+    let now = Arc::clone(now);
+    Cache::with_clock(
+        Some(dir.to_path_buf()),
+        Duration::from_secs(900),
+        Box::new(move || now.load(Ordering::Relaxed)),
+    )
+}
+
+fn body(text: &str, etag: &str) -> Result<Reply, String> {
+    Ok(Reply::Body {
+        text: text.into(),
+        etag: Some(etag.into()),
+    })
+}
+
+#[test]
+fn a_young_cached_answer_is_served_without_asking_github() {
+    let dir = TempDir::new().unwrap();
+    let now = Arc::new(std::sync::atomic::AtomicU64::new(1_000));
+    let cache = clocked(dir.path(), &now);
+    let url = "https://api.github.com/x";
+    assert_eq!(
+        cache.get(url, false, |_| body("[1]", "\"a\"")).unwrap(),
+        Some("[1]".into())
+    );
+    now.store(1_899, Ordering::Relaxed);
+    let served = cache
+        .get(url, false, |_| panic!("no request within the TTL"))
+        .unwrap();
+    assert_eq!(served, Some("[1]".into()));
+
+    // Another process reads the same file.
+    let again = clocked(dir.path(), &now);
+    assert_eq!(
+        again.get(url, false, |_| panic!("saved on disk")).unwrap(),
+        Some("[1]".into())
+    );
+}
+
+#[test]
+fn an_old_answer_is_checked_with_its_etag_and_a_304_renews_it() {
+    let dir = TempDir::new().unwrap();
+    let now = Arc::new(std::sync::atomic::AtomicU64::new(1_000));
+    let cache = clocked(dir.path(), &now);
+    let url = "https://api.github.com/x";
+    cache.get(url, false, |_| body("[1]", "\"a\"")).unwrap();
+
+    now.store(1_900, Ordering::Relaxed);
+    let served = cache
+        .get(url, false, |etag| {
+            assert_eq!(etag, Some("\"a\""));
+            Ok(Reply::NotModified)
+        })
+        .unwrap();
+    assert_eq!(served, Some("[1]".into()));
+    // The timestamp moved: young again.
+    now.store(2_700, Ordering::Relaxed);
+    cache
+        .get(url, false, |_| panic!("renewed by the 304"))
+        .unwrap();
+
+    // A 200 replaces the entry.
+    now.store(3_700, Ordering::Relaxed);
+    let served = cache.get(url, false, |_| body("[2]", "\"b\"")).unwrap();
+    assert_eq!(served, Some("[2]".into()));
+    assert_eq!(
+        cache.get(url, false, |_| panic!("young")).unwrap(),
+        Some("[2]".into())
+    );
+}
+
+#[test]
+fn fresh_skips_the_ttl_but_still_sends_the_etag() {
+    let dir = TempDir::new().unwrap();
+    let now = Arc::new(std::sync::atomic::AtomicU64::new(1_000));
+    let cache = clocked(dir.path(), &now);
+    let url = "https://api.github.com/x";
+    cache.get(url, false, |_| body("[1]", "\"a\"")).unwrap();
+    let mut asked = false;
+    let served = cache
+        .get(url, true, |etag| {
+            asked = true;
+            assert_eq!(etag, Some("\"a\""));
+            body("[2]", "\"b\"")
+        })
+        .unwrap();
+    assert!(asked);
+    assert_eq!(served, Some("[2]".into()));
+}
+
+#[test]
+fn an_old_answer_is_served_when_github_cannot_be_asked() {
+    let dir = TempDir::new().unwrap();
+    let now = Arc::new(std::sync::atomic::AtomicU64::new(1_000));
+    let cache = clocked(dir.path(), &now);
+    let url = "https://api.github.com/x";
+    let limited = || Err::<Reply, _>("GitHub is limiting requests.".to_string());
+    // Nothing saved: the error shows.
+    assert_eq!(
+        cache.get(url, false, |_| limited()).unwrap_err(),
+        "GitHub is limiting requests."
+    );
+    cache.get(url, false, |_| body("[1]", "\"a\"")).unwrap();
+    now.store(100_000, Ordering::Relaxed);
+    assert_eq!(
+        cache.get(url, false, |_| limited()).unwrap(),
+        Some("[1]".into())
+    );
+    assert_eq!(
+        cache.get(url, true, |_| limited()).unwrap(),
+        Some("[1]".into())
+    );
+}
+
+#[test]
+fn a_missing_repository_is_none_and_forgets_the_saved_answer() {
+    let dir = TempDir::new().unwrap();
+    let now = Arc::new(std::sync::atomic::AtomicU64::new(1_000));
+    let cache = clocked(dir.path(), &now);
+    let url = "https://api.github.com/x";
+    cache.get(url, false, |_| body("[1]", "\"a\"")).unwrap();
+    now.store(5_000, Ordering::Relaxed);
+    assert_eq!(
+        cache.get(url, false, |_| Ok(Reply::NotFound)).unwrap(),
+        None
+    );
+    assert!(cache.get(url, false, |_| Err("down".to_string())).is_err());
+}
+
+#[test]
+fn recent_releases_hit_github_once_within_the_ttl_and_refresh_asks_again() {
+    let dir = TempDir::new().unwrap();
+    let now = Arc::new(std::sync::atomic::AtomicU64::new(1_000));
+    let cache = clocked(dir.path(), &now);
+    let fake = Fake::new();
+    fake.route(
+        &format!("/repos/{REPO}/releases?per_page=6"),
+        200,
+        serde_json::json!([{ "tag_name": "v1" }])
+            .to_string()
+            .into_bytes(),
+    );
+    let hits = || fake.hits.lock().unwrap().len();
+    for _ in 0..3 {
+        let notes = release::recent_releases(&fake.url, REPO, 1, &cache, false).unwrap();
+        assert_eq!(notes[0].tag, "v1");
+    }
+    assert_eq!(hits(), 1);
+    release::recent_releases(&fake.url, REPO, 1, &cache, true).unwrap();
+    assert_eq!(hits(), 2);
+
+    // GitHub goes away after the TTL: the saved notes still show.
+    now.store(10_000, Ordering::Relaxed);
+    fake.route(
+        &format!("/repos/{REPO}/releases?per_page=6"),
+        403,
+        Vec::new(),
+    );
+    let notes = release::recent_releases(&fake.url, REPO, 1, &cache, false).unwrap();
+    assert_eq!(notes[0].tag, "v1");
+}
+
+#[test]
+fn an_install_sees_the_newest_release_despite_a_young_cache() {
+    let dir = TempDir::new().unwrap();
+    let now = Arc::new(std::sync::atomic::AtomicU64::new(1_000));
+    let cache = clocked(dir.path(), &now);
+    let fake = Fake::new();
+    let archive = good_release(&manifest(""));
+    fake.publish_ok("v1.0.0", &archive);
+    let first = release::latest_release(&fake.url, REPO, std::env::consts::OS, &cache).unwrap();
+    assert_eq!(first.tag, "v1.0.0");
+    fake.publish_ok("v1.1.0", &archive);
+    let second = release::latest_release(&fake.url, REPO, std::env::consts::OS, &cache).unwrap();
+    assert_eq!(second.tag, "v1.1.0");
 }
 
 /// The limit is process-wide: the tests that set it take turns.

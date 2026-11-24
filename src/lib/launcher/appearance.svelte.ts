@@ -4,10 +4,9 @@ type Theme = "dark" | "light";
 
 const DARK_QUERY = "(prefers-color-scheme: dark)";
 
-/** The theme and the game colors, applied to the page as soon as they are read and when they change. */
+/** The theme, applied to the page as soon as it is read and when it changes. */
 export class AppearanceStore {
   #choice = $state<"dark" | "light" | "system">("dark");
-  #palette = $state(true);
   #systemDark = $state(true);
 
   /** The theme shown: the system's own when "system" is chosen. */
@@ -17,7 +16,7 @@ export class AppearanceStore {
 
   /** The game's logo colors are made for the dark theme: they never tint a light one. */
   get usesGamePalette(): boolean {
-    return this.#palette && this.theme === "dark";
+    return this.theme === "dark";
   }
 
   /** Reads the settings and follows the system's theme from now on. */
@@ -38,9 +37,8 @@ export class AppearanceStore {
     try {
       const found = await launcherAppearance();
       this.#choice = found.theme;
-      this.#palette = found.gamePalette;
     } catch {
-      // No Tauri runtime (plain browser): the dark theme with game colors stays.
+      // No Tauri runtime (plain browser): the dark theme stays.
     }
     this.#apply();
   }

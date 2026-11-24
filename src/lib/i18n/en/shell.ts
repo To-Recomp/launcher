@@ -1,10 +1,7 @@
 export const shell = {
-  "shell.tabs.home": "Home",
-  "shell.tabs.settings": "Settings",
   "shell.nonAffiliation":
     "Not affiliated with or endorsed by Bandai Namco Entertainment, Sony Interactive Entertainment, Microsoft, Nintendo, or any game's publisher or developer.",
   "shell.app.pickGame": "Pick a game once the list has loaded.",
-  "shell.titleBar.launcherSettings": "Launcher settings",
   "shell.titleBar.minimize": "Minimize",
   "shell.titleBar.maximize": "Maximize",
   "shell.titleBar.close": "Close",
@@ -14,8 +11,7 @@ export const shell = {
   "shell.sidebar.savedList": "Showing the saved game list. ",
   "shell.sidebar.retry": "Retry",
   "shell.sidebar.play": "Play",
-  "shell.sidebar.settings": "Settings",
-  "shell.sidebar.install": "Install",
+  "shell.sidebar.launcherSettings": "Launcher settings",
   "shell.update.idle": "Update launcher",
   "shell.update.checking": "Checking…",
   "shell.update.current": "Up to date",

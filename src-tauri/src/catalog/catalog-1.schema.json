@@ -34,7 +34,8 @@
           "items": { "type": "string", "minLength": 1 }
         },
         "state": { "enum": ["planned", "in-progress", "playable", "unsupported"] },
-        "maturity": { "enum": ["alpha", "beta", "stable"] }
+        "maturity": { "enum": ["alpha", "beta", "stable"] },
+        "release_year": { "type": "integer", "minimum": 1990, "maximum": 2100 }
       },
       "if": { "properties": { "state": { "const": "playable" } }, "required": ["state"] },
       "then": { "required": ["maturity"] },

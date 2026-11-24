@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { lastPlayedPlatform } from "./lastPlayed";
 import type { Game, Platform } from "../catalog/games";
 
 const api = vi.hoisted(() => ({
@@ -20,7 +21,7 @@ vi.mock("../diagnostics/api", () => diagnostics);
 import { LibraryStore } from "./store.svelte";
 import { CANCELLED, instanceId, type InstallationView, type InstanceState, type StageEvent } from "./types";
 
-const platform: Platform = { platform: "GameCube", regions: ["France (PAL)", "Japan"], state: "playable", maturity: "beta" };
+const platform: Platform = { platform: "GameCube", regions: ["France (PAL)", "Japan"], state: "playable", maturity: "beta", releaseYear: null, year: 2003 };
 const game: Game = { id: "tos", icon: "S", name: "Tales of Symphonia", repository: "To-Recomp/tos-recomp", year: 2003, state: "not-installed", platforms: [platform] };
 
 const disc = (id: string, optional = false) => ({ id, label: `Label ${id}`, role: "disc", optional, kinds: ["file"], extensions: ["iso"] });
@@ -28,7 +29,7 @@ function installation(state: InstanceState | null, extra: Partial<InstallationVi
   return {
     gameId: "tos", repository: game.repository, tag: "v1", inputs: [disc("disc1"), disc("disc2"), disc("dlc", true)],
     prepareLabel: "Building the game", canPrepare: true, keepsCopy: true,
-    instances: state ? [{ id: "gamecube", platform: "GameCube", state }] : [],
+    instances: state ? [{ id: "gamecube", platform: "GameCube", state, inputs: {} }] : [],
     ...extra,
   };
 }
@@ -204,6 +205,17 @@ describe("LibraryStore actions", () => {
     await store.play(game, platform);
     expect(store.isRunning("game:tos/gamecube")).toBe(false);
     expect(store.status).toEqual({ tone: "error", text: "This game isn't ready: prepare it first." });
+  });
+
+  it("remembers the console a game was played on, and not one that failed to start", async () => {
+    localStorage.clear();
+    const store = new LibraryStore();
+    api.startGame.mockRejectedValue("This game isn't ready: prepare it first.");
+    await store.play(game, platform);
+    expect(lastPlayedPlatform("tos")).toBeNull();
+    api.startGame.mockResolvedValue(undefined);
+    await store.play(game, platform);
+    expect(lastPlayedPlatform("tos")).toBe("GameCube");
   });
 
   it("reads a log", async () => {

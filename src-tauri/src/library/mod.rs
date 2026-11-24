@@ -5,6 +5,7 @@
 //! settings and saves. The player gives their dump once, to the instance's *prepare* step;
 //! afterwards the game starts without it. See `store` for the layout.
 
+mod github_cache;
 mod release;
 mod run;
 mod store;
@@ -39,6 +40,8 @@ pub struct Env {
     pub os: &'static str,
     pub launcher_version: &'static str,
     pub min_free_bytes: u64,
+    /// GitHub API answers kept on disk.
+    pub cache: github_cache::Cache,
 }
 
 impl Env {
@@ -49,6 +52,7 @@ impl Env {
             os: std::env::consts::OS,
             launcher_version: env!("CARGO_PKG_VERSION"),
             min_free_bytes: MIN_FREE_BYTES,
+            cache: github_cache::Cache::disabled(),
         }
     }
 }
@@ -88,6 +92,8 @@ pub struct InstanceView {
     pub id: String,
     pub platform: String,
     pub state: InstanceState,
+    /// The files the instance was prepared from, by input id, as the player picked them.
+    pub inputs: BTreeMap<String, String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -151,6 +157,7 @@ fn installation_view(
             state: store::instance_state(&manifest, record, &instance, &location),
             id,
             platform: instance.platform,
+            inputs: instance.inputs,
         });
     }
     Ok(InstallationView {
@@ -191,7 +198,7 @@ pub fn install(
         message: "Looking for the latest release".into(),
         ..Progress::default()
     });
-    let release = release::latest_release(&env.api, repository, env.os)?;
+    let release = release::latest_release(&env.api, repository, env.os, &env.cache)?;
 
     if let Some(current) = env.library.installation(game_id)? {
         if current.tag == release.tag && env.library.release_dir(game_id)?.exists() {
@@ -416,6 +423,7 @@ pub fn prepare(
         id,
         platform: platform.to_string(),
         state,
+        inputs: instance.inputs,
     })
 }
 
@@ -631,7 +639,14 @@ pub(crate) fn root_in_use(app: &tauri::AppHandle) -> Option<PathBuf> {
 pub(crate) fn app_env(app: &tauri::AppHandle) -> Result<Env, String> {
     let root = app.state::<LibraryRoot>().0.clone()?;
     let api = std::env::var(API_ENV).unwrap_or_else(|_| DEFAULT_API.to_string());
-    Ok(Env::new(root, api))
+    let cache = app
+        .path()
+        .app_data_dir()
+        .map(|dir| dir.join("github"))
+        .map_err(|e| format!("No place to keep GitHub's answers: {e}"))?;
+    let mut env = Env::new(root, api);
+    env.cache = github_cache::Cache::in_dir(cache);
+    Ok(env)
 }
 
 fn reporter(app: &tauri::AppHandle, job: &str) -> impl FnMut(Progress) {
@@ -679,8 +694,16 @@ pub fn install_game(
 pub fn game_releases(
     app: tauri::AppHandle,
     repository: String,
+    refresh: Option<bool>,
 ) -> Result<Vec<release::ReleaseNote>, String> {
-    release::recent_releases(&app_env(&app)?.api, &repository, 3)
+    let env = app_env(&app)?;
+    release::recent_releases(
+        &env.api,
+        &repository,
+        3,
+        &env.cache,
+        refresh.unwrap_or(false),
+    )
 }
 
 /// The license of a game's repository, for its About page.
@@ -689,7 +712,8 @@ pub fn game_license(
     app: tauri::AppHandle,
     repository: String,
 ) -> Result<Option<release::RepositoryLicense>, String> {
-    release::repository_license(&app_env(&app)?.api, &repository)
+    let env = app_env(&app)?;
+    release::repository_license(&env.api, &repository, &env.cache)
 }
 
 #[tauri::command(async)]

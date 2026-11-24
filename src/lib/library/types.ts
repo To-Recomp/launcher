@@ -17,6 +17,8 @@ export interface InstanceView {
   id: string;
   platform: string;
   state: InstanceState;
+  /** The files the instance was prepared from, by input id. */
+  inputs: Record<string, string>;
 }
 
 export interface InstallationView {

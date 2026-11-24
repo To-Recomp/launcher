@@ -8,13 +8,15 @@
   import Sidebar from "./lib/components/Sidebar.svelte";
   import TitleBar from "./lib/components/TitleBar.svelte";
   import { cachedCatalog, refreshCatalog } from "./lib/catalog/api";
-  import { toGames, type Game } from "./lib/catalog/games";
+  import { lastPlayedPlatform } from "./lib/library/lastPlayed";
+  import { defaultPlatform, toGames, type Game } from "./lib/catalog/games";
   import { logoFor } from "./lib/catalog/logos";
   import type { CatalogStatus } from "./lib/catalog/status";
   import { loadPalette, paletteStyle, type Palette } from "./lib/catalog/palette";
-  import { nonAffiliation, type TabId } from "./lib/data";
+  import { nonAffiliation, type View } from "./lib/data";
   import { t } from "./lib/i18n/index.svelte";
   import { instanceLocation } from "./lib/library/api";
+  import { gameJob, installJob, instanceId, prepareJob } from "./lib/library/types";
   import { appearance } from "./lib/launcher/appearance.svelte";
   import { syncTray } from "./lib/launcher/tray";
   import { launcherUpdates } from "./lib/launcher/updates.svelte";
@@ -30,7 +32,7 @@
   let catalogError = $state<string | null>(null);
   let catalogStatus = $state<CatalogStatus | null>(null);
   let selectedId = $state<string | null>(null);
-  let tab = $state<TabId>("home");
+  let view = $state<View>("game");
 
   // The sidebar's icon says whether the game is installed or ready to play.
   const games = $derived(catalog.map((g) => ({ ...g, state: library.gameState(g.id) })));
@@ -52,7 +54,11 @@
   });
 
   let platformByGame = $state<Record<string, string>>({});
-  const platform = $derived(game?.platforms.find((p) => p.platform === platformByGame[game.id]) ?? game?.platforms[0]);
+  const platform = $derived(
+    game &&
+      (game.platforms.find((p) => p.platform === platformByGame[game.id]) ??
+        defaultPlatform(game, lastPlayedPlatform(game.id))),
+  );
 
   /** Where the selected instance keeps its settings, once its game is installed. */
   let location = $state<Location | null>(null);
@@ -99,22 +105,51 @@
     loadCatalog();
     return () => library.stop();
   });
+
+  /** Every console of every game: the platform selector keeps the width of the widest label. */
+  const platformSizing = $derived(
+    games.flatMap((g) => g.platforms.map((p) => ({ option: p.platform, prefix: String(p.year) }))),
+  );
+
+  /** The files the selected game is built from, for its settings' "Files" tab. */
+  const files = $derived.by(() => {
+    const installation = game ? library.installationOf(game.id) : undefined;
+    const instance = platform ? instanceId(platform.platform) : "";
+    const used = installation?.instances.find((i) => i.id === instance)?.inputs ?? {};
+    return {
+      hasInputs: (installation?.inputs.filter((i) => !i.optional).length ?? 0) > 0,
+      /** Each file the game asks for and the path it was prepared from, if any. */
+      current: (installation?.inputs ?? []).map((input) => ({ label: input.label, path: used[input.id] ?? null })),
+      busy:
+        !game ||
+        [installJob(game.id), prepareJob(game.id, instance), gameJob(game.id, instance)].some((job) =>
+          library.isRunning(job),
+        ),
+      onchange: () => {
+        if (!game || !platform) return;
+        view = "game"; // the preparation reports its progress on the game's page
+        void library.prepare(game, platform);
+      },
+    };
+  });
 </script>
 
-<div class="app" style={paletteStyle(tab === "launcher" || !appearance.usesGamePalette ? null : palette)}>
+<div class="app" style={paletteStyle(view === "launcher" || !appearance.usesGamePalette ? null : palette)}>
   <Sidebar
     {games}
-    selectedId={tab === "launcher" ? "" : (game?.id ?? "")}
+    selectedId={view === "launcher" ? "" : (game?.id ?? "")}
     onselect={(id) => {
       selectedId = id;
-      if (tab === "launcher") tab = "home"; // picking a game leaves the launcher's own page
+      view = "game"; // picking a game leaves the launcher's settings and the previous game's
     }}
+    launcherActive={view === "launcher"}
+    onlauncher={() => (view = view === "launcher" ? "game" : "launcher")}
     {loading}
     {catalogError}
     onretry={loadCatalog}
   />
   <div class="main">
-    <TitleBar {tab} onchange={(next) => (tab = next)} />
+    <TitleBar />
     {#if library.crash}
       <CrashBanner
         file={library.crash}
@@ -123,7 +158,7 @@
       />
     {/if}
     <main>
-      {#if tab === "launcher"}
+      {#if view === "launcher"}
         <LauncherSettingsView
           catalogStatus={catalogStatus}
           refreshingCatalog={loading}
@@ -133,8 +168,15 @@
         />
       {:else if !game}
         <p class="empty">{t("shell.app.pickGame")}</p>
-      {:else if tab === "home"}
-        <HomeView {game} {platform} {library} onplatform={(label) => (platformByGame[game.id] = label)} />
+      {:else if view === "game"}
+        <HomeView
+          {game}
+          {platform}
+          {library}
+          {platformSizing}
+          onplatform={(label) => (platformByGame[game.id] = label)}
+          onsettings={() => (view = "settings")}
+        />
       {:else}
         <SettingsView
           gameId={game.id}
@@ -143,6 +185,8 @@
           platform={platform?.platform ?? null}
           tag={library.installationOf(game.id)?.tag ?? null}
           {location}
+          {files}
+          onback={() => (view = "game")}
           onreportbug={() => library.reportGameBug(game, platform)}
         />
       {/if}

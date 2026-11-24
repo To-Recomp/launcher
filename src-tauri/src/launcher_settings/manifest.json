@@ -156,29 +156,6 @@
       }
     },
     {
-      "id": "gamePalette",
-      "label": "Game colors",
-      "help": "Tints the pages with colors taken from the game's logo. Dark theme only.",
-      "group": "Appearance",
-      "choices": [
-        {
-          "label": "Off",
-          "set": {
-            "appearance/gamePalette": "false"
-          }
-        },
-        {
-          "label": "On",
-          "set": {
-            "appearance/gamePalette": "true"
-          }
-        }
-      ],
-      "defaults": {
-        "appearance/gamePalette": "true"
-      }
-    },
-    {
       "id": "downloadLimit",
       "label": "Game download speed",
       "help": "Applies to game downloads only, shared by all of them. The game list and launcher updates aren't limited.",

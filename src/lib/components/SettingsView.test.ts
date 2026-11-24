@@ -48,6 +48,8 @@ const props = {
   tag: "v0.3.0",
   location,
   onreportbug,
+  files: { hasInputs: false, current: [], busy: false, onchange: vi.fn() },
+  onback: vi.fn(),
 };
 
 async function openTab(name: string) {
@@ -194,5 +196,27 @@ describe("SettingsView", () => {
     await openTab("About");
     await fireEvent.click(screen.getByRole("button", { name: "Report a bug" }));
     expect(onreportbug).toHaveBeenCalledOnce();
+  });
+
+  it("changes the game files from the Files tab, when the game has some and nothing is running", async () => {
+    const onchange = vi.fn();
+    const current = [{ label: "Disc 1", path: "/iso/eternia.iso" }, { label: "Disc 2", path: null }];
+    render(SettingsView, { ...props, files: { hasInputs: true, current, busy: false, onchange } });
+    await openTab("Files");
+    expect(screen.getByText("/iso/eternia.iso")).toBeInTheDocument();
+    expect(screen.getByText("Disc 2")).toBeInTheDocument();
+    expect(screen.getByText("Not chosen")).toBeInTheDocument();
+    await fireEvent.click(screen.getByRole("button", { name: "Change game files" }));
+    expect(onchange).toHaveBeenCalledOnce();
+  });
+
+  it("has nothing to change in the Files tab for a game that uses no files, and goes back to the game", async () => {
+    const onback = vi.fn();
+    render(SettingsView, { ...props, onback });
+    await openTab("Files");
+    expect(screen.getByText("This game doesn't use files of your own.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Change game files" })).not.toBeInTheDocument();
+    await fireEvent.click(screen.getByRole("button", { name: "Back" }));
+    expect(onback).toHaveBeenCalledOnce();
   });
 });

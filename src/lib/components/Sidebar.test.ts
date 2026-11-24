@@ -13,7 +13,8 @@ vi.mock("../updater", () => updater);
 import { LauncherUpdates } from "../launcher/updates.svelte";
 import Sidebar from "./Sidebar.svelte";
 
-const props = { games: [eternia], selectedId: "toe", onselect: () => {} };
+const onlauncher = vi.fn();
+const props = { games: [eternia], selectedId: "toe", onselect: () => {}, onlauncher };
 
 async function started() {
   const updates = new LauncherUpdates();
@@ -55,5 +56,22 @@ describe("Sidebar update button", () => {
     updater.checkLauncherUpdate.mockResolvedValue({ version: "0.2.0" });
     render(Sidebar, await started());
     expect(await screen.findByRole("button", { name: "Update to v0.2.0" })).toBeInTheDocument();
+  });
+});
+
+describe("Sidebar footer and list", () => {
+  it("opens the launcher's settings from the gear next to the version", async () => {
+    updater.updaterAvailable.mockResolvedValue(false);
+    render(Sidebar, await started());
+    await fireEvent.click(screen.getByRole("button", { name: "Launcher settings" }));
+    expect(onlauncher).toHaveBeenCalledOnce();
+  });
+
+  it("gives an icon only to a game that can be played at once", async () => {
+    updater.updaterAvailable.mockResolvedValue(false);
+    const ready = { ...eternia, id: "tos", name: "Tales of Symphonia", state: "ready" as const };
+    render(Sidebar, { ...(await started()), games: [eternia, { ...eternia, id: "tov", name: "Tales of Vesperia", state: "installed" as const }, ready] });
+    expect(screen.getAllByRole("img")).toHaveLength(1);
+    expect(screen.getByRole("img", { name: "Play" })).toBeInTheDocument();
   });
 });

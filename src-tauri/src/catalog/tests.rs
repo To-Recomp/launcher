@@ -341,10 +341,26 @@ fn json_wire_format_matches_the_frontend_types() {
             "catalog": { "games": [{
                 "id": "tos", "name": "Tales of Symphonia", "japanReleaseYear": 2003,
                 "repository": "To-Recomp/tos",
-                "platforms": [{ "platform": "GameCube", "regions": ["France (PAL)"], "state": "playable", "maturity": "beta" }]
+                "platforms": [{ "platform": "GameCube", "regions": ["France (PAL)"], "state": "playable", "maturity": "beta", "releaseYear": null }]
             }] },
             "updated": true,
             "error": null
         })
     );
+}
+
+#[test]
+fn a_console_may_say_the_year_the_game_came_out_on_it() {
+    let raw = r#"{"format":1,"generated":"2026-11-22T12:00:00Z","games":[{"id":"t","name":"T","japan_release_year":2003,"repository":"a/b","platforms":[
+        {"platform":"GC","regions":["EU"],"state":"planned","release_year":2003},
+        {"platform":"PS3","regions":["EU"],"state":"planned"}]}]}"#;
+    let years: Vec<Option<u32>> = parse(raw).unwrap().games[0]
+        .platforms
+        .iter()
+        .map(|p| p.release_year)
+        .collect();
+    assert_eq!(years, [Some(2003), None]);
+
+    let too_early = raw.replace("\"release_year\":2003", "\"release_year\":1800");
+    assert!(parse(&too_early).is_err());
 }

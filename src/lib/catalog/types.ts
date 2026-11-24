@@ -12,6 +12,8 @@ export interface CatalogPlatform {
   state: State;
   /** Only for a playable console. */
   maturity: Maturity | null;
+  /** The year the game came out on this console, when the catalog says. */
+  releaseYear: number | null;
 }
 
 export interface CatalogGame {
