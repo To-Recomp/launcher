@@ -1,9 +1,9 @@
 /** Messages of the game area. */
 export const game = {
   "game.home.prepare": "Prepare",
-  "game.home.chooseFiles": "Choose game files",
-  "game.home.chooseFolder": "Choose game folder",
-  "game.home.chooseFile": "Choose game file",
+  "game.home.chooseFiles": "Choose files",
+  "game.home.chooseFolder": "Choose folder",
+  "game.home.chooseFile": "Choose file",
   "game.home.install": "Install",
   "game.home.play": "Play",
   "game.home.rebuild": "Rebuild",

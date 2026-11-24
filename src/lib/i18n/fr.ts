@@ -39,9 +39,9 @@ export const fr: Catalog = {
 
   // game
   "game.home.prepare": "Préparer",
-  "game.home.chooseFiles": "Choisir les fichiers du jeu",
-  "game.home.chooseFolder": "Choisir le dossier du jeu",
-  "game.home.chooseFile": "Choisir le fichier du jeu",
+  "game.home.chooseFiles": "Choisir les fichiers",
+  "game.home.chooseFolder": "Choisir le dossier",
+  "game.home.chooseFile": "Choisir le fichier",
   "game.home.install": "Installer",
   "game.home.play": "Jouer",
   "game.home.rebuild": "Reconstruire",

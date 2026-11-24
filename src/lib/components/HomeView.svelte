@@ -382,8 +382,8 @@
   .main {
     display: inline-flex;
     align-items: center;
-    gap: var(--space-3);
-    padding: 0 var(--space-5);
+    gap: var(--space-2);
+    padding: 0 var(--space-4);
     border-radius: var(--radius-md);
   }
   .has-menu .main { border-radius: var(--radius-md) 0 0 var(--radius-md); }
