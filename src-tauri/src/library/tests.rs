@@ -925,7 +925,11 @@ fn json_wire_format_matches_the_frontend_types() {
             message: "".into(),
             stage: Some(run::Stage {
                 id: "compile".into(),
-                event: run::StageEvent::Progress { done: 12, total: 37, text: "Compiling".into() }
+                event: run::StageEvent::Progress {
+                    done: 12,
+                    total: 37,
+                    text: "Compiling".into()
+                }
             })
         })
         .unwrap(),
