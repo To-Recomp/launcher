@@ -36,7 +36,11 @@ pub struct Stage {
 #[serde(tag = "event", rename_all = "lowercase")]
 pub enum StageEvent {
     /// `stage-start extract 2/5 Copying the game files`
-    Start { index: u32, count: u32, title: String },
+    Start {
+        index: u32,
+        count: u32,
+        title: String,
+    },
     /// `stage-progress extract 734003200/2919956480 Copying the files of disc 1`
     Progress { done: u64, total: u64, text: String },
     /// `stage-end extract ok 41.3` (`ok`, `skipped`, `failed` or `cancelled`, then the seconds)
@@ -191,11 +195,19 @@ pub fn parse_stage(line: &str) -> Option<Progress> {
     let event = match kind {
         "stage-start" => {
             let (index, count) = ratio(second)?;
-            StageEvent::Start { index, count, title: text.trim().to_string() }
+            StageEvent::Start {
+                index,
+                count,
+                title: text.trim().to_string(),
+            }
         }
         "stage-progress" => {
             let (done, total) = ratio(second)?;
-            StageEvent::Progress { done, total, text: text.trim().to_string() }
+            StageEvent::Progress {
+                done,
+                total,
+                text: text.trim().to_string(),
+            }
         }
         "stage-end" => StageEvent::End {
             status: second.to_string(),
@@ -204,7 +216,10 @@ pub fn parse_stage(line: &str) -> Option<Progress> {
         _ => return None,
     };
     Some(Progress {
-        stage: Some(Stage { id: id.to_string(), event }),
+        stage: Some(Stage {
+            id: id.to_string(),
+            event,
+        }),
         ..Progress::default()
     })
 }
@@ -444,22 +459,39 @@ mod tests {
             stage("stage-start extract 2/5 Copying the game files from the discs"),
             Some(Stage {
                 id: "extract".into(),
-                event: StageEvent::Start { index: 2, count: 5, title: "Copying the game files from the discs".into() }
+                event: StageEvent::Start {
+                    index: 2,
+                    count: 5,
+                    title: "Copying the game files from the discs".into()
+                }
             })
         );
         assert_eq!(
             stage("stage-progress compile 12/37 Compiling the game (12/37 files)"),
             Some(Stage {
                 id: "compile".into(),
-                event: StageEvent::Progress { done: 12, total: 37, text: "Compiling the game (12/37 files)".into() }
+                event: StageEvent::Progress {
+                    done: 12,
+                    total: 37,
+                    text: "Compiling the game (12/37 files)".into()
+                }
             })
         );
         assert_eq!(
             stage("stage-end verify ok 36.6"),
-            Some(Stage { id: "verify".into(), event: StageEvent::End { status: "ok".into(), seconds: 36.6 } })
+            Some(Stage {
+                id: "verify".into(),
+                event: StageEvent::End {
+                    status: "ok".into(),
+                    seconds: 36.6
+                }
+            })
         );
         // A task line carries no overall fraction: it must not reset the bar.
-        assert_eq!(parse_line("stage-end verify ok 1.0").unwrap().fraction, None);
+        assert_eq!(
+            parse_line("stage-end verify ok 1.0").unwrap().fraction,
+            None
+        );
         assert_eq!(parse_line("stage-start extract soon x"), None);
         assert_eq!(parse_line("stage-end verify ok slowly"), None);
         assert_eq!(parse_line("warn something"), None);
