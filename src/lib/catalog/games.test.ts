@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CatalogPlatform } from "./types";
-import { defaultPlatform, initials, toGames } from "./games";
+import { defaultPlatform, initials, quickPlayPlatform, toGames } from "./games";
 
 describe("initials", () => {
   it.each([
@@ -72,5 +72,26 @@ describe("defaultPlatform", () => {
     expect(defaultPlatform(g, "GameCube")?.platform).toBe("GameCube");
     expect(defaultPlatform(g, "Switch")?.platform).toBe("PS3"); // no longer playable there, or never was
     expect(defaultPlatform(g, "Wii")?.platform).toBe("PS3"); // gone from the catalog
+  });
+});
+
+describe("quickPlayPlatform", () => {
+  const platform = (name: string, year: number): CatalogPlatform => ({ platform: name, regions: ["Japan"], state: "playable", maturity: "beta", releaseYear: year });
+  const [game] = toGames({
+    games: [{ id: "tos", name: "Tales of Symphonia", japanReleaseYear: 2003, repository: "To-Recomp/tos", platforms: [platform("GameCube", 2003), platform("PS3", 2013), platform("Wii", 2008)] }],
+  });
+  const ready = (...names: string[]) => (p: { platform: string }) => names.includes(p.platform);
+
+  it("is the console last played on when it is ready", () => {
+    expect(quickPlayPlatform(game, ready("GameCube", "PS3"), "GameCube")?.platform).toBe("GameCube");
+  });
+
+  it("is the most recent ready console when the last played one isn't ready, or nothing was played", () => {
+    expect(quickPlayPlatform(game, ready("GameCube", "Wii"), "PS3")?.platform).toBe("Wii");
+    expect(quickPlayPlatform(game, ready("GameCube", "Wii"), null)?.platform).toBe("Wii");
+  });
+
+  it("is nothing when no console is ready", () => {
+    expect(quickPlayPlatform(game, ready(), "GameCube")).toBeUndefined();
   });
 });

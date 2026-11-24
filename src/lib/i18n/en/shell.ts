@@ -10,7 +10,7 @@ export const shell = {
   "shell.sidebar.unavailable": "The game list isn't available yet.",
   "shell.sidebar.savedList": "Showing the saved game list. ",
   "shell.sidebar.retry": "Retry",
-  "shell.sidebar.play": "Play",
+  "shell.sidebar.quickPlay": "Play {game}",
   "shell.sidebar.launcherSettings": "Launcher settings",
   "shell.update.idle": "Update launcher",
   "shell.update.checking": "Checking…",

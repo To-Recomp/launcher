@@ -51,7 +51,7 @@
   `refresh: true` to do the same for the notes.
 
 States: `not prepared`, `ready`, `needs rebuild` (prepared for another release, or a file listed in
-`done` is gone). The sidebar shows a play icon for a ready game and nothing for the others.
+`done` is gone). The sidebar shows a quick play button for a ready game and nothing for the others.
 
 ```
 <app data>/games/<game id>/installation.json

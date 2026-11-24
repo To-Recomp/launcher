@@ -2,7 +2,7 @@
 
 use std::collections::BTreeMap;
 use std::fs::{self, File, OpenOptions};
-use std::io::{BufRead, BufReader, Read, Write};
+use std::io::{BufRead, BufReader, Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -419,12 +419,26 @@ pub fn append_log(path: &Path, text: &str) {
     }
 }
 
-/// The last `max_lines` lines of a log, or nothing if it doesn't exist.
+/// How much of the end of a log is read: a game can write a lot, and the live log reads it every second.
+const TAIL_WINDOW: u64 = 1024 * 1024;
+
+/// The last `max_lines` lines of a log, or nothing if it doesn't exist. A game's output isn't always
+/// UTF-8 (a Shift-JIS message, say): it is shown with replacement characters, never dropped.
 pub fn tail(path: &Path, max_lines: usize) -> String {
-    let Ok(text) = fs::read_to_string(path) else {
+    let Ok(mut file) = File::open(path) else {
         return String::new();
     };
-    let lines: Vec<&str> = text.lines().collect();
+    let length = file.metadata().map_or(0, |m| m.len());
+    let start = length.saturating_sub(TAIL_WINDOW);
+    let mut bytes = Vec::new();
+    if file.seek(SeekFrom::Start(start)).is_err() || file.read_to_end(&mut bytes).is_err() {
+        return String::new();
+    }
+    let text = String::from_utf8_lossy(&bytes);
+    let mut lines: Vec<&str> = text.lines().collect();
+    if start > 0 && !lines.is_empty() {
+        lines.remove(0); // the window starts inside a line
+    }
     lines[lines.len().saturating_sub(max_lines)..].join("\n")
 }
 
@@ -516,5 +530,32 @@ mod tests {
         assert_eq!(tail(&path, 2), "c\nd");
         assert_eq!(tail(&path, 10), "a\nb\nc\nd");
         assert_eq!(tail(&dir.path().join("none.log"), 3), "");
+    }
+
+    #[test]
+    fn a_log_that_is_not_utf8_is_still_shown() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let path = dir.path().join("game.log");
+        let mut text = b"before\nMusyX ".to_vec();
+        text.extend_from_slice(&[0x82, 0xc5, 0x83, 0x4f]); // Shift-JIS, as a game wrote it
+        text.extend_from_slice(b"\nafter\n");
+        fs::write(&path, text).unwrap();
+        let shown = tail(&path, 10);
+        assert!(shown.starts_with("before\nMusyX "), "{shown}");
+        assert!(shown.ends_with("\nafter"), "{shown}");
+    }
+
+    #[test]
+    fn only_the_end_of_a_huge_log_is_read_and_its_cut_first_line_is_dropped() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let path = dir.path().join("big.log");
+        let line = "x".repeat(99) + "\n";
+        fs::write(&path, line.repeat(20_000) + "last\n").unwrap(); // about 2 MB
+        let shown = tail(&path, 3);
+        assert_eq!(
+            shown,
+            format!("{}\n{}\nlast", "x".repeat(99), "x".repeat(99))
+        );
+        assert!(tail(&path, 100_000).lines().count() < 20_001);
     }
 }

@@ -38,6 +38,12 @@ export function defaultPlatform(game: Game, lastPlayed: string | null = null): P
   return playable.find((p) => p.platform === lastPlayed) ?? playable[0] ?? game.platforms[0];
 }
 
+/** The console quick play starts: the one last played if it is ready, else the most recent ready one. */
+export function quickPlayPlatform(game: Game, isReady: (platform: Platform) => boolean, lastPlayed: string | null): Platform | undefined {
+  const ready = game.platforms.filter(isReady);
+  return ready.find((p) => p.platform === lastPlayed) ?? ready[0];
+}
+
 export function toGames(catalog: Catalog): Game[] {
   return catalog.games.map((g) => ({
     id: g.id,

@@ -97,14 +97,18 @@ describe("Dropdown", () => {
 });
 
 describe("SidebarItem", () => {
-  it("shows an icon only for a game that can be played at once", () => {
-    render(SidebarItem, { game: { ...eternia, state: "installed" }, onselect: () => {} });
-    expect(screen.queryByRole("img")).not.toBeInTheDocument();
+  it("offers a separate quick play button only for a game that can be played at once", async () => {
+    const onplay = vi.fn();
+    const onselect = vi.fn();
+    render(SidebarItem, { game: { ...eternia, state: "installed" }, onselect, onplay });
+    expect(screen.queryByRole("button", { name: /^Play/ })).not.toBeInTheDocument();
     cleanup();
-    render(SidebarItem, { game: { ...eternia, state: "not-installed" }, onselect: () => {} });
-    expect(screen.queryByRole("img")).not.toBeInTheDocument();
+    render(SidebarItem, { game: { ...eternia, state: "not-installed" }, onselect, onplay });
+    expect(screen.queryByRole("button", { name: /^Play/ })).not.toBeInTheDocument();
     cleanup();
-    render(SidebarItem, { game: { ...eternia, state: "ready" }, onselect: () => {} });
-    expect(screen.getByRole("img", { name: "Play" })).toBeInTheDocument();
+    render(SidebarItem, { game: { ...eternia, state: "ready" }, onselect, onplay });
+    await fireEvent.click(screen.getByRole("button", { name: "Play Tales of Eternia" }));
+    expect(onplay).toHaveBeenCalledOnce();
+    expect(onselect).not.toHaveBeenCalled(); // playing doesn't open the game's page by itself
   });
 });

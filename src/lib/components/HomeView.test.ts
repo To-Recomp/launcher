@@ -19,6 +19,9 @@ vi.mock("../library/api", () => api);
 const releases = vi.hoisted(() => ({ gameReleases: vi.fn() }));
 vi.mock("../catalog/releases", async (orig) => ({ ...(await orig<object>()), ...releases }));
 
+const links = vi.hoisted(() => ({ openLink: vi.fn() }));
+vi.mock("../diagnostics/api", () => ({ ...links, repositoryUrl: (repository: string) => `https://github.com/${repository}` }));
+
 import { LibraryStore } from "../library/store.svelte";
 import type { InstallationView, InstanceState } from "../library/types";
 import HomeView from "./HomeView.svelte";
@@ -63,6 +66,18 @@ describe("latest releases", () => {
     expect(releases.gameReleases).toHaveBeenCalledWith(eternia.repository);
   });
 
+  it("opens a release on GitHub from the featured card's button and from the 'more' link", async () => {
+    releases.gameReleases.mockResolvedValue([
+      { tag: "v1.2.0", name: "Library", publishedAt: null, body: "* one\n* two\n* three\n* four", prerelease: false },
+    ]);
+    show(null);
+    await fireEvent.click(await screen.findByRole("button", { name: "View this release on GitHub" }));
+    expect(links.openLink).toHaveBeenLastCalledWith("https://github.com/To-Recomp/toe/releases/tag/v1.2.0");
+    expect(screen.queryByText("three")).not.toBeInTheDocument(); // two entries per card, the rest is on GitHub
+    await fireEvent.click(screen.getByRole("button", { name: "+ 2 more on GitHub" }));
+    expect(links.openLink).toHaveBeenCalledTimes(2);
+  });
+
   it("says so when there is no release or GitHub can't be read", async () => {
     show(null);
     expect(await screen.findByText("No release has been published yet.")).toBeInTheDocument();
@@ -84,9 +99,9 @@ describe("HomeView actions", () => {
   });
 
   it.each([
-    [[input("disc1"), input("disc2")], "Choose game files"],
-    [[input("disc1")], "Choose game file"],
-    [[input("game", ["folder"])], "Choose game folder"],
+    [[input("disc1"), input("disc2")], "Choose files"],
+    [[input("disc1")], "Choose file"],
+    [[input("game", ["folder"])], "Choose folder"],
     [[input("dlc", ["file"], true)], "Prepare"],
   ])("asks for the files of an unprepared instance: %#", (inputs, label) => {
     show(installed(null, { inputs }));
@@ -146,7 +161,7 @@ describe("HomeView status", () => {
     library.progress["prepare:toe/ps1"] = { job: "prepare:toe/ps1", fraction: 0.4, message: "Compiling" };
     expect(await screen.findByText("Compiling · 40%")).toBeInTheDocument();
     expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "40");
-    expect(screen.getByRole("button", { name: "Choose game file" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Choose file" })).toBeDisabled();
     await fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(api.cancelJob).toHaveBeenCalledWith("prepare:toe/ps1");
   });
@@ -211,7 +226,7 @@ describe("HomeView availability", () => {
     library.installations = [installed(null)];
     render(HomeView, { game: eternia, platform: { ...platform, state, maturity: null }, library, platformSizing: [], onplatform: () => {}, onsettings });
     expect(screen.getByText(hint)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Choose game file" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Choose file" })).toBeDisabled();
   });
 
   it("lists consoles only in the selector, each with the year the game came out on it", async () => {

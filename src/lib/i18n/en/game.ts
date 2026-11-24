@@ -1,9 +1,9 @@
 /** Messages of the game area. */
 export const game = {
   "game.home.prepare": "Prepare",
-  "game.home.chooseFiles": "Choose game files",
-  "game.home.chooseFolder": "Choose game folder",
-  "game.home.chooseFile": "Choose game file",
+  "game.home.chooseFiles": "Choose files",
+  "game.home.chooseFolder": "Choose folder",
+  "game.home.chooseFile": "Choose file",
   "game.home.install": "Install",
   "game.home.play": "Play",
   "game.home.rebuild": "Rebuild",
@@ -39,6 +39,7 @@ export const game = {
   "game.home.releasesError": "The releases can't be read right now.",
   "game.home.releasesNone": "No release has been published yet.",
   "game.home.releaseMore": "+ {count} more on GitHub",
+  "game.home.openRelease": "View this release on GitHub",
   "game.home.settings": "Game settings",
   "game.home.moreActions": "More actions",
 

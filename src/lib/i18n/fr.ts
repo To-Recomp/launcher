@@ -14,7 +14,7 @@ export const fr: Catalog = {
   "shell.sidebar.unavailable": "La liste des jeux n'est pas encore disponible.",
   "shell.sidebar.savedList": "La liste enregistrée des jeux est affichée. ",
   "shell.sidebar.retry": "Réessayer",
-  "shell.sidebar.play": "Jouer",
+  "shell.sidebar.quickPlay": "Jouer à {game}",
   "shell.sidebar.launcherSettings": "Paramètres du launcher",
   "shell.update.idle": "Mettre à jour le launcher",
   "shell.update.checking": "Vérification…",
@@ -39,9 +39,9 @@ export const fr: Catalog = {
 
   // game
   "game.home.prepare": "Préparer",
-  "game.home.chooseFiles": "Choisir les fichiers du jeu",
-  "game.home.chooseFolder": "Choisir le dossier du jeu",
-  "game.home.chooseFile": "Choisir le fichier du jeu",
+  "game.home.chooseFiles": "Choisir les fichiers",
+  "game.home.chooseFolder": "Choisir le dossier",
+  "game.home.chooseFile": "Choisir le fichier",
   "game.home.install": "Installer",
   "game.home.play": "Jouer",
   "game.home.rebuild": "Reconstruire",
@@ -77,6 +77,7 @@ export const fr: Catalog = {
   "game.home.releasesError": "Les versions ne peuvent pas être lues pour le moment.",
   "game.home.releasesNone": "Aucune version n'a encore été publiée.",
   "game.home.releaseMore": "+ {count} de plus sur GitHub",
+  "game.home.openRelease": "Voir cette version sur GitHub",
   "game.home.settings": "Paramètres du jeu",
   "game.home.moreActions": "Autres actions",
 
