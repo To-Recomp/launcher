@@ -79,10 +79,12 @@ development switch, see `docs/catalog.md`).
   `Run` key of the registry; an AppImage registers its own path). The switch shows what the
   system says, not a saved value, so an entry removed by hand shows as off.
 - **Keep running in the notification area** (`behavior.tray`): closing the window hides it and a
-  tray icon (Show / Quit) brings it back; turning it off shows the window again. It needs a
-  notification area: GNOME has none without an AppIndicator extension, so the window can look
-  lost there; it is off by default. On Linux the icon uses `libayatana-appindicator` (loaded at
-  run time; the Fedora package requires it, the AppImage bundles it from the build machine).
+  tray icon brings it back: a left click shows the launcher, a right click opens the menu (Show /
+  Quit); turning it off shows the window again. It needs a notification area: GNOME has none
+  without an AppIndicator extension, so the window can look lost there; it is off by default. On
+  Linux the icon is a StatusNotifierItem (the `ksni` backend of `tray-icon`, enabled in
+  `Cargo.toml`): the default `libappindicator` backend can't report a click on the icon, so only
+  the menu would be reachable.
 - **Close the launcher when a game starts** (`behavior.closeOnLaunch`): `start_game` quits the
   launcher once the game has been spawned. The game keeps running; its exit code and log summary
   are no longer reported by the launcher.

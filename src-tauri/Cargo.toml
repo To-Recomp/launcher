@@ -49,3 +49,8 @@ strip = true
 
 [target."cfg(unix)".dependencies]
 libc = "0.2.191"
+
+# The default Linux tray backend (libappindicator) can't report a click on the icon. KSNI can, so the
+# left click shows the window; with both enabled tray-icon uses KSNI (and prints a build warning).
+[target."cfg(target_os = \"linux\")".dependencies]
+tray-icon = { version = "0.25", default-features = false, features = ["ksni"] }

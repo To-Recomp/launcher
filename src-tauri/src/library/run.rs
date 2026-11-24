@@ -327,6 +327,22 @@ pub fn run_prepare(
     result
 }
 
+/// Starts a process, trying again for a moment when its program file is still "busy" (ETXTBSY on
+/// Unix). A file just written is briefly held open for writing by a process that another thread
+/// forked at the same moment, so running it fails until that child has executed its own program.
+fn spawn_retrying(command: &mut Command) -> std::io::Result<Child> {
+    let mut attempts = 0;
+    loop {
+        match command.spawn() {
+            Err(e) if e.kind() == std::io::ErrorKind::ExecutableFileBusy && attempts < 20 => {
+                attempts += 1;
+                thread::sleep(Duration::from_millis(50));
+            }
+            other => return other,
+        }
+    }
+}
+
 fn run_to_end(
     mut process: Command,
     log: &mut File,
@@ -334,8 +350,7 @@ fn run_to_end(
     on_progress: &mut dyn FnMut(Progress),
 ) -> Result<(), RunError> {
     process.stdout(Stdio::piped()).stderr(Stdio::piped());
-    let mut child = process
-        .spawn()
+    let mut child = spawn_retrying(&mut process)
         .map_err(|e| RunError::Failed(format!("Can't start the preparation: {e}")))?;
     let (tx, rx) = mpsc::channel();
     if let Some(out) = child.stdout.take() {
@@ -405,11 +420,12 @@ pub fn spawn_game(cmd: &Launch, install: &Path, log_path: &Path) -> Result<Child
     );
     let out = log.try_clone().map_err(|e| e.to_string())?;
     let err = log.try_clone().map_err(|e| e.to_string())?;
-    command(cmd, install)
-        .stdout(Stdio::from(out))
-        .stderr(Stdio::from(err))
-        .spawn()
-        .map_err(|e| format!("Can't start the game: {e}"))
+    spawn_retrying(
+        command(cmd, install)
+            .stdout(Stdio::from(out))
+            .stderr(Stdio::from(err)),
+    )
+    .map_err(|e| format!("Can't start the game: {e}"))
 }
 
 /// Adds a line to a log (used when the game ends).
