@@ -12,6 +12,8 @@
     caption,
     prefixes = {},
     sizing = [],
+    disabled = [],
+    notes = {},
     onchange,
   }: {
     options: string[];
@@ -26,6 +28,10 @@
      * these and of the options, so it never grows or shrinks when another one is chosen.
      */
     sizing?: { option: string; prefix?: string }[];
+    /** Options that are listed but can't be chosen. */
+    disabled?: string[];
+    /** A small text shown at the end of an option (like "N/A"), by option. */
+    notes?: Record<string, string>;
     onchange: (value: string) => void;
   } = $props();
 
@@ -44,9 +50,18 @@
     open = true;
   }
 
+  const isDisabled = (index: number) => disabled.includes(options[index]);
+
+  /** The nearest option that can be chosen from `from` in direction `step`; `from` itself when there is none. */
+  function nearestEnabled(from: number, step: 1 | -1): number {
+    for (let i = from + step; i >= 0 && i < options.length; i += step) if (!isDisabled(i)) return i;
+    return from;
+  }
+
   function choose(index: number) {
+    if (options[index] === undefined || isDisabled(index)) return;
     open = false;
-    if (options[index] !== undefined && options[index] !== value) onchange(options[index]);
+    if (options[index] !== value) onchange(options[index]);
   }
 
   function onkeydown(e: KeyboardEvent) {
@@ -59,10 +74,10 @@
       return;
     }
     switch (e.key) {
-      case "ArrowDown": active = Math.min(last, active + 1); break;
-      case "ArrowUp": active = Math.max(0, active - 1); break;
-      case "Home": active = 0; break;
-      case "End": active = last; break;
+      case "ArrowDown": active = nearestEnabled(active, 1); break;
+      case "ArrowUp": active = nearestEnabled(active, -1); break;
+      case "Home": active = isDisabled(0) ? nearestEnabled(0, 1) : 0; break;
+      case "End": active = isDisabled(last) ? nearestEnabled(last, -1) : last; break;
       case "Enter":
       case " ": choose(active); break;
       case "Escape": open = false; break;
@@ -116,12 +131,15 @@
           id="{id}-{i}"
           role="option"
           aria-selected={option === value}
-          class:active={i === active}
+          class:active={i === active && !isDisabled(i)}
           class:selected={option === value}
-          onpointerenter={() => (active = i)}
+          class:disabled={isDisabled(i)}
+          aria-disabled={isDisabled(i) ? "true" : undefined}
+          onpointerenter={() => !isDisabled(i) && (active = i)}
           onclick={() => choose(i)}
         >
-          {@render named(option, prefixes[option])}
+          <span>{@render named(option, prefixes[option])}</span>
+          {#if notes[option]}<span class="note">{notes[option]}</span>{/if}
         </li>
       {/each}
     </ul>
@@ -195,12 +213,18 @@
     box-shadow: 0 12px 32px rgb(0 0 0 / 0.45);
   }
   li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
     padding: 8px 12px;
     border-radius: var(--radius-sm);
     font-size: 13px;
     white-space: nowrap;
     cursor: pointer;
   }
+  li.disabled { cursor: default; opacity: 0.45; }
+  .note { font-size: 11px; color: var(--color-text-muted); }
   li.active { background: color-mix(in srgb, var(--color-accent) 16%, transparent); }
   li.selected { color: var(--color-accent); font-weight: 600; }
   .shown { display: grid; width: 100%; }

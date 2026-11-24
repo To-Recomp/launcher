@@ -1,11 +1,14 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, type Snippet } from "svelte";
   import ActionRow from "./ActionRow.svelte";
   import Row from "./Row.svelte";
   import Segmented from "./Segmented.svelte";
   import { t } from "../i18n/index.svelte";
   import { proxySettings, setProxy, testProxy, type ProxySettings, type ProxyView } from "../launcher/api";
   import { errorMessage } from "../settings/api";
+
+  /** Rows placed at the top of the card (the game download speed). */
+  let { children }: { children?: Snippet } = $props();
 
   const NONE: ProxySettings = { mode: "system", protocol: "http", host: "", port: 8080, username: "", noProxy: "" };
 
@@ -59,10 +62,10 @@
 </script>
 
 <h2>{t("launcher.proxy.heading")}</h2>
-{#if !saved}
-  {#if notice}<p class="notice failed" role="alert">{notice.text}</p>{/if}
-{:else}
+{#if children || saved}
 <div class="group">
+  {@render children?.()}
+  {#if saved}
   <Row label={t("launcher.proxy.label")} help={t("launcher.proxy.help")}>
     <Segmented
       label={t("launcher.proxy.label")}
@@ -122,8 +125,10 @@
       <button onclick={save}>{t("launcher.proxy.save")}</button>
     </div>
   </Row>
+  {/if}
 </div>
 {/if}
+{#if !saved && notice}<p class="notice failed" role="alert">{notice.text}</p>{/if}
 
 <style>
   h2 { margin: var(--space-5) 0 var(--space-2) var(--space-4); font-size: 12px; font-weight: 500; color: var(--color-text-muted); }
@@ -132,7 +137,7 @@
     border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
     background: var(--color-surface);
-    overflow: hidden;
+    /* No overflow clipping: the download speed's dropdown opens over the edge of the card. */
   }
   .pair { display: flex; align-items: center; gap: var(--space-2); }
   input {

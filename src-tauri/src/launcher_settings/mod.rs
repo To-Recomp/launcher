@@ -58,31 +58,6 @@ pub fn behavior(config_dir: &Path) -> Result<Behavior, String> {
     })
 }
 
-/// How the interface looks.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Appearance {
-    /// `dark`, `light` or `system`.
-    pub theme: String,
-}
-
-pub fn appearance(config_dir: &Path) -> Result<Appearance, String> {
-    let config = config::read(config_dir)?;
-    let theme = config
-        .pointer("/appearance/theme")
-        .and_then(|v| v.as_str())
-        .filter(|theme| matches!(*theme, "light" | "system"))
-        .unwrap_or("dark");
-    Ok(Appearance {
-        theme: theme.to_string(),
-    })
-}
-
-#[tauri::command(async)]
-pub fn launcher_appearance(app: tauri::AppHandle) -> Result<Appearance, String> {
-    appearance(&config_dir(&app)?)
-}
-
 /// The language the player chose for the interface, `None` to follow the system's.
 pub fn language(config_dir: &Path) -> Result<Option<String>, String> {
     Ok(config::read(config_dir)?

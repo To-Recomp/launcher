@@ -4,7 +4,8 @@
   import Icon, { type IconName } from "./Icon.svelte";
   import type { Game, Platform } from "../catalog/games";
   import { logoFor } from "../catalog/logos";
-  import { gameReleases, releaseDate, releaseEntries, type ReleaseNote } from "../catalog/releases";
+  import { loadLogoMetrics, type LogoMetrics } from "../catalog/logoMetrics";
+  import { cachedReleases, gameReleases, releaseDate, releaseEntries, type ReleaseNote } from "../catalog/releases";
   import { openLink, repositoryUrl } from "../diagnostics/api";
   import { gameJob, installJob, instanceId, prepareJob } from "../library/types";
   import type { LibraryStore } from "../library/store.svelte";
@@ -31,12 +32,29 @@
   const title = $derived(game.name.replace(/^Tales of (the )?/, ""));
   const logo = $derived(logoFor(game.name));
 
+  // The letters of every logo stand on the same line: LOGO_BODY px from the top of the logo to its baseline,
+  // and what hangs under it (the tail of a y or a p) takes the room below, inside LOGO_BOX.
+  const LOGO_BODY = 76;
+  const LOGO_BOX = 104;
+  /** `undefined` while the logo is read, `null` when it can't be (it then shows at a plain height). */
+  let logoMetrics = $state<LogoMetrics | null | undefined>(undefined);
+  $effect(() => {
+    logoMetrics = undefined;
+    if (!logo) return;
+    let stale = false;
+    loadLogoMetrics(logo).then((found) => {
+      if (!stale) logoMetrics = found;
+    });
+    return () => (stale = true);
+  });
+  const logoHeight = $derived(logoMetrics ? LOGO_BODY / Math.max(logoMetrics.baseline, 0.3) : LOGO_BOX);
+
   /** The game's latest releases; `null` while they load. */
   let releases = $state<ReleaseNote[] | null>(null);
   let releasesError = $state(false);
   $effect(() => {
     const repository = game.repository;
-    releases = null;
+    releases = cachedReleases(repository) ?? null; // coming back to a game shows what was read, with no reload
     releasesError = false;
     let stale = false;
     gameReleases(repository)
@@ -179,6 +197,12 @@
   });
 
   const releaseUrl = (note: ReleaseNote) => `${repositoryUrl(game.repository)}/releases/tag/${encodeURIComponent(note.tag)}`;
+
+  /** The tint of the action status: idle with no message, else the message's tone (a running action is info). */
+  const tone = $derived<"idle" | "info" | "success" | "error">(active ? "info" : (library.status?.tone ?? "idle"));
+
+  /** Consoles the game isn't available on (planned, in progress, unsupported): listed, but not selectable. */
+  const unavailablePlatforms = $derived(game.platforms.filter((p) => p.state !== "playable").map((p) => p.platform));
 </script>
 
 <svelte:window
@@ -192,7 +216,15 @@
 
 <section class="home">
   <h1 class:has-logo={logo}>
-    {#if logo}<img src={logo} alt={title} />{:else}{title}{/if}
+    {#if logo}
+      <img
+        src={logo}
+        alt={title}
+        style:height="{logoHeight}px"
+        style:width={logoMetrics ? `${logoHeight * logoMetrics.aspect}px` : undefined}
+        style:opacity={logoMetrics === undefined ? 0 : 1}
+      />
+    {:else}{title}{/if}
   </h1>
   <p class="hint">{hint}</p>
 
@@ -202,6 +234,8 @@
       label={t("game.home.platform")}
       options={game.platforms.map((p) => p.platform)}
       prefixes={Object.fromEntries(game.platforms.map((p) => [p.platform, String(p.year)]))}
+      disabled={unavailablePlatforms}
+      notes={Object.fromEntries(unavailablePlatforms.map((name) => [name, t("game.home.notAvailable")]))}
       sizing={platformSizing}
       value={platform?.platform ?? ""}
       onchange={onplatform}
@@ -259,8 +293,8 @@
     </button>
   </div>
 
-  <div class="status" role="status" class:error={!active && library.status?.tone === "error"}>
-    <span class="status-icon"><Icon name="info" size={20} /></span>
+  <div class="status {tone}" role="status">
+    <span class="status-icon"><Icon name={tone === "error" ? "alert" : tone === "success" ? "check" : "info"} size={20} /></span>
     <div class="status-body">
       <strong>{t("game.home.actionStatus")}</strong>
       {#if active}
@@ -375,9 +409,9 @@
     min-height: 100%;
   }
   h1 { margin: var(--space-6) 0 0; font-size: 48px; font-weight: 700; }
-  h1.has-logo { line-height: 0; }
-  /* Every logo is as tall as the others, whatever its proportions. */
-  h1 img { display: block; height: 100px; max-width: 100%; object-fit: contain; object-position: left; }
+  h1.has-logo { min-height: 104px; line-height: 0; }
+  /* Every logo has the same letter height on the same baseline; see LOGO_BODY. */
+  h1 img { display: block; max-width: 100%; object-fit: contain; object-position: left top; }
   .hint { margin: var(--space-3) 0 var(--space-5); font-size: 16px; color: var(--color-text-muted); }
   .actions { display: flex; gap: var(--space-3); align-items: stretch; }
   .split {
@@ -460,18 +494,24 @@
   }
   .icon-button:hover:not(:disabled) { color: var(--color-text); border-color: var(--color-accent); }
   .icon-button:disabled { opacity: 0.5; cursor: default; }
+  /* One tint per state: icon, border and background always share it. Idle is neutral; a running action
+     or an info message takes the app's palette (the game's accent); success is green and an error red. */
   .status {
+    --tint: var(--color-text-muted);
     display: flex;
     gap: var(--space-4);
     align-items: center;
     margin-top: var(--space-5);
     padding: var(--space-4) var(--space-5);
-    border: 1px solid color-mix(in srgb, var(--color-info) 50%, transparent);
+    border: 1px solid color-mix(in srgb, var(--tint) 45%, transparent);
     border-radius: var(--radius-md);
-    /* No background: the page shows through, whatever the game. */
+    background: transparent;
   }
-  .status.error { border-color: rgb(200 48 44 / 0.7); background: rgb(200 48 44 / 0.12); }
-  .status-icon { color: var(--color-info); }
+  .status.info { --tint: var(--color-accent); }
+  .status.success { --tint: var(--color-success); }
+  .status.error { --tint: var(--color-error); }
+  .status:not(.idle) { background: color-mix(in srgb, var(--tint) 12%, transparent); }
+  .status-icon { color: var(--tint); }
   .status-body { flex: 1; min-width: 0; }
   .status p { margin: 2px 0 0; font-size: 12px; color: var(--color-text-muted); user-select: text; }
   .status-actions { display: flex; gap: var(--space-2); }

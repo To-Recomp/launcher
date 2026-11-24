@@ -4,7 +4,6 @@
   import { logoFor } from "../catalog/logos";
   import { loadPalette } from "../catalog/palette";
   import { t } from "../i18n/index.svelte";
-  import { appearance } from "../launcher/appearance.svelte";
 
   let {
     game,
@@ -24,7 +23,7 @@
   $effect(() => {
     const logo = logoFor(game.name);
     accent = null;
-    if (!logo || !appearance.usesGamePalette) return;
+    if (!logo) return;
     let stale = false;
     loadPalette(logo).then((found) => {
       if (!stale) accent = found?.accent ?? null;
@@ -83,7 +82,13 @@
     background: var(--item-accent, var(--color-accent));
     opacity: 0;
   }
-  .row:hover::before, .row.selected::before { opacity: 1; }
+  .row:hover::before, .row.selected::before, .row:has(.item:focus-visible)::before { opacity: 1; }
+  /* Keyboard focus outlines the whole row, in its own shape and color, not the button inside it. */
+  .row:has(.item:focus-visible) {
+    outline: 2px solid var(--item-accent, var(--color-accent));
+    outline-offset: 2px;
+  }
+  .item:focus-visible { outline: none; }
   .item {
     display: flex;
     align-items: center;

@@ -17,6 +17,8 @@
   --color-primary: #c8302c;
   --color-primary-hover: #d9403b;
   --color-info: #5984ad;
+  --color-success: #4cb782;
+  --color-error: #e8625d;
   --color-selected: #262125;
   /* What the page behind the content shows without a game palette. */
   --page-top: #1d2a40;
@@ -42,30 +44,6 @@
   --sidebar-min-width: 240px;
   --sidebar-max-width: 360px;
   --titlebar-height: 48px;
-}
-
-:root[data-theme="light"] {
-  color-scheme: light;
-  --color-bg: #f4f5f9;
-  --color-bg-sunken: #e9ebf2;
-  --color-surface: #ffffff;
-  --color-surface-alt: #f0f2f8;
-  --color-surface-raised: #e3e7f1;
-  --color-control: #eef0f6;
-  --color-border: rgb(0 0 0 / 0.12);
-  --color-border-strong: rgb(0 0 0 / 0.22);
-  --color-text: #1a1c27;
-  --color-text-muted: #596078;
-  --color-accent: #8a5f00;
-  --color-primary: #c8302c;
-  --color-primary-hover: #b02a26;
-  --color-info: #2f6190;
-  --color-selected: #ece6ea;
-  --page-top: #dfe6f3;
-  --page-mid: #eceff7;
-  --card-top: #e4e8f3;
-  --card-bottom: #d3d9ea;
-  --panel: #e3e8f4;
 }
 
 * { box-sizing: border-box; }

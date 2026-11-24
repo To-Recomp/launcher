@@ -16,6 +16,7 @@ export const game = {
   "game.home.hintRebuild": "The game needs a new build after the update.",
   "game.home.hintChoose": "Choose your game files to get started.",
   "game.home.platform": "Platform",
+  "game.home.notAvailable": "N/A",
   "game.home.changeFiles": "Change game files",
   "game.home.actionStatus": "Action status",
   "game.home.progress": "Progress",

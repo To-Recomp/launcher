@@ -244,37 +244,6 @@ fn behavior_is_off_until_chosen_and_follows_what_the_settings_write() {
 }
 
 #[test]
-fn appearance_is_dark_until_chosen_and_follows_the_settings() {
-    let dir = TempDir::new().unwrap();
-    assert_eq!(
-        appearance(dir.path()).unwrap(),
-        Appearance {
-            theme: "dark".into()
-        }
-    );
-
-    let manifest = manifest().unwrap();
-    let instance = instance(dir.path());
-    // Dark, Light, System
-    settings::apply_with(
-        &instance,
-        &manifest,
-        "theme",
-        SettingInput::Choice { index: 2 },
-    )
-    .unwrap();
-    assert_eq!(appearance(dir.path()).unwrap().theme, "system");
-    settings::apply_with(
-        &instance,
-        &manifest,
-        "theme",
-        SettingInput::Choice { index: 1 },
-    )
-    .unwrap();
-    assert_eq!(appearance(dir.path()).unwrap().theme, "light");
-}
-
-#[test]
 fn each_download_speed_choice_is_read_back_as_that_many_megabytes_per_second() {
     let dir = TempDir::new().unwrap();
     let manifest = manifest().unwrap();

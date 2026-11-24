@@ -8,7 +8,6 @@ vi.mock("../updater", () => ({ updaterAvailable: vi.fn(), updateLauncher: vi.fn(
 vi.mock("../settings/api", () => ({ errorMessage: (e: unknown) => String(e) }));
 
 import { locale, setLocale } from "../i18n/index.svelte";
-import { appearance } from "../launcher/appearance.svelte";
 import { restartNeeded } from "../launcher/restart.svelte";
 import { launcherUpdates } from "../launcher/updates.svelte";
 import LauncherSettingsView from "./LauncherSettingsView.svelte";
@@ -74,7 +73,7 @@ describe("LauncherSettingsView", () => {
 
   it("switches the language at once, menus of the notification area included, without asking for a restart", async () => {
     const language: SettingView = {
-      id: "language", label: "Language", help: null, tab: "Game", group: "Interface", advanced: false, enabled: true,
+      id: "language", label: "Language", help: null, tab: "Game", group: "Application", advanced: false, enabled: true,
       control: { type: "choices", style: "segmented", options: ["System", "English", "Français"], value: 0, custom: null },
     };
     restartNeeded.needed = false;
@@ -92,7 +91,7 @@ describe("LauncherSettingsView", () => {
 
   it("puts the notification area icon on or off when its setting changes, and says if it can't", async () => {
     const tray: SettingView = {
-      id: "minimizeToTray", label: "Keep running in the notification area", help: null, tab: "Game", group: "Behavior", advanced: false, enabled: true,
+      id: "minimizeToTray", label: "Keep running in the notification area", help: null, tab: "Game", group: "Application", advanced: false, enabled: true,
       control: { type: "choices", style: "toggle", options: ["Off", "On"], value: 0, custom: null },
     };
     api.loadLauncherSettings.mockResolvedValue(view(tray));
@@ -106,25 +105,39 @@ describe("LauncherSettingsView", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("no host");
   });
 
-  it("applies a theme change at once, without a restart", async () => {
-    const theme: SettingView = {
-      id: "theme", label: "Theme", help: null, tab: "Game", group: "Appearance", advanced: false, enabled: true,
-      control: { type: "choices", style: "segmented", options: ["Dark", "Light", "System"], value: 0, custom: null },
-    };
-    api.loadLauncherSettings.mockResolvedValue(view(theme));
-    api.setLauncherSetting.mockResolvedValue(view(theme));
-    api.launcherAppearance.mockResolvedValue({ theme: "light" });
-    restartNeeded.needed = false;
+  it("groups the settings in four cards, with startup under the language and the download speed first in Network", async () => {
+    const choice = (id: string, label: string, group: string): SettingView => ({
+      id, label, help: null, tab: "Game", group, advanced: false, enabled: true,
+      control: { type: "choices", style: "toggle", options: ["Off", "On"], value: 0, custom: null },
+    });
+    api.loadLauncherSettings.mockResolvedValue(
+      view(
+        choice("language", "Language", "Application"),
+        choice("minimizeToTray", "Keep running in the notification area", "Application"),
+        choice("closeOnLaunch", "Close the launcher when a game starts", "Application"),
+        choice("autoUpdate", "Check for updates", "Updates"),
+        choice("downloadLimit", "Game download speed", "Network"),
+      ),
+    );
+    api.autostartSupported.mockResolvedValue(true);
+    api.autostartEnabled.mockResolvedValue(false);
     render(LauncherSettingsView, props);
-    await fireEvent.click(await screen.findByRole("radio", { name: "Light" }));
-    await waitFor(() => expect(appearance.theme).toBe("light"));
-    expect(restartNeeded.needed).toBe(false);
-    document.documentElement.removeAttribute("data-theme");
+    await screen.findByText("Start with the system");
+
+    expect(screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent)).toEqual(["Application", "Updates", "Network", "About"]);
+    const labels = (heading: string) =>
+      [...(screen.getByRole("heading", { level: 2, name: heading }).nextElementSibling as HTMLElement).querySelectorAll(".text > span")].map((s) => s.textContent);
+    expect(labels("Application")).toEqual([
+      "Language", "Start with the system", "Keep running in the notification area", "Close the launcher when a game starts", "Games folder",
+    ]);
+    expect(labels("Updates")).toEqual(["Check for updates", "Game catalog"]);
+    expect(labels("Network").slice(0, 2)).toEqual(["Game download speed", "Proxy"]);
+    expect(screen.queryByText("Theme")).not.toBeInTheDocument();
   });
 
   it("applies a new download speed limit at once, so running downloads follow it", async () => {
     const limit: SettingView = {
-      id: "downloadLimit", label: "Game download speed", help: null, tab: "Game", group: "Downloads", advanced: false, enabled: true,
+      id: "downloadLimit", label: "Game download speed", help: null, tab: "Game", group: "Network", advanced: false, enabled: true,
       control: { type: "choices", style: "dropdown", options: ["Unlimited", "1 MB/s"], value: 0, custom: null },
     };
     api.loadLauncherSettings.mockResolvedValue(view(limit));

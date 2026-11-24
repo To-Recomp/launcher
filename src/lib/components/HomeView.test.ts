@@ -172,6 +172,18 @@ describe("HomeView actions", () => {
 });
 
 describe("HomeView status", () => {
+  const tones: [string, LibraryStore["status"], string][] = [
+    ["no message", null, "idle"],
+    ["an error", { tone: "error", text: "Boom" }, "error"],
+    ["a success", { tone: "success", text: "Done" }, "success"],
+    ["an info message", { tone: "info", text: "Closed" }, "info"],
+  ];
+  it.each(tones)("gives %s one tint, shared by its icon, border and background", (_name, status, tone) => {
+    const library = show(installed("ready"));
+    library.status = status;
+    return waitFor(() => expect(screen.getByRole("status")).toHaveClass("status", tone));
+  });
+
   it("shows progress with a way to cancel while a job runs", async () => {
     const library = show(installed(null));
     library.progress["prepare:toe/ps1"] = { job: "prepare:toe/ps1", fraction: 0.4, message: "Compiling" };
@@ -248,9 +260,16 @@ describe("HomeView availability", () => {
   it("lists consoles only in the selector, each with the year the game came out on it", async () => {
     const library = new LibraryStore();
     const game = { ...eternia, platforms: [platform, { platform: "Windows", regions: ["Worldwide"], state: "planned" as const, maturity: null, releaseYear: 2012, year: 2012 }] };
-    render(HomeView, { game, platform, library, platformSizing: [], onplatform: () => {}, onsettings });
+    const onplatform = vi.fn();
+    render(HomeView, { game, platform, library, platformSizing: [], onplatform, onsettings });
     await fireEvent.click(screen.getByRole("combobox", { name: "Platform" }));
-    expect(screen.getAllByRole("option").map((o) => o.textContent?.trim())).toEqual(["2000 · PS1", "2012 · Windows"]);
+    expect(screen.getAllByRole("option").map((o) => o.textContent?.trim())).toEqual(["2000 · PS1", "2012 · Windows N/A"]);
+    // A console the game isn't available on is listed but can't be chosen.
+    expect(screen.getByRole("option", { name: /Windows/ })).toHaveAttribute("aria-disabled", "true");
+    expect(screen.getByRole("option", { name: /PS1/ })).not.toHaveAttribute("aria-disabled");
+    await fireEvent.click(screen.getByRole("option", { name: /Windows/ }));
+    expect(onplatform).not.toHaveBeenCalled();
+    expect(screen.getByRole("listbox")).toBeInTheDocument(); // still open: nothing was chosen
   });
 });
 

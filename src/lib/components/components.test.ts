@@ -96,6 +96,35 @@ describe("Dropdown", () => {
   });
 });
 
+describe("Dropdown with options that can't be chosen", () => {
+  const show = () => {
+    const onchange = vi.fn();
+    render(Dropdown, {
+      options: ["A", "B", "C", "D"], value: "A", label: "Platform", disabled: ["B", "D"], notes: { B: "N/A", D: "N/A" }, onchange,
+    });
+    return { onchange, box: screen.getByRole("combobox", { name: "Platform" }) };
+  };
+
+  it("lists them with their note, greyed out, and doesn't let a click choose them", async () => {
+    const { onchange, box } = show();
+    await fireEvent.click(box);
+    expect(screen.getByRole("option", { name: /B/ })).toHaveAttribute("aria-disabled", "true");
+    expect(screen.getByRole("option", { name: /B/ })).toHaveTextContent("N/A");
+    await fireEvent.click(screen.getByRole("option", { name: /B/ }));
+    expect(onchange).not.toHaveBeenCalled();
+    await fireEvent.click(screen.getByRole("option", { name: "C" }));
+    expect(onchange).toHaveBeenCalledWith("C");
+  });
+
+  it("skips them with the keyboard", async () => {
+    const { onchange, box } = show();
+    await fireEvent.keyDown(box, { key: "ArrowDown" }); // opens on A
+    await fireEvent.keyDown(box, { key: "ArrowDown" }); // B is skipped
+    await fireEvent.keyDown(box, { key: "Enter" });
+    expect(onchange).toHaveBeenCalledWith("C");
+  });
+});
+
 describe("SidebarItem", () => {
   it("offers a separate quick play button only for a game that can be played at once", async () => {
     const onplay = vi.fn();
