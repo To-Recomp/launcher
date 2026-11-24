@@ -29,9 +29,13 @@ export function initials(name: string): string {
   return (first + (/^\d+$/.test(last) ? last : "")).toUpperCase();
 }
 
-/** The console shown first: the first playable one, else the most recent (the list is ordered that way). */
-export function defaultPlatform(game: Game): Platform | undefined {
-  return game.platforms.find((p) => p.state === "playable") ?? game.platforms[0];
+/**
+ * The console a game opens on: the one it was last played on (if it is still playable), else the
+ * first playable one, else the most recent (the list is ordered that way).
+ */
+export function defaultPlatform(game: Game, lastPlayed: string | null = null): Platform | undefined {
+  const playable = game.platforms.filter((p) => p.state === "playable");
+  return playable.find((p) => p.platform === lastPlayed) ?? playable[0] ?? game.platforms[0];
 }
 
 export function toGames(catalog: Catalog): Game[] {

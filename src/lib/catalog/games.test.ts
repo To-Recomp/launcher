@@ -66,4 +66,11 @@ describe("defaultPlatform", () => {
   it("is the most recent console when none is playable", () => {
     expect(defaultPlatform(game(platform("PS2", "planned", 2004), platform("Switch", "planned", 2023)))?.platform).toBe("Switch");
   });
+
+  it("is the console the game was last played on, while it is still playable", () => {
+    const g = game(platform("PS3", "playable", 2013), platform("GameCube", "playable", 2003), platform("Switch", "planned", 2023));
+    expect(defaultPlatform(g, "GameCube")?.platform).toBe("GameCube");
+    expect(defaultPlatform(g, "Switch")?.platform).toBe("PS3"); // no longer playable there, or never was
+    expect(defaultPlatform(g, "Wii")?.platform).toBe("PS3"); // gone from the catalog
+  });
 });

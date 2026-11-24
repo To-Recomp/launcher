@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { lastPlayedPlatform } from "./lastPlayed";
 import type { Game, Platform } from "../catalog/games";
 
 const api = vi.hoisted(() => ({
@@ -204,6 +205,17 @@ describe("LibraryStore actions", () => {
     await store.play(game, platform);
     expect(store.isRunning("game:tos/gamecube")).toBe(false);
     expect(store.status).toEqual({ tone: "error", text: "This game isn't ready: prepare it first." });
+  });
+
+  it("remembers the console a game was played on, and not one that failed to start", async () => {
+    localStorage.clear();
+    const store = new LibraryStore();
+    api.startGame.mockRejectedValue("This game isn't ready: prepare it first.");
+    await store.play(game, platform);
+    expect(lastPlayedPlatform("tos")).toBeNull();
+    api.startGame.mockResolvedValue(undefined);
+    await store.play(game, platform);
+    expect(lastPlayedPlatform("tos")).toBe("GameCube");
   });
 
   it("reads a log", async () => {

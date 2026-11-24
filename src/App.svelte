@@ -8,6 +8,7 @@
   import Sidebar from "./lib/components/Sidebar.svelte";
   import TitleBar from "./lib/components/TitleBar.svelte";
   import { cachedCatalog, refreshCatalog } from "./lib/catalog/api";
+  import { lastPlayedPlatform } from "./lib/library/lastPlayed";
   import { defaultPlatform, toGames, type Game } from "./lib/catalog/games";
   import { logoFor } from "./lib/catalog/logos";
   import type { CatalogStatus } from "./lib/catalog/status";
@@ -53,7 +54,11 @@
   });
 
   let platformByGame = $state<Record<string, string>>({});
-  const platform = $derived(game && (game.platforms.find((p) => p.platform === platformByGame[game.id]) ?? defaultPlatform(game)));
+  const platform = $derived(
+    game &&
+      (game.platforms.find((p) => p.platform === platformByGame[game.id]) ??
+        defaultPlatform(game, lastPlayedPlatform(game.id))),
+  );
 
   /** Where the selected instance keeps its settings, once its game is installed. */
   let location = $state<Location | null>(null);

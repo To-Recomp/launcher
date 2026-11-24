@@ -22,5 +22,5 @@ only), a `state` (`planned`, `in-progress`, `playable`, `unsupported`) and, only
 on that console; the game's `japan_release_year` is used when absent). The sidebar shows each
 game's name and year, plus a play icon when the game can be played at once; the platform selector
 lists consoles, not regions, each prefixed with its year and ordered from the most recent to the
-oldest, and opens on the first playable console (else the most recent). It is as wide as the widest console of the whole catalog, so it never resizes. A
+oldest, and opens on the console the game was last played on (remembered per game in `localStorage`), else the first playable one, else the most recent. It is as wide as the widest console of the whole catalog, so it never resizes. A
 console that isn't `playable` can't be installed or prepared: the game page says why.

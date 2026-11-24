@@ -3,6 +3,7 @@ import { buildReport, dismissPanic, pendingPanic, type DiagnosticFile, type Diag
 import { LAUNCHER_REPOSITORY } from "../data";
 import { t } from "../i18n/index.svelte";
 import { errorMessage } from "../settings/api";
+import { rememberPlayed } from "./lastPlayed";
 import * as api from "./api";
 import {
   CANCELLED,
@@ -234,6 +235,7 @@ export class LibraryStore {
     this.#started[job] = { game, platform };
     try {
       await api.startGame(game.id, platform.platform);
+      rememberPlayed(game.id, platform.platform);
     } catch (e) {
       delete this.progress[job];
       const error = errorMessage(e);
