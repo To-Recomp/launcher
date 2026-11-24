@@ -2,7 +2,9 @@
 //! requests an hour GitHub allows without a token. One file per URL holds the body, its ETag and
 //! when it was fetched. Within the TTL the saved body is served without any request; after it a
 //! conditional request is made (a `304` costs no quota). When GitHub can't be asked (rate limit,
-//! network), the saved body is served even if it is old.
+//! network), the saved body is served even if it is old. A `404` (most games of the catalog have no
+//! repository yet) is kept too, for four times the TTL, so a missing repository is asked about once
+//! an hour and not at every visit.
 
 use std::fs;
 use std::path::PathBuf;
@@ -14,6 +16,8 @@ use sha2::{Digest, Sha256};
 use crate::fs_util::write_atomically;
 
 pub const TTL: Duration = Duration::from_secs(15 * 60);
+/// A repository that doesn't exist is looked up again after this many TTLs.
+const MISSING_TTL_FACTOR: u32 = 4;
 
 /// What GitHub answered, errors aside.
 pub enum Reply {
@@ -28,6 +32,9 @@ struct Entry {
     /// Seconds since the Unix epoch.
     fetched_at: u64,
     body: String,
+    /// GitHub answered 404: there is nothing at this URL (`body` is empty).
+    #[serde(default)]
+    missing: bool,
 }
 
 pub struct Cache {
@@ -91,11 +98,16 @@ impl Cache {
         let now = (self.now)();
         let entry = self.load(url);
         if let (false, Some(e)) = (fresh, &entry) {
+            let ttl = if e.missing {
+                self.ttl * MISSING_TTL_FACTOR
+            } else {
+                self.ttl
+            };
             let young = now
                 .checked_sub(e.fetched_at)
-                .is_some_and(|age| age < self.ttl.as_secs());
+                .is_some_and(|age| age < ttl.as_secs());
             if young {
-                return Ok(Some(e.body.clone()));
+                return Ok((!e.missing).then(|| e.body.clone()));
             }
         }
         match fetch(entry.as_ref().and_then(|e| e.etag.as_deref())) {
@@ -106,6 +118,7 @@ impl Cache {
                         etag,
                         fetched_at: now,
                         body: text.clone(),
+                        missing: false,
                     },
                 );
                 Ok(Some(text))
@@ -119,13 +132,19 @@ impl Cache {
                 None => Err("GitHub answered 304 to a request without a saved copy.".to_string()),
             },
             Ok(Reply::NotFound) => {
-                if let Some(path) = self.path(url) {
-                    let _ = fs::remove_file(path);
-                }
+                self.store(
+                    url,
+                    &Entry {
+                        etag: None,
+                        fetched_at: now,
+                        body: String::new(),
+                        missing: true,
+                    },
+                );
                 Ok(None)
             }
             Err(error) => match entry {
-                Some(e) => Ok(Some(e.body)),
+                Some(e) => Ok((!e.missing).then_some(e.body)),
                 None => Err(error),
             },
         }

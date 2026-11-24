@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CatalogPlatform } from "./types";
-import { defaultPlatform, initials, quickPlayPlatform, toGames } from "./games";
+import { defaultPlatform, hasRepository, initials, quickPlayPlatform, toGames } from "./games";
 
 describe("initials", () => {
   it.each([
@@ -93,5 +93,23 @@ describe("quickPlayPlatform", () => {
 
   it("is nothing when no console is ready", () => {
     expect(quickPlayPlatform(game, ready(), "GameCube")).toBeUndefined();
+  });
+});
+
+describe("hasRepository", () => {
+  const platform = (state: CatalogPlatform["state"]): CatalogPlatform => ({
+    platform: state, regions: ["Japan"], state, maturity: state === "playable" ? "beta" : null, releaseYear: null,
+  });
+  const game = (...states: CatalogPlatform["state"][]) =>
+    toGames({ games: [{ id: "t", name: "T", japanReleaseYear: 2003, repository: "To-Recomp/t", platforms: states.map(platform) }] })[0];
+
+  it("is false while every console is only planned: there is nothing on GitHub to ask about", () => {
+    expect(hasRepository(game("planned", "planned"))).toBe(false);
+  });
+
+  it("is true as soon as a console is being worked on, playable or given up", () => {
+    expect(hasRepository(game("planned", "in-progress"))).toBe(true);
+    expect(hasRepository(game("playable"))).toBe(true);
+    expect(hasRepository(game("unsupported"))).toBe(true);
   });
 });

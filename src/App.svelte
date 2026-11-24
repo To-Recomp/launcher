@@ -132,12 +132,16 @@
     };
   });
 
-  // Each installed game is checked once for a newer release; the game's page then offers the update.
+  // Installed games are checked for a newer release (the library changing, a game being opened); each
+  // check is spaced out by the store, so this is cheap.
   $effect(() => {
     for (const installation of library.installations) {
       const installed = catalog.find((g) => g.id === installation.gameId);
       if (installed) void library.checkUpdate(installed);
     }
+  });
+  $effect(() => {
+    if (game) void library.checkUpdate(game);
   });
 
   /** Quick play from the sidebar: starts the console the game was last played on (else its most recent ready one). */
