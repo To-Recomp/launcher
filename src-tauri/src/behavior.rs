@@ -7,7 +7,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use serde::Deserialize;
 use tauri::menu::{Menu, MenuItem};
-use tauri::tray::TrayIconBuilder;
+use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Manager, State, Window, WindowEvent};
 use tauri_plugin_autostart::ManagerExt;
 
@@ -52,7 +52,18 @@ fn add_icon(app: &AppHandle, labels: &TrayLabels) -> Result<(), String> {
     let menu = Menu::with_items(app, &[&show, &quit]).map_err(fail)?;
     let mut icon = TrayIconBuilder::with_id(TRAY_ID)
         .menu(&menu)
-        .show_menu_on_left_click(true)
+        // The menu is the right click's; the left click shows the launcher.
+        .show_menu_on_left_click(false)
+        .on_tray_icon_event(|icon, event| {
+            if let TrayIconEvent::Click {
+                button: MouseButton::Left,
+                button_state: MouseButtonState::Up,
+                ..
+            } = event
+            {
+                show_window(icon.app_handle());
+            }
+        })
         .on_menu_event(|app, event| match event.id().as_ref() {
             "show" => show_window(app),
             "quit" => app.exit(0),
