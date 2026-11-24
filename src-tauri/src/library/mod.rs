@@ -716,6 +716,14 @@ pub fn game_license(
     release::repository_license(&env.api, &repository, &env.cache)
 }
 
+/// The release an install would fetch now (the newest one with a build for this OS), to tell an
+/// installed game that a newer one exists. It reads the same GitHub answer as `install`.
+#[tauri::command(async)]
+pub fn latest_release_tag(app: tauri::AppHandle, repository: String) -> Result<String, String> {
+    let env = app_env(&app)?;
+    release::latest_release(&env.api, &repository, env.os, &env.cache).map(|release| release.tag)
+}
+
 #[tauri::command(async)]
 pub fn prepare_instance(
     app: tauri::AppHandle,

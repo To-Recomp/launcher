@@ -46,6 +46,7 @@ pub fn run() {
             library::install_game,
             library::game_releases,
             library::game_license,
+            library::latest_release_tag,
             library::prepare_instance,
             library::start_game,
             library::cancel_job,

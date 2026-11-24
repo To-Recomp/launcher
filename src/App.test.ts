@@ -12,6 +12,7 @@ const library = vi.hoisted(() => ({
   librarySnapshot: vi.fn(),
   instanceLocation: vi.fn(),
   startGame: vi.fn(),
+  latestReleaseTag: vi.fn(),
   onProgress: vi.fn(),
   onGameExited: vi.fn(),
 }));

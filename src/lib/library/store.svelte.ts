@@ -56,7 +56,11 @@ export class LibraryStore {
   /** The file left by a launcher panic at the previous run, offered by a banner. */
   crash = $state<DiagnosticFile | null>(null);
 
+  /** The newest release of each installed game's repository, by game id, once checked. */
+  latest = $state<Record<string, string>>({});
+
   #unlisten: (() => void)[] = [];
+  #checking = new Set<string>();
   /** The games started by this session, to say which instance a non-zero exit belongs to. */
   #started: Record<string, { game: Game; platform: Platform }> = {};
 
@@ -104,6 +108,26 @@ export class LibraryStore {
 
   installationOf(gameId: string): InstallationView | undefined {
     return this.installations.find((i) => i.gameId === gameId);
+  }
+
+  /** Asks GitHub for the newest release of an installed game, once per session unless the check failed. */
+  async checkUpdate(game: Game) {
+    if (this.#checking.has(game.id) || game.id in this.latest || !this.installationOf(game.id)) return;
+    this.#checking.add(game.id);
+    try {
+      this.latest[game.id] = await api.latestReleaseTag(game.repository);
+    } catch {
+      // Offline or limited by GitHub: the next change of the library tries again.
+    } finally {
+      this.#checking.delete(game.id);
+    }
+  }
+
+  /** The release to update to, when the installed one isn't the newest. */
+  updateAvailable(gameId: string): string | null {
+    const installed = this.installationOf(gameId)?.tag;
+    const newest = this.latest[gameId];
+    return installed && newest && newest !== installed ? newest : null;
   }
 
   instanceState(gameId: string, platform: Platform): InstanceState {

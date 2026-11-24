@@ -40,6 +40,9 @@ export const game = {
   "game.home.releasesNone": "No release has been published yet.",
   "game.home.releaseMore": "+ {count} more on GitHub",
   "game.home.openRelease": "View this release on GitHub",
+  "game.home.update": "Update",
+  "game.home.updateTo": "Update to {tag}",
+  "game.home.hintUpdate": "{tag} is available (installed: {current}). Update, then rebuild the game.",
   "game.home.settings": "Game settings",
   "game.home.moreActions": "More actions",
 

@@ -21,6 +21,11 @@
   and `stage-end <id> ok|skipped|failed|cancelled <seconds>`. The Home page then lists each task
   with its position, its own percentage and bar while it runs, and its duration once done, under
   the overall bar (which still follows `progress`). `tos-prepare` prints these lines.
+- **Update detection:** once per session, each installed game asks GitHub for the release an install
+  would fetch now (`latest_release_tag`, the same answer as `install`, through the ETag cache). When
+  it isn't the installed tag the game's page shows an **Update** button next to the main one and
+  says which release is available; the main button keeps playing the installed one meanwhile. A
+  failed check (offline, rate limit) is tried again at the next change of the library.
 - **Update**: installing a newer release replaces the release folder only. Instances stay, and
   show `needs rebuild`. With `prepare.keeps_copy` the rebuild starts from what the last run kept
   in the instance, not from the dump (the launcher leaves out arguments naming the copy);
