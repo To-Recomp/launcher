@@ -99,8 +99,6 @@ export const launcher = {
   "launcher.tray.show": "Show the launcher",
   "launcher.tray.quit": "Quit",
   "launcher.setting.theme.label": "Theme",
-  "launcher.setting.gamePalette.label": "Game colors",
-  "launcher.setting.gamePalette.help": "Tints the pages with colors taken from the game's logo. Dark theme only.",
   "launcher.option.Dark": "Dark",
   "launcher.option.Light": "Light",
   "launcher.setting.downloadLimit.label": "Game download speed",

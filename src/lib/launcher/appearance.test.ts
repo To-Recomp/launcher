@@ -21,7 +21,7 @@ beforeEach(() => {
 afterEach(() => document.documentElement.removeAttribute("data-theme"));
 
 describe("AppearanceStore", () => {
-  it("is dark with game colors when nothing is saved or the settings can't be read", async () => {
+  it("is dark when nothing is saved or the settings can't be read", async () => {
     api.launcherAppearance.mockRejectedValue("no runtime");
     const appearance = new AppearanceStore();
     await appearance.load();
@@ -31,23 +31,16 @@ describe("AppearanceStore", () => {
   });
 
   it("shows the chosen theme on the page, and never tints a light one with the game's colors", async () => {
-    api.launcherAppearance.mockResolvedValue({ theme: "light", gamePalette: true });
+    api.launcherAppearance.mockResolvedValue({ theme: "light" });
     const appearance = new AppearanceStore();
     await appearance.load();
     expect(document.documentElement.dataset.theme).toBe("light");
     expect(appearance.usesGamePalette).toBe(false);
   });
 
-  it("stops using the game's colors when asked to, on the dark theme", async () => {
-    api.launcherAppearance.mockResolvedValue({ theme: "dark", gamePalette: false });
-    const appearance = new AppearanceStore();
-    await appearance.load();
-    expect(appearance.usesGamePalette).toBe(false);
-  });
-
   it("follows the system's theme, including when it changes while the launcher runs", async () => {
     systemDark = false;
-    api.launcherAppearance.mockResolvedValue({ theme: "system", gamePalette: true });
+    api.launcherAppearance.mockResolvedValue({ theme: "system" });
     const appearance = new AppearanceStore();
     await appearance.load();
     expect(appearance.theme).toBe("light");
@@ -57,10 +50,10 @@ describe("AppearanceStore", () => {
   });
 
   it("applies a change made in the settings at once", async () => {
-    api.launcherAppearance.mockResolvedValue({ theme: "dark", gamePalette: true });
+    api.launcherAppearance.mockResolvedValue({ theme: "dark" });
     const appearance = new AppearanceStore();
     await appearance.load();
-    api.launcherAppearance.mockResolvedValue({ theme: "light", gamePalette: true });
+    api.launcherAppearance.mockResolvedValue({ theme: "light" });
     await appearance.reload();
     expect(document.documentElement.dataset.theme).toBe("light");
   });

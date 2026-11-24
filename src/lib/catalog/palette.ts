@@ -71,12 +71,12 @@ export function contrast(a: Rgb, b: Rgb): number {
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 const hex = (rgb: Rgb) => `#${rgb.map((v) => v.toString(16).padStart(2, "0")).join("")}`;
 
-/**
- * The dominant saturated hue of an image (RGBA bytes), turned into a palette that stays readable
- * on the launcher's dark theme. Transparent, near-white, near-black and grey pixels are ignored.
- * Returns null when nothing is colorful enough (the default theme then stays).
- */
-export function paletteFromPixels(data: ArrayLike<number>): Palette | null {
+/** Pixels counted as "colorful": a logo that has none of the strict kind is read again with the relaxed one. */
+const STRICT = { saturation: 0.15, lightness: 0.15 };
+const RELAXED = { saturation: 0.05, lightness: 0.12 };
+
+/** The dominant hue of the pixels at least as colorful as `limits`, as the average color of its bin. */
+function dominantColor(data: ArrayLike<number>, limits: typeof STRICT): Rgb | null {
   const weight = new Array<number>(BINS).fill(0);
   const sum = Array.from({ length: BINS }, () => [0, 0, 0]);
   const count = new Array<number>(BINS).fill(0);
@@ -87,7 +87,7 @@ export function paletteFromPixels(data: ArrayLike<number>): Palette | null {
     opaque++;
     const rgb: Rgb = [data[i], data[i + 1], data[i + 2]];
     const [h, s, l] = toHsl(rgb);
-    if (s < 0.15 || l < 0.15 || l > 0.92) continue;
+    if (s < limits.saturation || l < limits.lightness || l > 0.92) continue;
     const w = s * (1 - Math.abs(2 * l - 1));
     const bin = Math.min(BINS - 1, Math.floor((h / 360) * BINS));
     weight[bin] += w;
@@ -103,7 +103,18 @@ export function paletteFromPixels(data: ArrayLike<number>): Palette | null {
   const around = count[best] + count[(best + BINS - 1) % BINS] + count[(best + 1) % BINS];
   if (weight[best] === 0 || around < opaque * 0.05) return null;
 
-  const base: Rgb = [0, 1, 2].map((k) => Math.round(sum[best][k] / weight[best])) as Rgb;
+  return [0, 1, 2].map((k) => Math.round(sum[best][k] / weight[best])) as Rgb;
+}
+
+/**
+ * The dominant hue of an image (RGBA bytes), turned into a palette that stays readable on the
+ * launcher's dark theme. Transparent, near-white, near-black and grey pixels are ignored; a logo
+ * made of muted tints (silver, slate) takes the hue of those. Returns null when it has no hue at
+ * all (the default theme then stays).
+ */
+export function paletteFromPixels(data: ArrayLike<number>): Palette | null {
+  const base = dominantColor(data, STRICT) ?? dominantColor(data, RELAXED);
+  if (!base) return null;
   const [h, s0] = toHsl(base);
   const s = clamp(s0, 0.45, 0.8);
 

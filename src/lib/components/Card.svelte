@@ -14,6 +14,8 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-2);
+    max-height: 250px;
+    overflow: hidden;
     padding: var(--space-5);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Icon from "./Icon.svelte";
   import SidebarItem from "./SidebarItem.svelte";
   import type { Game } from "../catalog/games";
   import { LAUNCHER_VERSION } from "../data";
@@ -10,6 +11,8 @@
     games,
     selectedId,
     onselect,
+    launcherActive = false,
+    onlauncher,
     loading = false,
     catalogError = null,
     onretry = () => {},
@@ -18,6 +21,10 @@
     games: Game[];
     selectedId: string;
     onselect: (id: string) => void;
+    /** The launcher's own settings page is open. */
+    launcherActive?: boolean;
+    /** Opens the launcher's own settings page. */
+    onlauncher: () => void;
     loading?: boolean;
     /** Why the catalog couldn't be refreshed (the saved list, if any, is shown). */
     catalogError?: string | null;
@@ -67,11 +74,23 @@
   {/if}
   <footer>
     <span class="version">v{LAUNCHER_VERSION}</span>
-    {#if updates.available}
-      <button class="update" disabled={status === "checking"} title={status === "failed" ? failure : undefined} onclick={update}>
-        {label}
+    <span class="tools">
+      {#if updates.available}
+        <button class="update" disabled={status === "checking"} title={status === "failed" ? failure : undefined} onclick={update}>
+          {label}
+        </button>
+      {/if}
+      <button
+        class="gear"
+        class:active={launcherActive}
+        aria-label={t("shell.sidebar.launcherSettings")}
+        title={t("shell.sidebar.launcherSettings")}
+        aria-pressed={launcherActive}
+        onclick={onlauncher}
+      >
+        <Icon name="gear" size={16} />
       </button>
-    {/if}
+    </span>
   </footer>
 </aside>
 
@@ -79,7 +98,9 @@
   .sidebar {
     display: flex;
     flex-direction: column;
-    width: var(--sidebar-width);
+    width: max-content;
+    min-width: var(--sidebar-min-width);
+    max-width: var(--sidebar-max-width);
     flex: none;
     background: var(--color-bg);
     border-right: 1px solid var(--color-border);
@@ -94,7 +115,10 @@
   }
   .empty { margin: var(--space-4); color: var(--color-text-muted); }
   .note {
+    /* Its text wraps to the width the game names give: it never widens the sidebar. */
     display: flex;
+    width: 0;
+    min-width: 100%;
     align-items: center;
     gap: var(--space-2);
     padding: var(--space-2) var(--space-3);
@@ -115,10 +139,22 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4);
+    padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
     border-top: 1px solid var(--color-border);
   }
   .version { font-size: 12px; color: var(--color-text-muted); }
+  .tools { display: flex; align-items: center; gap: var(--space-2); }
+  .gear {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: none;
+    color: var(--color-text-muted);
+  }
+  .gear:hover, .gear.active { background: var(--color-surface-alt); color: var(--color-text); }
   .update {
     padding: 6px 12px;
     border: 1px solid var(--color-border-strong);

@@ -20,25 +20,20 @@
     });
     return () => (stale = true);
   });
-
-  const action = $derived(
-    game.state === "ready"
-      ? { icon: "play" as const, label: t("shell.sidebar.play") }
-      : game.state === "installed"
-        ? { icon: "settings" as const, label: t("shell.sidebar.settings") }
-        : { icon: "download" as const, label: t("shell.sidebar.install") },
-  );
 </script>
 
-<button class="item" class:selected style:--item-accent={accent} aria-current={selected ? "true" : undefined} onclick={onselect}>
+<button class="item" class:selected style:--item-accent={accent} title={game.name} aria-current={selected ? "true" : undefined} onclick={onselect}>
   <span class="badge">{game.icon}</span>
   <span class="text">
     <span class="name">{game.name}</span>
     <span class="year">{game.year}</span>
   </span>
-  <span class="status" class:play={game.state === "ready"} role="img" aria-label={action.label}>
-    <Icon name={action.icon} size={18} />
-  </span>
+  <!-- Only a game that can be played at once gets an icon: the others have nothing to offer from the list. -->
+  {#if game.state === "ready"}
+    <span class="status play" role="img" aria-label={t("shell.sidebar.play")}>
+      <Icon name="play" size={18} />
+    </span>
+  {/if}
 </button>
 
 <style>

@@ -40,10 +40,18 @@
   Changelog"), then "+ N more" for the rest. A repository without a release
   (or one that doesn't exist) shows an empty message; a network or rate-limit error shows that
   the releases can't be read.
+- **GitHub answer cache**: GitHub allows 60 unauthenticated API requests an hour, so every GET
+  to the API (release notes, license, latest release) is kept in `<app data>/github/<sha256 of
+  the URL>.json` (body, `ETag`, fetch time). Within 15 minutes the saved body is served with no
+  request. After that a conditional request (`If-None-Match`) is made: a `304` (free of quota)
+  renews the entry, a `200` replaces it, a `404` is "doesn't exist" and drops the entry. When
+  GitHub can't be asked (rate limit, network, other errors) the saved body is served even if old;
+  with nothing saved the error shows. Installing skips the 15 minutes (the newest release, its
+  asset URL and checksum are always asked for, with the `ETag`); `game_releases` accepts
+  `refresh: true` to do the same for the notes.
 
 States: `not prepared`, `ready`, `needs rebuild` (prepared for another release, or a file listed in
-`done` is gone). The sidebar shows download, settings or play icons for not installed,
-installed, ready.
+`done` is gone). The sidebar shows a play icon for a ready game and nothing for the others.
 
 ```
 <app data>/games/<game id>/installation.json

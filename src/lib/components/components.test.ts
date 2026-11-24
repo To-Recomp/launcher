@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/svelte";
+import { cleanup, fireEvent, render, screen } from "@testing-library/svelte";
 import { describe, expect, it, vi } from "vitest";
 import Segmented from "./Segmented.svelte";
 import Toggle from "./Toggle.svelte";
@@ -77,15 +77,34 @@ describe("Dropdown", () => {
     await fireEvent.pointerDown(document.body);
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
   });
+
+  it("puts a small prefix before an option and keeps its width for the widest text it may show", async () => {
+    render(Dropdown, {
+      options: ["PS2", "PS3"], value: "PS2", label: "Platform",
+      prefixes: { PS2: "2000", PS3: "2006" },
+      sizing: [{ option: "Nintendo Switch 2", prefix: "2025" }],
+      onchange: () => {},
+    });
+    const box = screen.getByRole("combobox", { name: "Platform" });
+    expect(box.querySelector(".value")?.textContent?.trim()).toBe("2000 · PS2");
+    // Hidden copies of every possible text, so the box never resizes when another option is chosen.
+    const sizers = [...box.querySelectorAll(".sizer")];
+    expect(sizers.map((s) => s.textContent?.trim())).toEqual(["2000 · PS2", "2006 · PS3", "2025 · Nintendo Switch 2"]);
+    expect(sizers.every((s) => s.getAttribute("aria-hidden") === "true")).toBe(true);
+    await fireEvent.click(box);
+    expect(screen.getAllByRole("option").map((o) => o.textContent?.trim())).toEqual(["2000 · PS2", "2006 · PS3"]);
+  });
 });
 
 describe("SidebarItem", () => {
-  it.each([
-    ["not-installed", "Install"],
-    ["installed", "Settings"],
-    ["ready", "Play"],
-  ] as const)("shows the %s action as %s", (state, label) => {
-    render(SidebarItem, { game: { ...eternia, state }, onselect: () => {} });
-    expect(screen.getByRole("img", { name: label })).toBeInTheDocument();
+  it("shows an icon only for a game that can be played at once", () => {
+    render(SidebarItem, { game: { ...eternia, state: "installed" }, onselect: () => {} });
+    expect(screen.queryByRole("img")).not.toBeInTheDocument();
+    cleanup();
+    render(SidebarItem, { game: { ...eternia, state: "not-installed" }, onselect: () => {} });
+    expect(screen.queryByRole("img")).not.toBeInTheDocument();
+    cleanup();
+    render(SidebarItem, { game: { ...eternia, state: "ready" }, onselect: () => {} });
+    expect(screen.getByRole("img", { name: "Play" })).toBeInTheDocument();
   });
 });

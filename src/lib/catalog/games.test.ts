@@ -21,7 +21,7 @@ describe("toGames", () => {
       games: [
         {
           id: "tos", name: "Tales of Symphonia", japanReleaseYear: 2003, repository: "To-Recomp/tos-recomp",
-          platforms: [{ platform: "GameCube", regions: ["France (PAL)", "Japan"], state: "playable", maturity: "beta" }],
+          platforms: [{ platform: "GameCube", regions: ["France (PAL)", "Japan"], state: "playable", maturity: "beta", releaseYear: null }],
         },
         { id: "tov", name: "Tales of Vesperia", japanReleaseYear: 2008, repository: "To-Recomp/tov", platforms: [] },
       ],
@@ -29,7 +29,20 @@ describe("toGames", () => {
     expect(games.map((g) => g.id)).toEqual(["tos", "tov"]);
     expect(games[0]).toMatchObject({ icon: "S", year: 2003, state: "not-installed" });
     expect(games[0].platforms).toEqual([
-      { platform: "GameCube", regions: ["France (PAL)", "Japan"], state: "playable", maturity: "beta" },
+      { platform: "GameCube", regions: ["France (PAL)", "Japan"], state: "playable", maturity: "beta", releaseYear: null, year: 2003 },
     ]);
+  });
+
+  it("orders consoles from the most recent to the oldest, with the game's own year where the catalog has none", () => {
+    const platform = (name: string, releaseYear: number | null) => ({ platform: name, regions: ["Japan"], state: "planned" as const, maturity: null, releaseYear });
+    const [game] = toGames({
+      games: [
+        {
+          id: "tos", name: "Tales of Symphonia", japanReleaseYear: 2003, repository: "To-Recomp/tos",
+          platforms: [platform("PS2", 2004), platform("PS3", 2013), platform("GameCube", null), platform("Wii", 2013)],
+        },
+      ],
+    });
+    expect(game.platforms.map((p) => [p.platform, p.year])).toEqual([["PS3", 2013], ["Wii", 2013], ["PS2", 2004], ["GameCube", 2003]]);
   });
 });

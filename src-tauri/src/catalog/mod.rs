@@ -50,6 +50,13 @@ pub struct Platform {
     pub state: State,
     /// Only for a playable console.
     pub maturity: Option<Maturity>,
+    /// The year the game came out on this console; `None` when the catalog doesn't say (the
+    /// launcher then shows the game's first Japanese release year).
+    #[serde(
+        default,
+        rename(serialize = "releaseYear", deserialize = "release_year")
+    )]
+    pub release_year: Option<u32>,
 }
 
 /// What the launcher can do with a console.

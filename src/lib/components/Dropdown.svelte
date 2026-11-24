@@ -10,6 +10,8 @@
     value,
     label,
     caption,
+    prefixes = {},
+    sizing = [],
     onchange,
   }: {
     options: string[];
@@ -17,8 +19,17 @@
     label: string;
     /** Small label shown above the value (Home platform selector). */
     caption?: string;
+    /** A small label shown before an option (its release year), by option. */
+    prefixes?: Record<string, string>;
+    /**
+     * What the control must have room for, besides its own options: it is as wide as the widest of
+     * these and of the options, so it never grows or shrinks when another one is chosen.
+     */
+    sizing?: { option: string; prefix?: string }[];
     onchange: (value: string) => void;
   } = $props();
+
+  const sizes = $derived([...options.map((option) => ({ option, prefix: prefixes[option] })), ...sizing]);
 
   const id = `dropdown-${counter++}`;
 
@@ -87,7 +98,13 @@
     {onkeydown}
   >
     {#if caption}<span class="caption">{caption}</span>{/if}
-    <span class="value">{value}</span>
+    <span class="shown">
+      <!-- Invisible copies of every text the control may show: together they set its width. -->
+      {#each sizes as size}
+        <span class="sizer" aria-hidden="true">{@render named(size.option, size.prefix)}</span>
+      {/each}
+      <span class="value">{@render named(value, prefixes[value])}</span>
+    </span>
   </button>
   <span class="chevron" class:open><Icon name="chevron-down" size={16} /></span>
   {#if open}
@@ -104,12 +121,16 @@
           onpointerenter={() => (active = i)}
           onclick={() => choose(i)}
         >
-          {option}
+          {@render named(option, prefixes[option])}
         </li>
       {/each}
     </ul>
   {/if}
 </div>
+
+{#snippet named(option: string, prefix: string | undefined)}
+  {#if prefix}<span class="prefix">{prefix} ·</span>{" "}{/if}{option}
+{/snippet}
 
 <style>
   .dropdown {
@@ -182,4 +203,9 @@
   }
   li.active { background: color-mix(in srgb, var(--color-accent) 16%, transparent); }
   li.selected { color: var(--color-accent); font-weight: 600; }
+  .shown { display: grid; width: 100%; }
+  .shown > * { grid-area: 1 / 1; }
+  .sizer { height: 0; overflow: hidden; visibility: hidden; white-space: nowrap; }
+  .prefix { font-size: 11px; font-weight: 400; color: var(--color-text-muted); }
+  li.selected .prefix { color: inherit; opacity: 0.8; }
 </style>

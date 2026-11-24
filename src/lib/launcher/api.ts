@@ -55,8 +55,6 @@ export const setAutostart = (enabled: boolean) => invoke<boolean>("set_autostart
 /** How the interface looks (src-tauri/src/launcher_settings). */
 export interface Appearance {
   theme: "dark" | "light" | "system";
-  /** Tint the pages with colors taken from the game's logo. */
-  gamePalette: boolean;
 }
 
 export const launcherAppearance = () => invoke<Appearance>("launcher_appearance");

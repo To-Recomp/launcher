@@ -30,14 +30,16 @@ const input = (id: string, kinds = ["file"], optional = false) => ({ id, label: 
 function installed(state: InstanceState | null, extra: Partial<InstallationView> = {}): InstallationView {
   return {
     gameId: "toe", repository: "To-Recomp/toe", tag: "v1", inputs: [input("disc1")], prepareLabel: null, canPrepare: true, keepsCopy: false,
-    instances: state ? [{ id: "ps1", platform: "PS1", state }] : [], ...extra,
+    instances: state ? [{ id: "ps1", platform: "PS1", state, inputs: {} }] : [], ...extra,
   };
 }
+
+const onsettings = vi.fn();
 
 function show(installation: InstallationView | null) {
   const library = new LibraryStore();
   library.installations = installation ? [installation] : [];
-  render(HomeView, { game: eternia, platform, library, onplatform: () => {} });
+  render(HomeView, { game: eternia, platform, library, platformSizing: [], onplatform: () => {}, onsettings });
   return library;
 }
 
@@ -97,7 +99,15 @@ describe("HomeView actions", () => {
     expect(screen.getByText("Ready to play.")).toBeInTheDocument();
     await fireEvent.click(screen.getByRole("button", { name: "Play" }));
     expect(api.startGame).toHaveBeenCalledWith("toe", "PS1");
-    expect(screen.getByRole("button", { name: "Change game files" })).toBeInTheDocument();
+  });
+
+  it("opens the game's settings once the game is installed, not before", async () => {
+    show(null);
+    expect(screen.getByRole("button", { name: "Game settings" })).toBeDisabled();
+    cleanup();
+    show(installed(null));
+    await fireEvent.click(screen.getByRole("button", { name: "Game settings" }));
+    expect(onsettings).toHaveBeenCalledOnce();
   });
 
   it("says an update needs a new build, and offers Rebuild when the instance kept what it needs", () => {
@@ -106,25 +116,27 @@ describe("HomeView actions", () => {
     expect(screen.getByRole("button", { name: "Rebuild" })).toBeInTheDocument();
   });
 
-  it("deletes the build of a prepared instance only after the player confirms", async () => {
+  it("deletes the build of a prepared instance from the main button's menu, only after the player confirms", async () => {
     const library = show(installed("ready"));
     api.librarySnapshot.mockResolvedValue([installed(null)]);
     api.deleteBuild.mockResolvedValue(undefined);
 
     api.confirmDeletion.mockResolvedValue(false);
-    await fireEvent.click(screen.getByRole("button", { name: "Delete the build" }));
+    await fireEvent.click(screen.getByRole("button", { name: "More actions" }));
+    await fireEvent.click(screen.getByRole("menuitem", { name: "Delete the build" }));
     await waitFor(() => expect(api.confirmDeletion).toHaveBeenCalledTimes(1));
     expect(api.deleteBuild).not.toHaveBeenCalled();
 
     api.confirmDeletion.mockResolvedValue(true);
-    await fireEvent.click(screen.getByRole("button", { name: "Delete the build" }));
+    await fireEvent.click(screen.getByRole("button", { name: "More actions" }));
+    await fireEvent.click(screen.getByRole("menuitem", { name: "Delete the build" }));
     await waitFor(() => expect(api.deleteBuild).toHaveBeenCalledWith("toe", "PS1"));
     await waitFor(() => expect(library.status?.text).toMatch(/build of .* was deleted/));
   });
 
   it("offers no build to delete before the game is prepared", () => {
     show(installed(null));
-    expect(screen.queryByRole("button", { name: "Delete the build" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "More actions" })).not.toBeInTheDocument();
   });
 });
 
@@ -197,17 +209,17 @@ describe("HomeView availability", () => {
   ] as const)("can't install or prepare a %s console, and says why", (state, hint) => {
     const library = new LibraryStore();
     library.installations = [installed(null)];
-    render(HomeView, { game: eternia, platform: { ...platform, state, maturity: null }, library, onplatform: () => {} });
+    render(HomeView, { game: eternia, platform: { ...platform, state, maturity: null }, library, platformSizing: [], onplatform: () => {}, onsettings });
     expect(screen.getByText(hint)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Choose game file" })).toBeDisabled();
   });
 
-  it("lists consoles only in the selector", async () => {
+  it("lists consoles only in the selector, each with the year the game came out on it", async () => {
     const library = new LibraryStore();
-    const game = { ...eternia, platforms: [platform, { platform: "Windows", regions: ["Worldwide"], state: "planned" as const, maturity: null }] };
-    render(HomeView, { game, platform, library, onplatform: () => {} });
+    const game = { ...eternia, platforms: [platform, { platform: "Windows", regions: ["Worldwide"], state: "planned" as const, maturity: null, releaseYear: 2012, year: 2012 }] };
+    render(HomeView, { game, platform, library, platformSizing: [], onplatform: () => {}, onsettings });
     await fireEvent.click(screen.getByRole("combobox", { name: "Platform" }));
-    expect(screen.getAllByRole("option").map((o) => o.textContent?.trim())).toEqual(["PS1", "Windows"]);
+    expect(screen.getAllByRole("option").map((o) => o.textContent?.trim())).toEqual(["2000 · PS1", "2012 · Windows"]);
   });
 });
 

@@ -20,7 +20,7 @@ vi.mock("../diagnostics/api", () => diagnostics);
 import { LibraryStore } from "./store.svelte";
 import { CANCELLED, instanceId, type InstallationView, type InstanceState, type StageEvent } from "./types";
 
-const platform: Platform = { platform: "GameCube", regions: ["France (PAL)", "Japan"], state: "playable", maturity: "beta" };
+const platform: Platform = { platform: "GameCube", regions: ["France (PAL)", "Japan"], state: "playable", maturity: "beta", releaseYear: null, year: 2003 };
 const game: Game = { id: "tos", icon: "S", name: "Tales of Symphonia", repository: "To-Recomp/tos-recomp", year: 2003, state: "not-installed", platforms: [platform] };
 
 const disc = (id: string, optional = false) => ({ id, label: `Label ${id}`, role: "disc", optional, kinds: ["file"], extensions: ["iso"] });
@@ -28,7 +28,7 @@ function installation(state: InstanceState | null, extra: Partial<InstallationVi
   return {
     gameId: "tos", repository: game.repository, tag: "v1", inputs: [disc("disc1"), disc("disc2"), disc("dlc", true)],
     prepareLabel: "Building the game", canPrepare: true, keepsCopy: true,
-    instances: state ? [{ id: "gamecube", platform: "GameCube", state }] : [],
+    instances: state ? [{ id: "gamecube", platform: "GameCube", state, inputs: {} }] : [],
     ...extra,
   };
 }

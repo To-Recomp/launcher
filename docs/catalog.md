@@ -18,6 +18,9 @@ The sidebar is built from `catalog.json` of [`To-Recomp/catalog`](https://github
 
 Each game lists **consoles** (`platforms[]`): `regions` (what the game covers there, information
 only), a `state` (`planned`, `in-progress`, `playable`, `unsupported`) and, only when playable, a
-`maturity` (`alpha`, `beta`, `stable`). The sidebar shows each game's name, year and an install
-state icon (download / settings / play); the platform selector lists consoles, not regions. A
+`maturity` (`alpha`, `beta`, `stable`) and, optionally, `release_year` (the year the game came out
+on that console; the game's `japan_release_year` is used when absent). The sidebar shows each
+game's name and year, plus a play icon when the game can be played at once; the platform selector
+lists consoles, not regions, each prefixed with its year and ordered from the most recent to the
+oldest. It is as wide as the widest console of the whole catalog, so it never resizes. A
 console that isn't `playable` can't be installed or prepared: the game page says why.

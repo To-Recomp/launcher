@@ -2,11 +2,12 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SettingView, SettingsView as View } from "../settings/types";
 
-const api = vi.hoisted(() => ({ loadLauncherSettings: vi.fn(), setLauncherSetting: vi.fn(), launcherFolders: vi.fn(), setGamesFolder: vi.fn(), launcherAppearance: vi.fn(), applyBehavior: vi.fn().mockResolvedValue(undefined), applyDownloadLimit: vi.fn().mockResolvedValue(undefined), proxySettings: vi.fn().mockResolvedValue({ settings: { mode: "system", protocol: "http", host: "", port: 8080, username: "", noProxy: "" }, hasPassword: false, keychainError: null }), setProxy: vi.fn(), testProxy: vi.fn(), autostartSupported: vi.fn().mockResolvedValue(false), autostartEnabled: vi.fn(), setAutostart: vi.fn() }));
+const api = vi.hoisted(() => ({ loadLauncherSettings: vi.fn(), setLauncherSetting: vi.fn(), launcherFolders: vi.fn(), setGamesFolder: vi.fn(), launcherAppearance: vi.fn(), launcherLanguage: vi.fn(), applyBehavior: vi.fn().mockResolvedValue(undefined), applyDownloadLimit: vi.fn().mockResolvedValue(undefined), proxySettings: vi.fn().mockResolvedValue({ settings: { mode: "system", protocol: "http", host: "", port: 8080, username: "", noProxy: "" }, hasPassword: false, keychainError: null }), setProxy: vi.fn(), testProxy: vi.fn(), autostartSupported: vi.fn().mockResolvedValue(false), autostartEnabled: vi.fn(), setAutostart: vi.fn() }));
 vi.mock("../launcher/api", () => api);
 vi.mock("../updater", () => ({ updaterAvailable: vi.fn(), updateLauncher: vi.fn(), checkLauncherUpdate: vi.fn(), updatePreferences: vi.fn() }));
 vi.mock("../settings/api", () => ({ errorMessage: (e: unknown) => String(e) }));
 
+import { locale, setLocale } from "../i18n/index.svelte";
 import { appearance } from "../launcher/appearance.svelte";
 import { restartNeeded } from "../launcher/restart.svelte";
 import { launcherUpdates } from "../launcher/updates.svelte";
@@ -71,7 +72,7 @@ describe("LauncherSettingsView", () => {
     await waitFor(() => expect(launcherUpdates.found).toBeNull());
   });
 
-  it("asks for a restart when the language changes, since it is chosen at startup", async () => {
+  it("switches the language at once, menus of the notification area included, without asking for a restart", async () => {
     const language: SettingView = {
       id: "language", label: "Language", help: null, tab: "Game", group: "Interface", advanced: false, enabled: true,
       control: { type: "choices", style: "segmented", options: ["System", "English", "Français"], value: 0, custom: null },
@@ -79,10 +80,14 @@ describe("LauncherSettingsView", () => {
     restartNeeded.needed = false;
     api.loadLauncherSettings.mockResolvedValue(view(language));
     api.setLauncherSetting.mockResolvedValue(view(language));
+    api.launcherLanguage.mockResolvedValue("fr");
     render(LauncherSettingsView, props);
     await fireEvent.click(await screen.findByRole("radio", { name: "Français" }));
-    await waitFor(() => expect(restartNeeded.needed).toBe(true));
-    restartNeeded.needed = false;
+    await waitFor(() => expect(locale()).toBe("fr"));
+    await waitFor(() => expect(api.applyBehavior).toHaveBeenCalledWith({ show: "Afficher le launcher", quit: "Quitter" }));
+    expect(await screen.findByRole("heading", { level: 1, name: "Paramètres du launcher" })).toBeInTheDocument();
+    expect(restartNeeded.needed).toBe(false);
+    setLocale("en");
   });
 
   it("puts the notification area icon on or off when its setting changes, and says if it can't", async () => {
@@ -108,7 +113,7 @@ describe("LauncherSettingsView", () => {
     };
     api.loadLauncherSettings.mockResolvedValue(view(theme));
     api.setLauncherSetting.mockResolvedValue(view(theme));
-    api.launcherAppearance.mockResolvedValue({ theme: "light", gamePalette: true });
+    api.launcherAppearance.mockResolvedValue({ theme: "light" });
     restartNeeded.needed = false;
     render(LauncherSettingsView, props);
     await fireEvent.click(await screen.findByRole("radio", { name: "Light" }));

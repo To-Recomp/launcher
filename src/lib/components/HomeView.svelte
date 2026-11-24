@@ -5,6 +5,7 @@
   import type { Game, Platform } from "../catalog/games";
   import { logoFor } from "../catalog/logos";
   import { gameReleases, releaseDate, releaseEntries, type ReleaseNote } from "../catalog/releases";
+  import { openLink, repositoryUrl } from "../diagnostics/api";
   import { gameJob, installJob, instanceId, prepareJob } from "../library/types";
   import type { LibraryStore } from "../library/store.svelte";
   import { t } from "../i18n/index.svelte";
@@ -13,8 +14,19 @@
     game,
     platform,
     library,
+    platformSizing,
     onplatform,
-  }: { game: Game; platform: Platform | undefined; library: LibraryStore; onplatform: (label: string) => void } = $props();
+    onsettings,
+  }: {
+    game: Game;
+    platform: Platform | undefined;
+    library: LibraryStore;
+    /** Every console of every game: the platform selector keeps the width of the widest. */
+    platformSizing: { option: string; prefix: string }[];
+    onplatform: (label: string) => void;
+    /** Opens the game's settings. */
+    onsettings: () => void;
+  } = $props();
 
   const title = $derived(game.name.replace(/^Tales of (the )?/, ""));
   const logo = $derived(logoFor(game.name));
@@ -137,7 +149,41 @@
             ? t("game.home.hintRebuild")
             : t("game.home.hintChoose")),
   );
+
+  /** Every label the main button may carry: it is as wide as the widest, whatever its state or language. */
+  const labels = $derived([
+    t("game.home.install"),
+    t("game.home.play"),
+    t("game.home.rebuild"),
+    t("game.home.prepareAgain"),
+    t("game.home.prepare"),
+    t("game.home.chooseFiles"),
+    t("game.home.chooseFolder"),
+    t("game.home.chooseFile"),
+  ]);
+  const unusable = $derived(busy || !platform || unavailable !== null);
+
+  /** The build can be deleted once it exists; the action sits in the main button's menu. */
+  const hasBuild = $derived(
+    installation !== undefined && platform !== undefined && (instanceState === "ready" || instanceState === "needsRebuild"),
+  );
+  let menuOpen = $state(false);
+  let split = $state<HTMLDivElement>();
+  $effect(() => {
+    if (!hasBuild || busy) menuOpen = false;
+  });
+
+  const releaseUrl = (note: ReleaseNote) => `${repositoryUrl(game.repository)}/releases/tag/${encodeURIComponent(note.tag)}`;
 </script>
+
+<svelte:window
+  onpointerdown={(e) => {
+    if (menuOpen && split && !split.contains(e.target as Node)) menuOpen = false;
+  }}
+  onkeydown={(e) => {
+    if (menuOpen && e.key === "Escape") menuOpen = false;
+  }}
+/>
 
 <section class="home">
   <h1 class:has-logo={logo}>
@@ -150,26 +196,57 @@
       caption={t("game.home.platform")}
       label={t("game.home.platform")}
       options={game.platforms.map((p) => p.platform)}
+      prefixes={Object.fromEntries(game.platforms.map((p) => [p.platform, String(p.year)]))}
+      sizing={platformSizing}
       value={platform?.platform ?? ""}
       onchange={onplatform}
     />
-    <button class="primary" disabled={busy || !platform || unavailable !== null} onclick={primary.run}>
-      <Icon name={primary.icon} size={20} /> {primary.label}
-    </button>
-    {#if installation && instanceState === "ready" && required.length > 0 && platform}
-      <button class="secondary" disabled={busy} onclick={() => library.prepare(game, platform)}>{t("game.home.changeFiles")}</button>
-    {/if}
-    {#if installation && platform && (instanceState === "ready" || instanceState === "needsRebuild")}
-      <button
-        class="icon-button"
-        disabled={busy}
-        aria-label={t("game.home.deleteBuild")}
-        title={t("game.home.deleteBuild")}
-        onclick={() => library.deleteBuild(game, platform)}
-      >
-        <Icon name="trash" size={20} />
+    <div class="split" class:has-menu={hasBuild} bind:this={split}>
+      <button class="main" disabled={unusable} onclick={primary.run}>
+        <Icon name={primary.icon} size={20} />
+        <span class="label">
+          {#each labels as text}<span class="sizer" aria-hidden="true">{text}</span>{/each}
+          <span>{primary.label}</span>
+        </span>
       </button>
-    {/if}
+      {#if hasBuild && platform}
+        <span class="separator" aria-hidden="true"></span>
+        <button
+          class="chevron"
+          disabled={busy}
+          aria-label={t("game.home.moreActions")}
+          aria-haspopup="menu"
+          aria-expanded={menuOpen}
+          onclick={() => (menuOpen = !menuOpen)}
+        >
+          <Icon name="chevron-down" size={18} />
+        </button>
+        {#if menuOpen}
+          <ul class="menu" role="menu">
+            <li role="none">
+              <button
+                role="menuitem"
+                onclick={() => {
+                  menuOpen = false;
+                  library.deleteBuild(game, platform);
+                }}
+              >
+                <Icon name="trash" size={16} />{t("game.home.deleteBuild")}
+              </button>
+            </li>
+          </ul>
+        {/if}
+      {/if}
+    </div>
+    <button
+      class="icon-button"
+      disabled={!installation}
+      aria-label={t("game.home.settings")}
+      title={t("game.home.settings")}
+      onclick={onsettings}
+    >
+      <Icon name="settings" size={20} />
+    </button>
   </div>
 
   <div class="status" role="status" class:error={!active && library.status?.tone === "error"}>
@@ -251,7 +328,7 @@
   {:else}
     <div class="cards">
       {#each releases ?? [] as note, i (note.tag)}
-        {@const { entries, more } = releaseEntries(note.body)}
+        {@const { entries, more } = releaseEntries(note.body, 3)}
         <Card featured={i === 0}>
           <span class="meta" class:accent={i === 0}>
             {(i === 0 ? [note.tag, releaseDate(note.publishedAt)] : [releaseDate(note.publishedAt)]).filter(Boolean).join(" · ")}
@@ -260,9 +337,13 @@
           {#if entries.length > 0}
             <ul class="entries">
               {#each entries as entry}
-                <li>{entry}</li>
+                <li><span class="clamp">{entry}</span></li>
               {/each}
-              {#if more > 0}<li class="entries-more">{t("game.home.releaseMore", { count: more })}</li>{/if}
+              {#if more > 0}
+                <li class="entries-more">
+                  <button onclick={() => openLink(releaseUrl(note))}>{t("game.home.releaseMore", { count: more })}</button>
+                </li>
+              {/if}
             </ul>
           {/if}
           {#if i === 0}<span class="more"><Icon name="chevron-right" size={18} /></span>{/if}
@@ -281,39 +362,76 @@
   }
   h1 { margin: var(--space-6) 0 0; font-size: 48px; font-weight: 700; }
   h1.has-logo { line-height: 0; }
-  h1 img { display: block; max-width: 100%; max-height: 120px; object-fit: contain; object-position: left; }
+  /* Every logo is as tall as the others, whatever its proportions. */
+  h1 img { display: block; height: 100px; max-width: 100%; object-fit: contain; object-position: left; }
   .hint { margin: var(--space-3) 0 var(--space-5); font-size: 16px; color: var(--color-text-muted); }
   .actions { display: flex; gap: var(--space-3); align-items: stretch; }
-  .primary {
+  .split {
+    position: relative;
+    display: inline-flex;
+    align-items: stretch;
+    border-radius: var(--radius-md);
+    background: var(--color-primary);
+  }
+  .main, .chevron {
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font-weight: 600;
+  }
+  .main {
     display: inline-flex;
     align-items: center;
     gap: var(--space-3);
-    width: 298px;
     padding: 0 var(--space-5);
-    border: 0;
     border-radius: var(--radius-md);
-    background: var(--color-primary);
-    font-weight: 600;
   }
-  .primary:hover:not(:disabled) { background: var(--color-primary-hover); }
-  .primary:disabled { opacity: 0.5; cursor: default; }
-  .secondary {
-    padding: 0 var(--space-4);
+  .has-menu .main { border-radius: var(--radius-md) 0 0 var(--radius-md); }
+  .label { display: grid; text-align: left; }
+  .label > * { grid-area: 1 / 1; }
+  .sizer { height: 0; overflow: hidden; visibility: hidden; white-space: nowrap; }
+  .separator { width: 1px; margin: var(--space-3) 0; background: rgb(255 255 255 / 0.3); }
+  .chevron { display: grid; place-items: center; width: 40px; border-radius: 0 var(--radius-md) var(--radius-md) 0; }
+  .main:hover:not(:disabled), .chevron:hover:not(:disabled) { background: var(--color-primary-hover); }
+  .main:disabled, .chevron:disabled { opacity: 0.5; cursor: default; }
+  .menu {
+    position: absolute;
+    z-index: 20;
+    top: calc(100% + 6px);
+    right: 0;
+    min-width: 100%;
+    margin: 0;
+    padding: var(--space-1);
+    list-style: none;
     border: 1px solid var(--color-border-strong);
     border-radius: var(--radius-md);
-    background: var(--color-surface-alt);
+    background: var(--game-bg-mid, var(--color-surface));
+    box-shadow: 0 12px 32px rgb(0 0 0 / 0.45);
   }
-  .secondary:disabled { opacity: 0.5; cursor: default; }
+  .menu button {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    width: 100%;
+    padding: 8px 12px;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: none;
+    font-size: 13px;
+    white-space: nowrap;
+    text-align: left;
+  }
+  .menu button:hover { background: color-mix(in srgb, var(--color-accent) 16%, transparent); color: rgb(230 90 86); }
   .icon-button {
     display: inline-grid;
     place-items: center;
     width: 48px;
     border: 1px solid var(--color-border-strong);
     border-radius: var(--radius-md);
-    background: var(--color-surface-alt);
+    background: transparent;
     color: var(--color-text-muted);
   }
-  .icon-button:hover:not(:disabled) { color: rgb(230 90 86); border-color: rgb(200 48 44 / 0.7); }
+  .icon-button:hover:not(:disabled) { color: var(--color-text); border-color: var(--color-accent); }
   .icon-button:disabled { opacity: 0.5; cursor: default; }
   .status {
     display: flex;
@@ -323,7 +441,7 @@
     padding: var(--space-4) var(--space-5);
     border: 1px solid color-mix(in srgb, var(--color-info) 50%, transparent);
     border-radius: var(--radius-md);
-    background: color-mix(in srgb, var(--game-bg-mid, var(--panel)) 60%, transparent);
+    /* No background: the page shows through, whatever the game. */
   }
   .status.error { border-color: rgb(200 48 44 / 0.7); background: rgb(200 48 44 / 0.12); }
   .status-icon { color: var(--color-info); }
@@ -401,7 +519,11 @@
   h3 { margin: var(--space-2) 0 0; font-size: 20px; }
   .entries { display: grid; gap: var(--space-1); margin: var(--space-1) 0 0; padding: 0 0 0 var(--space-4); line-height: 1.45; color: var(--color-text-muted); }
   .entries li { overflow-wrap: anywhere; }
-  .entries li.entries-more { list-style: none; margin-left: calc(-1 * var(--space-4)); font-size: 12px; opacity: 0.7; }
+  /* A long entry is cut after two lines, a long release after three entries: the rest is on GitHub. */
+  .clamp { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
+  .entries li.entries-more { list-style: none; margin-left: calc(-1 * var(--space-4)); font-size: 12px; }
+  .entries-more button { padding: 0; border: 0; background: none; color: var(--color-accent); font-size: 12px; opacity: 0.85; }
+  .entries-more button:hover { opacity: 1; text-decoration: underline; }
   .meta { font-size: 12px; color: var(--color-text-muted); }
   .meta.accent { color: var(--color-accent); font-weight: 600; }
   .more {

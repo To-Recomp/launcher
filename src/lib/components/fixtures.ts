@@ -7,5 +7,5 @@ export const eternia: Game = {
   repository: "To-Recomp/toe",
   year: 2000,
   state: "not-installed",
-  platforms: [{ platform: "PS1", regions: ["USA"], state: "playable", maturity: "alpha" }],
+  platforms: [{ platform: "PS1", regions: ["USA"], state: "playable", maturity: "alpha", releaseYear: null, year: 2000 }],
 };

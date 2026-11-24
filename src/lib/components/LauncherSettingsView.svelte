@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { t } from "../i18n/index.svelte";
+  import { startLanguage } from "../i18n/start";
   import LauncherAbout from "./LauncherAbout.svelte";
   import LauncherBehavior from "./LauncherBehavior.svelte";
   import LauncherCatalog from "./LauncherCatalog.svelte";
@@ -54,10 +55,13 @@
     try {
       view = await setLauncherSetting(setting.id, input);
       if (setting.id === "updateChannel") launcherUpdates.forget();
-      if (setting.id === "theme" || setting.id === "gamePalette") await appearance.reload();
+      if (setting.id === "theme") await appearance.reload();
       if (setting.id === "downloadLimit") await applyDownloadLimit();
       if (setting.id === "minimizeToTray") await syncTray();
-      if (setting.id === "language") restartNeeded.mark(); // the language is chosen when the launcher starts
+      if (setting.id === "language") {
+        await startLanguage(); // the menus of the notification area follow it as well
+        await syncTray();
+      }
       actionError = null;
     } catch (e) {
       actionError = errorMessage(e);

@@ -2,8 +2,11 @@ import type { Catalog, CatalogPlatform } from "./types";
 
 export type GameState = "not-installed" | "installed" | "ready";
 
-/** One console of a game: the selector lists these, and an instance is one of them. */
-export type Platform = CatalogPlatform;
+/**
+ * One console of a game: the selector lists these, and an instance is one of them. `year` is when
+ * the game came out on it (the game's first Japanese release when the catalog doesn't say).
+ */
+export type Platform = CatalogPlatform & { year: number };
 
 export interface Game {
   id: string;
@@ -34,6 +37,9 @@ export function toGames(catalog: Catalog): Game[] {
     repository: g.repository,
     year: g.japanReleaseYear,
     state: "not-installed",
-    platforms: g.platforms,
+    // Most recent first; the catalog's order breaks ties.
+    platforms: g.platforms
+      .map((p): Platform => ({ ...p, year: p.releaseYear ?? g.japanReleaseYear }))
+      .sort((a, b) => b.year - a.year),
   }));
 }

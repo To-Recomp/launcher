@@ -64,8 +64,6 @@ pub fn behavior(config_dir: &Path) -> Result<Behavior, String> {
 pub struct Appearance {
     /// `dark`, `light` or `system`.
     pub theme: String,
-    /// Tint the pages with colors taken from the game's logo.
-    pub game_palette: bool,
 }
 
 pub fn appearance(config_dir: &Path) -> Result<Appearance, String> {
@@ -77,10 +75,6 @@ pub fn appearance(config_dir: &Path) -> Result<Appearance, String> {
         .unwrap_or("dark");
     Ok(Appearance {
         theme: theme.to_string(),
-        game_palette: config
-            .pointer("/appearance/gamePalette")
-            .and_then(|v| v.as_bool())
-            .unwrap_or(true),
     })
 }
 

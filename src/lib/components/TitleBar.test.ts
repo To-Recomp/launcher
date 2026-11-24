@@ -12,26 +12,12 @@ import TitleBar from "./TitleBar.svelte";
 
 describe("TitleBar", () => {
   it("drives the native window from the custom controls", async () => {
-    render(TitleBar, { tab: "home", onchange: () => {} });
+    render(TitleBar);
     await fireEvent.click(screen.getByRole("button", { name: "Minimize" }));
     await fireEvent.click(screen.getByRole("button", { name: "Maximize" }));
     await fireEvent.click(screen.getByRole("button", { name: "Close" }));
     expect(win.minimize).toHaveBeenCalledOnce();
     expect(win.toggleMaximize).toHaveBeenCalledOnce();
     expect(win.close).toHaveBeenCalledOnce();
-  });
-
-  it("reports the clicked tab", async () => {
-    const calls: string[] = [];
-    render(TitleBar, { tab: "home", onchange: (t: string) => calls.push(t) });
-    await fireEvent.click(screen.getByRole("tab", { name: "Settings" }));
-    expect(calls).toEqual(["settings"]);
-  });
-
-  it("opens the launcher's own settings from the gear", async () => {
-    const calls: string[] = [];
-    render(TitleBar, { tab: "home", onchange: (t: string) => calls.push(t) });
-    await fireEvent.click(screen.getByRole("button", { name: "Launcher settings" }));
-    expect(calls).toEqual(["launcher"]);
   });
 });
