@@ -2,7 +2,6 @@
   import { untrack } from "svelte";
   import GameAbout from "./GameAbout.svelte";
   import Icon, { type IconName } from "./Icon.svelte";
-  import Row from "./Row.svelte";
   import SettingRow from "./SettingRow.svelte";
   import { errorMessage, loadSettings, setSetting } from "../settings/api";
   import { sectionsOf } from "../settings/sections";
@@ -142,13 +141,14 @@
       <p class="empty">{t("game.settings.files.help")}</p>
       <div class="group">
         {#each files.current as file (file.label)}
-          <Row label={file.label}>
+          <div class="file">
+            <span class="file-label" title={file.label}>{file.label}</span>
             {#if file.path}
-              <span class="path" title={file.path}>{file.path}</span>
+              <span class="path" title={file.path}><bdi>{file.path}</bdi></span>
             {:else}
               <span class="path none">{t("game.settings.files.notChosen")}</span>
             {/if}
-          </Row>
+          </div>
         {/each}
       </div>
       <button class="advanced" disabled={files.busy} onclick={files.onchange}>{t("game.home.changeFiles")}</button>
@@ -235,12 +235,24 @@
     background: color-mix(in srgb, var(--game-card-top, var(--color-surface)) 55%, transparent);
     /* No overflow clipping: a dropdown's list opens over the edge of its group. */
   }
+  .file {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-3) var(--space-4);
+    min-height: 55px;
+  }
+  .file + .file { border-top: 1px solid var(--color-border); }
+  /* A long label is cut after two lines (the full text is its tooltip). */
+  .file-label { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
   .path {
-    max-width: 420px;
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    direction: rtl; /* a long path keeps its end (the file name) in view */
+    direction: rtl; /* a long path keeps its end (the file name) in view; <bdi> keeps its slashes in place */
+    text-align: left;
     user-select: text;
     color: var(--color-text-muted);
   }
