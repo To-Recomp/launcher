@@ -1047,3 +1047,45 @@ fn a_download_keeps_to_the_shared_speed_limit_and_can_be_cancelled_while_waiting
         "a paused download still stops at once"
     );
 }
+
+/// The real thing: the published tos-recomp release prepared from the player's own discs.
+/// Slow (minutes, needs a C++ compiler and SDL3) and needs game files, so it only runs on request:
+///
+///   TOS_RELEASE_ARCHIVE=/path/tos-recomp-X-linux-x86_64.tar.gz TOS_DISC1=... TOS_DISC2=... \
+///     cargo test --lib real_tos_release -- --ignored --nocapture
+#[test]
+#[ignore = "needs a real release archive and both discs, see the doc comment"]
+fn real_tos_release_prepares_from_real_discs() {
+    let var = |n: &str| PathBuf::from(std::env::var(n).unwrap_or_else(|_| panic!("set {n}")));
+    let archive = fs::read(var("TOS_RELEASE_ARCHIVE")).unwrap();
+    let mut s = setup();
+    s.env.min_free_bytes = 3 << 30;
+    let name = format!("tos-recomp-test-{}-x86_64.tar.gz", std::env::consts::OS);
+    let body = serde_json::json!({
+        "tag_name": "v-test",
+        "assets": [{ "name": name, "size": archive.len(),
+            "browser_download_url": format!("{}/download/{name}", s.fake.url),
+            "digest": format!("sha256:{}", sha(&archive)) }],
+    });
+    s.fake.route(
+        &format!("/repos/{REPO}/releases/latest"),
+        200,
+        body.to_string().into_bytes(),
+    );
+    s.fake.route(&format!("/download/{name}"), 200, archive);
+    do_install(&s).unwrap();
+
+    let picked = BTreeMap::from([
+        ("disc1".to_string(), var("TOS_DISC1")),
+        ("disc2".to_string(), var("TOS_DISC2")),
+    ]);
+    let mut last = String::new();
+    let view = prepare(&s.env, GAME, "GameCube", picked, &NO_CANCEL, &mut |p| {
+        if p.message != last {
+            println!("{:?} {}", p.fraction, p.message);
+            last = p.message;
+        }
+    })
+    .unwrap();
+    assert_eq!(view.state, InstanceState::Ready);
+}
