@@ -150,6 +150,16 @@ pub fn parse_progress(line: &str) -> Option<Progress> {
     })
 }
 
+/// `result failed 3 This disc is not a known dump`: the step's own explanation of a failure.
+/// Returns the text of a `failed` result line (the exit code is the process's).
+pub fn parse_failure(line: &str) -> Option<String> {
+    let rest = line.trim().strip_prefix("result failed ")?;
+    let (code, message) = rest.split_once(' ')?;
+    code.parse::<i32>().ok()?;
+    let message = message.trim();
+    (!message.is_empty()).then(|| message.to_string())
+}
+
 fn pump(mut reader: impl Read, tx: mpsc::Sender<String>) {
     let mut reader = BufReader::new(&mut reader);
     let mut line = Vec::new();
@@ -259,8 +269,12 @@ fn run_to_end(
     }
     drop(tx);
 
+    let mut explained: Option<String> = None;
     let mut handle = |line: String, log: &mut File| {
         log_line(log, &line);
+        if let Some(why) = parse_failure(&line) {
+            explained = Some(why);
+        }
         if let Some(progress) = parse_progress(&line) {
             on_progress(progress);
         }
@@ -289,9 +303,12 @@ fn run_to_end(
         Ok(())
     } else {
         let code = status.code().map_or("none".to_string(), |c| c.to_string());
-        Err(RunError::Failed(format!(
-            "The preparation failed (exit code {code}). The log has the details."
-        )))
+        Err(RunError::Failed(match explained {
+            Some(why) => format!(
+                "The preparation failed: {why} (exit code {code}). The log has the details."
+            ),
+            None => format!("The preparation failed (exit code {code}). The log has the details."),
+        }))
     }
 }
 
@@ -353,6 +370,17 @@ mod tests {
         assert_eq!(parse_progress("progress 0.5").unwrap().message, "");
         assert_eq!(parse_progress("progress soon"), None);
         assert_eq!(parse_progress("compiling progress 0.5"), None);
+    }
+
+    #[test]
+    fn parses_a_failed_result_line() {
+        assert_eq!(
+            parse_failure("result failed 3 this disc is not a known dump"),
+            Some("this disc is not a known dump".into())
+        );
+        assert_eq!(parse_failure("result ready 0 the game is prepared"), None);
+        assert_eq!(parse_failure("result failed 3"), None);
+        assert_eq!(parse_failure("result failed x oops"), None);
     }
 
     #[test]
