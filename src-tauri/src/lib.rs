@@ -49,6 +49,7 @@ pub fn run() {
             library::prepare_instance,
             library::start_game,
             library::cancel_job,
+            library::delete_build,
             library::read_instance_log,
             library::instance_location,
             catalog::refresh_catalog,

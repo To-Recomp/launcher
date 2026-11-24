@@ -499,6 +499,54 @@ pub fn read_log(
     Ok(run::tail(&dir.join(file), max_lines))
 }
 
+/// Deletes what a preparation made for an instance (its files, logs and record), so the game can be
+/// prepared again from the player's files. The paths the manifest lists in `saves` are kept, and
+/// found again by the next preparation.
+pub fn remove_build(env: &Env, game_id: &str, platform: &str) -> Result<(), String> {
+    let id = store::instance_id(platform);
+    let dir = env.library.instance_dir(game_id, &id)?;
+    if !dir.exists() {
+        return Ok(());
+    }
+    let manifest = read_manifest(&env.library.release_dir(game_id)?)?;
+    let location = env.library.location(game_id, &id)?;
+    let keep: Vec<PathBuf> = manifest
+        .saves
+        .iter()
+        .filter_map(|save| location.resolve(save).ok())
+        .filter(|path| path.starts_with(&dir))
+        .collect();
+    let fail = |e: std::io::Error| format!("Can't delete the build: {e}");
+    // The record goes first: whatever happens next, the instance no longer counts as prepared.
+    match fs::remove_file(dir.join("instance.json")) {
+        Err(e) if e.kind() != std::io::ErrorKind::NotFound => return Err(fail(e)),
+        _ => {}
+    }
+    prune(&dir, &keep).map_err(fail)?;
+    let _ = fs::remove_dir(&dir); // only when nothing was kept
+    Ok(())
+}
+
+/// Removes everything under `dir` except the `keep` paths (and the folders leading to them).
+fn prune(dir: &Path, keep: &[PathBuf]) -> std::io::Result<()> {
+    for entry in fs::read_dir(dir)? {
+        let path = entry?.path();
+        if keep.contains(&path) {
+            continue;
+        }
+        if path.symlink_metadata()?.is_dir() {
+            if keep.iter().any(|kept| kept.starts_with(&path)) {
+                prune(&path, keep)?;
+            } else {
+                fs::remove_dir_all(&path)?;
+            }
+        } else {
+            fs::remove_file(&path)?;
+        }
+    }
+    Ok(())
+}
+
 /// Running jobs by key (`install:<game>`, `prepare:<game>/<instance>`, `game:<game>/<instance>`):
 /// each holds the flag that cancels it, and a key can only run once at a time.
 #[derive(Clone, Default)]
@@ -702,6 +750,22 @@ pub fn start_game(
 #[tauri::command]
 pub fn cancel_job(jobs: tauri::State<Jobs>, job: String) {
     jobs.cancel(&job);
+}
+
+/// Deletes the build of an instance, to prepare the game again from scratch.
+#[tauri::command(async)]
+pub fn delete_build(
+    app: tauri::AppHandle,
+    jobs: tauri::State<Jobs>,
+    game_id: String,
+    platform: String,
+) -> Result<(), String> {
+    let env = app_env(&app)?;
+    let instance = store::instance_id(&platform);
+    // Neither a preparation nor the game may be running on it.
+    let _preparing = jobs.begin(&format!("prepare:{game_id}/{instance}"))?;
+    let _playing = jobs.begin(&format!("game:{game_id}/{instance}"))?;
+    remove_build(&env, &game_id, &platform)
 }
 
 #[tauri::command(async)]

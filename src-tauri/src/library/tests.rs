@@ -764,6 +764,65 @@ fn an_update_keeps_instances_and_rebuilds_from_what_was_kept() {
 }
 
 #[test]
+fn deleting_the_build_keeps_the_saves_and_the_game_can_be_prepared_again() {
+    let s = setup();
+    s.fake.publish_ok(
+        "v1.0.0",
+        &good_release(&manifest(r#", "saves": ["{data}/saves"]"#)),
+    );
+    do_install(&s).unwrap();
+    let dir = TempDir::new().unwrap();
+    do_prepare(&s, discs(dir.path(), "one", "two")).unwrap();
+    let location = instance_location(&s);
+    fs::create_dir_all(location.data.join("saves")).unwrap();
+    fs::write(location.data.join("saves").join("card.raw"), "my save").unwrap();
+    let instance_dir = s
+        .env
+        .library
+        .instance_dir(GAME, &store::instance_id("GameCube"))
+        .unwrap();
+    assert!(location.data.join("built.bin").is_file());
+
+    remove_build(&s.env, GAME, "GameCube").unwrap();
+
+    assert!(!location.data.join("built.bin").exists());
+    assert!(!instance_dir.join("instance.json").exists());
+    assert!(!instance_dir.join("prepare.log").exists());
+    assert_eq!(
+        fs::read_to_string(location.data.join("saves").join("card.raw")).unwrap(),
+        "my save"
+    );
+    assert!(snapshot(&s.env)[0].instances.is_empty(), "nothing is prepared any more");
+    assert!(start(&s.env, GAME, "GameCube", |_| {}).is_err());
+
+    let again = do_prepare(&s, discs(dir.path(), "one", "two")).unwrap();
+    assert_eq!(again.state, InstanceState::Ready);
+    assert_eq!(
+        fs::read_to_string(location.data.join("saves").join("card.raw")).unwrap(),
+        "my save"
+    );
+}
+
+#[test]
+fn deleting_a_build_that_does_not_exist_is_not_an_error_and_nothing_is_kept_without_saves() {
+    let s = setup();
+    installed_and_published(&s);
+    remove_build(&s.env, GAME, "GameCube").unwrap();
+
+    let dir = TempDir::new().unwrap();
+    do_prepare(&s, discs(dir.path(), "one", "two")).unwrap();
+    let location = instance_location(&s);
+    fs::write(location.data.join("save.dat"), "no saves declared").unwrap();
+    remove_build(&s.env, GAME, "GameCube").unwrap();
+    assert!(!s
+        .env
+        .library
+        .instance_dir(GAME, &store::instance_id("GameCube"))
+        .unwrap()
+        .exists());
+}
+
+#[test]
 fn a_failed_update_download_keeps_the_installed_release() {
     let s = setup();
     installed_and_published(&s);
