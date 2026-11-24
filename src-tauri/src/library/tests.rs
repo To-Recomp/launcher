@@ -792,7 +792,10 @@ fn deleting_the_build_keeps_the_saves_and_the_game_can_be_prepared_again() {
         fs::read_to_string(location.data.join("saves").join("card.raw")).unwrap(),
         "my save"
     );
-    assert!(snapshot(&s.env)[0].instances.is_empty(), "nothing is prepared any more");
+    assert!(
+        snapshot(&s.env)[0].instances.is_empty(),
+        "nothing is prepared any more"
+    );
     assert!(start(&s.env, GAME, "GameCube", |_| {}).is_err());
 
     let again = do_prepare(&s, discs(dir.path(), "one", "two")).unwrap();
