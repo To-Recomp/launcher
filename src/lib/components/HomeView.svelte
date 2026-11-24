@@ -4,7 +4,7 @@
   import Icon, { type IconName } from "./Icon.svelte";
   import type { Game, Platform } from "../catalog/games";
   import { logoFor } from "../catalog/logos";
-  import { gameReleases, releaseDate, releaseSummary, type ReleaseNote } from "../catalog/releases";
+  import { gameReleases, releaseDate, releaseEntries, type ReleaseNote } from "../catalog/releases";
   import { gameJob, installJob, instanceId, prepareJob } from "../library/types";
   import type { LibraryStore } from "../library/store.svelte";
   import { t } from "../i18n/index.svelte";
@@ -32,8 +32,10 @@
       .catch(() => !stale && ((releases = []), (releasesError = true)));
     return () => (stale = true);
   });
-  const [featured, ...others] = $derived(releases ?? []);
-  const heading = (r: ReleaseNote) => r.name ?? r.tag;
+  const featured = $derived(releases?.[0]);
+  /** "tos-recomp v1.2", or "v1.2 · Name" when the name doesn't say the tag already. */
+  const cardTitle = (r: ReleaseNote) =>
+    r.name && r.name !== r.tag ? (r.name.includes(r.tag) ? r.name : `${r.tag} · ${r.name}`) : r.tag;
 
   const installation = $derived(library.installationOf(game.id));
   const instanceState = $derived(platform ? library.instanceState(game.id, platform) : "notPrepared");
@@ -48,7 +50,7 @@
   );
   const active = $derived(activeJob ? library.progress[activeJob] : undefined);
   const tasks = $derived(activeJob ? (library.tasks[activeJob] ?? []) : []);
-  const taskMarks = { running: "…", ok: "✓", skipped: "–", failed: "✕", cancelled: "■" } as const;
+  const taskMarks = { running: "", ok: "✓", skipped: "", failed: "✕", cancelled: "■" } as const;
   const taskState = (state: keyof typeof taskMarks) =>
     ({
       running: t("game.home.task.running"),
@@ -61,6 +63,34 @@
   const duration = (seconds: number) =>
     seconds < 10 ? `${seconds.toFixed(1)} s` : seconds < 60 ? `${Math.round(seconds)} s` : `${Math.floor(seconds / 60)} min ${Math.round(seconds % 60)} s`;
   const busy = $derived(activeJob !== undefined);
+
+  // The live log: the preparation's log re-read every second while it runs, kept scrolled to the end
+  // unless the player scrolled up to read.
+  let follow = $state(false);
+  let logElement = $state<HTMLPreElement>();
+  let pinned = true;
+  function toggleLiveLog() {
+    follow = !follow;
+    if (!follow) library.log = null;
+  }
+  $effect(() => {
+    // The job ended while the log was followed: read the last lines once more and keep them.
+    if (!busy && follow) {
+      follow = false;
+      if (platform) void library.showLog(game, platform, "prepare");
+    }
+  });
+  $effect(() => {
+    if (follow && platform && activeJob === jobs.prepare) return library.followLog(game, platform, "prepare");
+  });
+  $effect.pre(() => {
+    library.log;
+    if (logElement) pinned = logElement.scrollHeight - logElement.scrollTop - logElement.clientHeight < 24;
+  });
+  $effect(() => {
+    library.log;
+    if (follow && pinned && logElement) logElement.scrollTop = logElement.scrollHeight;
+  });
 
   const required = $derived(installation?.inputs.filter((i) => !i.optional) ?? []);
 
@@ -129,6 +159,17 @@
     {#if installation && instanceState === "ready" && required.length > 0 && platform}
       <button class="secondary" disabled={busy} onclick={() => library.prepare(game, platform)}>{t("game.home.changeFiles")}</button>
     {/if}
+    {#if installation && platform && (instanceState === "ready" || instanceState === "needsRebuild")}
+      <button
+        class="icon-button"
+        disabled={busy}
+        aria-label={t("game.home.deleteBuild")}
+        title={t("game.home.deleteBuild")}
+        onclick={() => library.deleteBuild(game, platform)}
+      >
+        <Icon name="trash" size={20} />
+      </button>
+    {/if}
   </div>
 
   <div class="status" role="status" class:error={!active && library.status?.tone === "error"}>
@@ -152,14 +193,14 @@
             {#each tasks as task (task.id)}
               <li class={task.state}>
                 <span class="task-mark" role="img" aria-label={taskState(task.state)}>{taskMarks[task.state]}</span>
-                <span class="task-title">{task.index}/{task.count} · {task.title}</span>
+                <span class="task-title"><span class="task-index">{task.index}/{task.count}</span> {task.title}</span>
                 <span class="task-detail">
                   {#if task.state === "running"}
                     {task.fraction !== null ? `${Math.round(task.fraction * 100)}%` : ""}
-                  {:else if task.seconds !== null && task.state !== "skipped"}
-                    {duration(task.seconds)}
                   {:else if task.state === "skipped"}
                     {taskState("skipped")}
+                  {:else if task.seconds !== null}
+                    {duration(task.seconds)}
                   {/if}
                 </span>
                 {#if task.state === "running"}
@@ -187,6 +228,9 @@
       {#if library.failure?.gameId === game.id && !busy}
         <button onclick={() => library.reportFailure(game, platform)}>{t("game.home.createDiagnostic")}</button>
       {/if}
+      {#if platform && activeJob === jobs.prepare}
+        <button aria-pressed={follow} onclick={toggleLiveLog}>{follow ? t("game.home.hideLiveLog") : t("game.home.liveLog")}</button>
+      {/if}
       {#if installation && platform && !busy}
         <button onclick={() => library.showLog(game, platform, "prepare")}>{t("game.home.prepareLog")}</button>
         {#if instanceState === "ready"}
@@ -196,7 +240,7 @@
     </div>
   </div>
   {#if library.log !== null}
-    <pre class="log" aria-label={t("game.home.log")}>{library.log}</pre>
+    <pre class="log" aria-label={t("game.home.log")} bind:this={logElement}>{library.log}</pre>
   {/if}
 
   <h2>{t("game.home.latestUpdates")}</h2>
@@ -206,17 +250,22 @@
     <p class="releases-empty">{releasesError ? t("game.home.releasesError") : t("game.home.releasesNone")}</p>
   {:else}
     <div class="cards">
-      <Card featured>
-        <span class="meta accent">{[featured.tag, releaseDate(featured.publishedAt)].filter(Boolean).join(" · ")}</span>
-        <h3>{heading(featured)}</h3>
-        <p>{releaseSummary(featured.body)}</p>
-        <span class="more"><Icon name="chevron-right" size={18} /></span>
-      </Card>
-      {#each others as note (note.tag)}
-        <Card>
-          <span class="meta">{releaseDate(note.publishedAt)}</span>
-          <h3>{note.name && note.name !== note.tag ? `${note.tag} · ${note.name}` : note.tag}</h3>
-          <p>{releaseSummary(note.body)}</p>
+      {#each releases ?? [] as note, i (note.tag)}
+        {@const { entries, more } = releaseEntries(note.body)}
+        <Card featured={i === 0}>
+          <span class="meta" class:accent={i === 0}>
+            {(i === 0 ? [note.tag, releaseDate(note.publishedAt)] : [releaseDate(note.publishedAt)]).filter(Boolean).join(" · ")}
+          </span>
+          <h3>{i === 0 ? (note.name ?? note.tag) : cardTitle(note)}</h3>
+          {#if entries.length > 0}
+            <ul class="entries">
+              {#each entries as entry}
+                <li>{entry}</li>
+              {/each}
+              {#if more > 0}<li class="entries-more">{t("game.home.releaseMore", { count: more })}</li>{/if}
+            </ul>
+          {/if}
+          {#if i === 0}<span class="more"><Icon name="chevron-right" size={18} /></span>{/if}
         </Card>
       {/each}
     </div>
@@ -255,6 +304,17 @@
     background: var(--color-surface-alt);
   }
   .secondary:disabled { opacity: 0.5; cursor: default; }
+  .icon-button {
+    display: inline-grid;
+    place-items: center;
+    width: 48px;
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-alt);
+    color: var(--color-text-muted);
+  }
+  .icon-button:hover:not(:disabled) { color: rgb(230 90 86); border-color: rgb(200 48 44 / 0.7); }
+  .icon-button:disabled { opacity: 0.5; cursor: default; }
   .status {
     display: flex;
     gap: var(--space-4);
@@ -280,19 +340,51 @@
   .bar { height: 6px; margin-top: var(--space-2); border-radius: 3px; background: var(--color-bg-sunken); overflow: hidden; }
   .bar span { display: block; height: 100%; background: var(--color-accent); transition: width 0.2s; }
   .bar span.indeterminate { animation: slide 1.2s ease-in-out infinite alternate; }
-  .tasks { display: grid; gap: var(--space-2); margin: var(--space-3) 0 0; padding: 0; list-style: none; }
-  .tasks li { display: grid; grid-template-columns: 18px 1fr auto; column-gap: var(--space-2); align-items: baseline; font-size: 12px; }
-  .task-mark { text-align: center; color: var(--color-text-muted); }
-  .tasks li.ok .task-mark { color: var(--color-success, var(--color-accent)); }
-  .tasks li.failed .task-mark { color: rgb(200 48 44); }
-  .tasks li.running .task-title { font-weight: 600; }
-  .tasks li:not(.running) .task-title { color: var(--color-text-muted); }
-  .task-detail { color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
-  .task-text { grid-column: 2 / 4; color: var(--color-text-muted); }
-  .tasks .bar { grid-column: 2 / 4; margin-top: 2px; height: 4px; }
+  .tasks {
+    display: grid;
+    gap: var(--space-1);
+    margin: var(--space-4) 0 0;
+    padding: var(--space-3) 0 0;
+    border-top: 1px solid var(--color-border);
+    list-style: none;
+  }
+  .tasks li {
+    display: grid;
+    grid-template-columns: 20px 1fr auto;
+    align-items: center;
+    column-gap: var(--space-3);
+    padding: 9px var(--space-3);
+    border-radius: var(--radius-md);
+    font-size: 13px;
+  }
+  .tasks li.running { background: color-mix(in srgb, var(--color-accent) 10%, transparent); }
+  .task-mark {
+    display: grid;
+    place-items: center;
+    box-sizing: border-box;
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--color-border-strong);
+    border-radius: 50%;
+    font-size: 10px;
+    line-height: 1;
+    color: var(--color-text-muted);
+  }
+  .tasks li.ok .task-mark { border-color: var(--color-accent); background: var(--color-accent); color: var(--color-bg-sunken); }
+  .tasks li.skipped .task-mark { border-style: dashed; }
+  .tasks li.failed .task-mark { border-color: rgb(200 48 44); background: rgb(200 48 44); color: #fff; }
+  .tasks li.running .task-mark { border-color: color-mix(in srgb, var(--color-accent) 30%, transparent); border-top-color: var(--color-accent); animation: spin 0.9s linear infinite; }
+  .task-title { min-width: 0; color: var(--color-text-muted); }
+  .tasks li.running .task-title { color: var(--color-text); font-weight: 600; }
+  .task-index { margin-right: var(--space-2); font-size: 11px; font-variant-numeric: tabular-nums; opacity: 0.7; }
+  .task-detail { min-width: 56px; text-align: right; font-size: 12px; color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
+  .tasks li.running .task-detail { color: var(--color-text); }
+  .task-text { grid-column: 2 / 4; margin-top: 2px; font-size: 12px; color: var(--color-text-muted); }
+  .tasks .bar { grid-column: 2 / 4; height: 6px; margin-top: var(--space-2); }
+  @keyframes spin { to { transform: rotate(360deg); } }
   @keyframes slide { from { margin-left: 0; } to { margin-left: 70%; } }
   .log {
-    max-height: 200px;
+    max-height: 260px;
     margin: var(--space-3) 0 0;
     padding: var(--space-3) var(--space-4);
     overflow: auto;
@@ -307,7 +399,9 @@
   .cards { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: var(--space-4); }
   .releases-empty { margin: 0; color: var(--color-text-muted); }
   h3 { margin: var(--space-2) 0 0; font-size: 20px; }
-  .cards p { margin: 0; line-height: 1.5; color: var(--color-text-muted); }
+  .entries { display: grid; gap: var(--space-1); margin: var(--space-1) 0 0; padding: 0 0 0 var(--space-4); line-height: 1.45; color: var(--color-text-muted); }
+  .entries li { overflow-wrap: anywhere; }
+  .entries li.entries-more { list-style: none; margin-left: calc(-1 * var(--space-4)); font-size: 12px; opacity: 0.7; }
   .meta { font-size: 12px; color: var(--color-text-muted); }
   .meta.accent { color: var(--color-accent); font-weight: 600; }
   .more {

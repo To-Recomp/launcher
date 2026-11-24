@@ -26,10 +26,17 @@
   otherwise the earlier files are reused if they still exist, and asked for if not.
 - **Play**: `start` with the manifest's arguments, then the player's `args` settings; the output
   goes to `game.log`.
+- **Delete the build**: the trash button next to Play (a prepared instance, nothing running)
+  asks for confirmation, then the `delete_build` command removes the instance's record, logs and
+  data, so the game can be prepared again from the player's files. The paths the manifest lists in
+  `saves` (`"saves": ["{data}/saves"]`) are kept and found again by the next preparation. The
+  installed release is untouched.
 - **Releases on the home page**: "Latest updates" lists the three newest published releases of
   the selected game's repository (drafts left out), read from `GET /repos/<repo>/releases` by
   the `game_releases` command, independently of the installation. Each card shows the tag, the
-  date, the release name and a plain-text summary of its notes. A repository without a release
+  date, the release name and up to four entries of its notes, one line per list item and without
+  headings, links or what GitHub generates ("What's Changed", "by @user in <pull request>", "Full
+  Changelog"), then "+ N more" for the rest. A repository without a release
   (or one that doesn't exist) shows an empty message; a network or rate-limit error shows that
   the releases can't be read.
 

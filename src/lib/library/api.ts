@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { open } from "@tauri-apps/plugin-dialog";
+import { ask, open } from "@tauri-apps/plugin-dialog";
 import type { Location } from "../settings/types";
 import type { InputView, InstallationView, InstanceView, ProgressEvent } from "./types";
 
@@ -15,6 +15,11 @@ export const prepareInstance = (gameId: string, platform: string, inputs: Record
 export const startGame = (gameId: string, platform: string) => invoke<void>("start_game", { gameId, platform });
 
 export const cancelJob = (job: string) => invoke<void>("cancel_job", { job });
+
+export const deleteBuild = (gameId: string, platform: string) => invoke<void>("delete_build", { gameId, platform });
+
+/** Asks the player to confirm a deletion; `false` when they decline. */
+export const confirmDeletion = (message: string, title: string) => ask(message, { title, kind: "warning" });
 
 export const readInstanceLog = (gameId: string, platform: string, kind: "prepare" | "game") =>
   invoke<string>("read_instance_log", { gameId, platform, kind });

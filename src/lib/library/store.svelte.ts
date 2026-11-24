@@ -242,12 +242,51 @@ export class LibraryStore {
     }
   }
 
-  async showLog(game: Game, platform: Platform, kind: "prepare" | "game") {
+  /** Deletes the build of an instance after the player confirmed; the saves are kept. */
+  async deleteBuild(game: Game, platform: Platform) {
+    const confirmed = await api.confirmDeletion(
+      t("shell.library.deleteBuildConfirm", { game: game.name }),
+      t("shell.library.deleteBuildTitle"),
+    );
+    if (!confirmed) return;
+    this.log = null;
+    this.failure = null;
     try {
-      const text = await api.readInstanceLog(game.id, platform.platform, kind);
-      this.log = text || t("shell.library.logEmpty");
+      await api.deleteBuild(game.id, platform.platform);
+      this.status = { tone: "success", text: t("shell.library.buildDeleted", { game: game.name }) };
     } catch (e) {
-      this.log = errorMessage(e);
+      this.status = { tone: "error", text: errorMessage(e) };
+    }
+    await this.refresh();
+  }
+
+  async showLog(game: Game, platform: Platform, kind: "prepare" | "game") {
+    this.log = await this.#readLog(game, platform, kind);
+  }
+
+  /**
+   * Shows a log and re-reads it every second, to watch a step while it runs. Returns the function that
+   * stops it; a read still in flight when it is called is dropped.
+   */
+  followLog(game: Game, platform: Platform, kind: "prepare" | "game"): () => void {
+    let active = true;
+    const read = async () => {
+      const text = await this.#readLog(game, platform, kind);
+      if (active) this.log = text;
+    };
+    void read();
+    const timer = setInterval(read, 1000);
+    return () => {
+      active = false;
+      clearInterval(timer);
+    };
+  }
+
+  async #readLog(game: Game, platform: Platform, kind: "prepare" | "game"): Promise<string> {
+    try {
+      return (await api.readInstanceLog(game.id, platform.platform, kind)) || t("shell.library.logEmpty");
+    } catch (e) {
+      return errorMessage(e);
     }
   }
 

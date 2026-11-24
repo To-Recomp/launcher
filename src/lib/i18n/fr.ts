@@ -37,6 +37,9 @@ export const fr: Catalog = {
   "shell.library.runningProgress": "{game} est en cours d'exécution",
   "shell.library.running": "{game} est en cours d'exécution.",
   "shell.library.logEmpty": "Le journal est vide.",
+  "shell.library.deleteBuildTitle": "Supprimer le build",
+  "shell.library.deleteBuildConfirm": "Supprimer le build de {game} ? Ses sauvegardes sont conservées. Vous devrez le préparer à nouveau à partir de vos fichiers de jeu.",
+  "shell.library.buildDeleted": "Le build de {game} a été supprimé. Préparez-le à nouveau quand vous voulez.",
 
   // game
   "game.home.prepare": "Préparer",
@@ -66,14 +69,18 @@ export const fr: Catalog = {
   "game.home.task.cancelled": "Annulée",
   "game.home.noActions": "Aucune action récente. Les résultats s'afficheront ici.",
   "game.home.cancel": "Annuler",
+  "game.home.deleteBuild": "Supprimer le build",
   "game.home.createDiagnostic": "Créer un fichier de diagnostic",
   "game.home.prepareLog": "Journal de préparation",
+  "game.home.liveLog": "Journal en direct",
+  "game.home.hideLiveLog": "Masquer le journal en direct",
   "game.home.gameLog": "Journal du jeu",
   "game.home.log": "Journal",
   "game.home.latestUpdates": "Dernières mises à jour",
   "game.home.releasesLoading": "Chargement des versions…",
   "game.home.releasesError": "Les versions ne peuvent pas être lues pour le moment.",
   "game.home.releasesNone": "Aucune version n'a encore été publiée.",
+  "game.home.releaseMore": "+ {count} de plus",
 
   "game.settings.title": "Paramètres",
   "game.settings.tab.display": "Affichage",

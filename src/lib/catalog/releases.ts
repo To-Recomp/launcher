@@ -32,23 +32,27 @@ export function releaseDate(iso: string | null): string {
   return date.toLocaleDateString(locale(), { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
 }
 
-/** The release body as one short plain-text line: one entry per markdown line, joined by " · ". */
-export function releaseSummary(body: string, max = 160): string {
-  const lines = body
+/**
+ * The first `max` entries of a release's notes, one per markdown list item or line, and how many more
+ * there are. Headings, links, URLs and what GitHub generates around the entries ("What's Changed",
+ * "by @user in <pull request>", "Full Changelog") are left out.
+ */
+export function releaseEntries(body: string, max = 4): { entries: string[]; more: number } {
+  const all = body
     .replace(/```[\s\S]*?```/g, "\n")
     .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")
     .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
     .split("\n")
+    .filter((line) => !/^\s{0,3}#{1,6}\s/.test(line))
     .map((line) =>
       line
-        .replace(/^\s{0,3}(#{1,6}|[-*+>]|\d+\.)\s+/, "")
-        .replace(/\s+by @[\w-]+(\[bot\])?\s+in\s+https?:\/\/\S+/gi, "") // GitHub's generated "by @user in <pull request>"
+        .replace(/^\s{0,3}([-*+>]|\d+\.)\s+/, "")
+        .replace(/\s+by @[\w-]+(\[bot\])?\s+in\s+https?:\/\/\S+/gi, "")
         .replace(/https?:\/\/\S+/g, "")
         .replace(/[*_`~]/g, "")
         .replace(/\s+/g, " ")
         .trim(),
     )
-    .filter((line) => line && !/^(what's changed|full changelog\b.*)$/i.test(line));
-  const text = lines.join(" · ");
-  return text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text;
+    .filter((line) => line && !/^full changelog\b/i.test(line));
+  return { entries: all.slice(0, max), more: Math.max(0, all.length - max) };
 }

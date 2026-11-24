@@ -104,6 +104,31 @@ describe("LibraryStore state", () => {
       { id: "compile", title: "Compiling", index: 2, count: 2, state: "running", fraction: 0.25, text: "12/48 files", seconds: null },
     ]);
   });
+
+  it("re-reads a log every second until stopped, and drops a read that finishes after that", async () => {
+    vi.useFakeTimers();
+    try {
+      const store = new LibraryStore();
+      api.readInstanceLog.mockResolvedValueOnce("line 1").mockResolvedValueOnce("line 1\nline 2");
+      const stop = store.followLog(game, platform, "prepare");
+      await vi.advanceTimersByTimeAsync(0);
+      expect(store.log).toBe("line 1");
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(store.log).toBe("line 1\nline 2");
+      expect(api.readInstanceLog).toHaveBeenLastCalledWith(game.id, platform.platform, "prepare");
+
+      const late = Promise.withResolvers<string>();
+      api.readInstanceLog.mockReturnValueOnce(late.promise);
+      await vi.advanceTimersByTimeAsync(1000);
+      stop();
+      late.resolve("late line");
+      await vi.advanceTimersByTimeAsync(5000);
+      expect(store.log).toBe("line 1\nline 2");
+      expect(api.readInstanceLog).toHaveBeenCalledTimes(3);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
 
 describe("LibraryStore actions", () => {
