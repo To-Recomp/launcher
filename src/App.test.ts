@@ -11,6 +11,7 @@ vi.mock("./lib/catalog/releases", async (orig) => ({ ...(await orig<object>()), 
 const library = vi.hoisted(() => ({
   librarySnapshot: vi.fn(),
   instanceLocation: vi.fn(),
+  startGame: vi.fn(),
   onProgress: vi.fn(),
   onGameExited: vi.fn(),
 }));
@@ -124,13 +125,30 @@ describe("App", () => {
     library.instanceLocation.mockImplementation(async (game: string, platform: string) =>
       game === "tos" ? { installDir: `/lib/${game}/release`, dataDir: `/lib/${game}/${platform}` } : null);
     render(App);
-    await fireEvent.click(await screen.findByRole("button", { name: /Tales of Symphonia/ }));
-    expect(screen.getAllByRole("img", { name: "Play" })).toHaveLength(1); // only a game that can be played at once has an icon
+    await fireEvent.click(await screen.findByRole("button", { name: /^S Tales of Symphonia/ }));
+    expect(screen.getAllByRole("button", { name: /^Play Tales of/ })).toHaveLength(1); // only a game that can be played at once has one
     expect(library.instanceLocation).toHaveBeenCalledWith("tos", "GameCube");
 
     await fireEvent.click(screen.getByRole("combobox", { name: "Platform" }));
     await fireEvent.click(screen.getByRole("option", { name: /PlayStation 2/ }));
     await waitFor(() => expect(library.instanceLocation).toHaveBeenLastCalledWith("tos", "PlayStation 2"));
+  });
+
+  it("quick plays the game from the sidebar on the console it was last played on, without opening anything first", async () => {
+    localStorage.setItem("lastPlayed.tos", "PlayStation 2");
+    library.librarySnapshot.mockResolvedValue([
+      { gameId: "tos", repository: "To-Recomp/tos", tag: "v1", inputs: [], prepareLabel: null, canPrepare: false, keepsCopy: false,
+        instances: [
+          { id: "gamecube", platform: "GameCube", state: "ready", inputs: {} },
+          { id: "playstation-2", platform: "PlayStation 2", state: "ready", inputs: {} },
+        ] },
+    ]);
+    library.startGame.mockResolvedValue(undefined);
+    render(App);
+    await fireEvent.click(await screen.findByRole("button", { name: "Play Tales of Symphonia" }));
+    expect(library.startGame).toHaveBeenCalledWith("tos", "PlayStation 2");
+    expect(screen.getByRole("heading", { level: 1, name: "Symphonia" })).toBeInTheDocument();
+    localStorage.clear();
   });
 
   it("opens the settings of an installed game from its page and goes back", async () => {

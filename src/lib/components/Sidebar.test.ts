@@ -14,7 +14,8 @@ import { LauncherUpdates } from "../launcher/updates.svelte";
 import Sidebar from "./Sidebar.svelte";
 
 const onlauncher = vi.fn();
-const props = { games: [eternia], selectedId: "toe", onselect: () => {}, onlauncher };
+const onplay = vi.fn();
+const props = { games: [eternia], selectedId: "toe", onselect: () => {}, onplay, onlauncher };
 
 async function started() {
   const updates = new LauncherUpdates();
@@ -67,11 +68,12 @@ describe("Sidebar footer and list", () => {
     expect(onlauncher).toHaveBeenCalledOnce();
   });
 
-  it("gives an icon only to a game that can be played at once", async () => {
+  it("gives a quick play button only to a game that can be played at once", async () => {
     updater.updaterAvailable.mockResolvedValue(false);
     const ready = { ...eternia, id: "tos", name: "Tales of Symphonia", state: "ready" as const };
     render(Sidebar, { ...(await started()), games: [eternia, { ...eternia, id: "tov", name: "Tales of Vesperia", state: "installed" as const }, ready] });
-    expect(screen.getAllByRole("img")).toHaveLength(1);
-    expect(screen.getByRole("img", { name: "Play" })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /^Play / })).toHaveLength(1);
+    await fireEvent.click(screen.getByRole("button", { name: "Play Tales of Symphonia" }));
+    expect(onplay).toHaveBeenCalledWith("tos");
   });
 });

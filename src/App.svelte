@@ -9,7 +9,7 @@
   import TitleBar from "./lib/components/TitleBar.svelte";
   import { cachedCatalog, refreshCatalog } from "./lib/catalog/api";
   import { lastPlayedPlatform } from "./lib/library/lastPlayed";
-  import { defaultPlatform, toGames, type Game } from "./lib/catalog/games";
+  import { defaultPlatform, quickPlayPlatform, toGames, type Game } from "./lib/catalog/games";
   import { logoFor } from "./lib/catalog/logos";
   import type { CatalogStatus } from "./lib/catalog/status";
   import { loadPalette, paletteStyle, type Palette } from "./lib/catalog/palette";
@@ -132,6 +132,18 @@
       },
     };
   });
+
+  /** Quick play from the sidebar: starts the console the game was last played on (else its most recent ready one). */
+  function quickPlay(id: string) {
+    const target = games.find((g) => g.id === id);
+    if (!target) return;
+    const chosen = quickPlayPlatform(target, (p) => library.instanceState(id, p) === "ready", lastPlayedPlatform(id));
+    if (!chosen || library.isRunning(gameJob(id, instanceId(chosen.platform)))) return;
+    selectedId = id; // the game's page shows how it went
+    view = "game";
+    platformByGame[id] = chosen.platform;
+    void library.play(target, chosen);
+  }
 </script>
 
 <div class="app" style={paletteStyle(view === "launcher" || !appearance.usesGamePalette ? null : palette)}>
@@ -142,6 +154,7 @@
       selectedId = id;
       view = "game"; // picking a game leaves the launcher's settings and the previous game's
     }}
+    onplay={quickPlay}
     launcherActive={view === "launcher"}
     onlauncher={() => (view = view === "launcher" ? "game" : "launcher")}
     {loading}

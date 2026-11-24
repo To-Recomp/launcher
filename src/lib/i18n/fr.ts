@@ -14,7 +14,7 @@ export const fr: Catalog = {
   "shell.sidebar.unavailable": "La liste des jeux n'est pas encore disponible.",
   "shell.sidebar.savedList": "La liste enregistrée des jeux est affichée. ",
   "shell.sidebar.retry": "Réessayer",
-  "shell.sidebar.play": "Jouer",
+  "shell.sidebar.quickPlay": "Jouer à {game}",
   "shell.sidebar.launcherSettings": "Paramètres du launcher",
   "shell.update.idle": "Mettre à jour le launcher",
   "shell.update.checking": "Vérification…",

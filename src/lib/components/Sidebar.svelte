@@ -11,6 +11,7 @@
     games,
     selectedId,
     onselect,
+    onplay,
     launcherActive = false,
     onlauncher,
     loading = false,
@@ -21,6 +22,8 @@
     games: Game[];
     selectedId: string;
     onselect: (id: string) => void;
+    /** Quick play of a game: its last played console. */
+    onplay: (id: string) => void;
     /** The launcher's own settings page is open. */
     launcherActive?: boolean;
     /** Opens the launcher's own settings page. */
@@ -60,7 +63,7 @@
 <aside class="sidebar">
   <nav class="list" aria-label={t("shell.sidebar.games")}>
     {#each games as game (game.id)}
-      <SidebarItem {game} selected={game.id === selectedId} onselect={() => onselect(game.id)} />
+      <SidebarItem {game} selected={game.id === selectedId} onselect={() => onselect(game.id)} onplay={() => onplay(game.id)} />
     {/each}
     {#if games.length === 0}
       <p class="empty">{loading ? t("shell.sidebar.loading") : t("shell.sidebar.unavailable")}</p>
