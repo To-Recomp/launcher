@@ -124,7 +124,7 @@
     border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
     background: var(--color-surface);
-    overflow: hidden;
+    /* No overflow clipping: a dropdown's list opens over the edge of its group. */
   }
   .empty { margin-top: var(--space-5); color: var(--color-text-muted); }
   .error {

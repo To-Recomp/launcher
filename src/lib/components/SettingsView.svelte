@@ -233,7 +233,7 @@
     border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
     background: color-mix(in srgb, var(--game-card-top, var(--color-surface)) 55%, transparent);
-    overflow: hidden;
+    /* No overflow clipping: a dropdown's list opens over the edge of its group. */
   }
   .path {
     max-width: 420px;
