@@ -4,6 +4,21 @@ The launcher's own settings page is opened from the gear next to the version at 
 sidebar. It doesn't depend on the selected game: the sidebar shows no selection and the game's
 colors are not applied. Picking a game in the sidebar goes back to that game's page.
 
+## Layout
+
+Four cards, each under its heading, in this order (`LauncherSettingsView`): the manifest's `group`
+fills a card with its settings and the card adds rows of its own.
+
+| Card | Manifest settings | Rows of its own |
+| --- | --- | --- |
+| **Application** | Language, Keep running in the notification area, Close the launcher when a game starts | Start with the system (right under Language), Games folder |
+| **Updates** | Check for updates, Releases | Launcher version and install, Game catalog refresh |
+| **Network** | Game download speed | Proxy, Test connection, Apply |
+| **About** | none | Version, license, repository, what it is built with, Report a bug, Diagnostics, non-affiliation notice |
+
+A `group` the manifest adds later that is not one of the first three gets a card of its own before
+About. The launcher is dark only: there is no theme setting.
+
 - **Engine:** the same one as a game's Settings (`docs/settings-manifest.md`), fed with a
   manifest built into the launcher (`src-tauri/src/launcher_settings/manifest.json`) instead of
   one read from a release. Controls, `group` headings, `when`, validation and messages are the
@@ -35,7 +50,7 @@ colors are not applied. Picking a game in the sidebar goes back to that game's p
   yet: it then shows no folders.
 - Links open github.com pages only (`opener:allow-open-url` scope in `capabilities/default.json`).
 
-## Storage
+## Application: storage
 
 - **Games folder** (`library.folder` in `launcher.json`): where installations and each
   instance's data live; the default is `games/` in the app data folder. Chosen with a folder
@@ -48,7 +63,7 @@ colors are not applied. Picking a game in the sidebar goes back to that game's p
 - The launcher's own data (catalog copy, logs, settings) stays in the usual app folders.
 - `TO_RECOMP_LIBRARY` still overrides everything, for development and tests.
 
-## Updates
+## Updates: launcher
 
 Only where the launcher can replace itself (an AppImage, or a Windows installation made by the
 installer: `updater_available`); elsewhere the settings below are hidden, since a package or ZIP
@@ -64,7 +79,7 @@ is updated another way.
   The sidebar button keeps its own check-and-install click.
 - Commands: `check_launcher_update` (no install), `update_launcher`, `launcher_update_preferences`.
 
-## Game list
+## Updates: game list
 
 "Game catalog" shows how the last refresh of the game list went (updated, already up to date,
 or why it failed, in which case the saved list is used) and has a Refresh button, which is the
@@ -72,7 +87,7 @@ same refresh as the sidebar's Retry. The time is kept for the session only. The 
 not a setting: the launcher only reads the To-Recomp catalog (`TO_RECOMP_CATALOG_URL` stays a
 development switch, see `docs/catalog.md`).
 
-## Behavior
+## Application: behavior
 
 - **Start with the system** (Linux and Windows; hidden elsewhere): registers or removes the
   launcher through `tauri-plugin-autostart` (an `.desktop` entry in `~/.config/autostart`, or the
@@ -91,17 +106,13 @@ development switch, see `docs/catalog.md`).
 - Applied at once (the tray is synced at startup and on change, with its menu in the interface
   language). A failure to add the icon is shown above the settings.
 
-## Appearance
+## Game colors
 
-- **Theme** (`appearance.theme`): Dark (default), Light or System (follows the OS, live). Applied
-  at once, and before the first screen at startup (`data-theme` on `<html>`, tokens in
-  `src/app.css`; the light values are in `:root[data-theme="light"]`).
-- **Game colors** are always used (there is no setting): the palette taken from the game's logo
-  tints the page and the sidebar. It is made for the dark theme, so a light theme never uses it.
-  A logo of muted tints (silver, slate) takes the hue of those. A leftover `appearance.gamePalette`
-  in `launcher.json` is ignored.
+Always used (there is no setting): the palette taken from the game's logo tints the page and the
+sidebar. A logo of muted tints (silver, slate) takes the hue of those. A leftover
+`appearance.gamePalette` or `appearance.theme` in `launcher.json` is ignored.
 
-## Diagnostics
+## About: diagnostics
 
 - **Reports folder:** opens the folder where "Report a bug" and crash files are kept (created if it
   doesn't exist yet). "Report a bug" itself stays in About, for the launcher and for each game.
@@ -134,7 +145,7 @@ downloads (`ureq`), and the launcher update (the updater's reqwest). `src-tauri/
   included.
 - A SOCKS5 proxy also carries the updater (reqwest's `socks` feature is on).
 
-## Downloads: speed limit
+## Network: download speed limit
 
 **Game download speed** (`download.limitMBps`): Unlimited (default), 0.5, 1, 2, 5, 10, 25 or 50
 MB/s (1 MB = 1,000,000 bytes). It is a single budget for the whole launcher (`net/limit.rs`): two

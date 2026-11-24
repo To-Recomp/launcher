@@ -23,29 +23,19 @@
   onMount(() => show(launcherFolders));
 </script>
 
-<h2>{t("launcher.folders.heading")}</h2>
-<div class="group">
-  <FolderRow
-    label={t("launcher.folders.gamesLabel")}
-    help={t("launcher.folders.gamesHelp")}
-    path={folders?.configured ?? null}
-    onpick={(folder) => show(() => setGamesFolder(folder))}
-    onreset={() => show(() => setGamesFolder(null))}
-  />
-</div>
+<!-- A row of the "Application" card, with the folder in use under it. -->
+<FolderRow
+  label={t("launcher.folders.gamesLabel")}
+  help={t("launcher.folders.gamesHelp")}
+  path={folders?.configured ?? null}
+  onpick={(folder) => show(() => setGamesFolder(folder))}
+  onreset={() => show(() => setGamesFolder(null))}
+/>
 {#if folders}<p class="muted current">{t("launcher.folders.inUse", { folder: folders.inUse ?? t("launcher.folders.inUseNone") })}</p>{/if}
 {#if error}<p class="error" role="alert">{error}</p>{/if}
 
 <style>
-  h2 { margin: var(--space-5) 0 var(--space-2) var(--space-4); font-size: 12px; font-weight: 500; color: var(--color-text-muted); }
-  .group {
-    margin-top: var(--space-2);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    background: var(--color-surface);
-    overflow: hidden;
-  }
-  .current { margin: var(--space-2) var(--space-4) 0; font-size: 12px; }
+  .current { margin: 0; padding: 0 var(--space-4) var(--space-3); font-size: 12px; }
   .muted { color: var(--color-text-muted); }
-  .error { margin: var(--space-2) var(--space-4) 0; color: var(--color-primary); }
+  .error { margin: 0; padding: 0 var(--space-4) var(--space-3); color: var(--color-primary); }
 </style>

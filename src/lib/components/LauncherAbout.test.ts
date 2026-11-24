@@ -15,17 +15,16 @@ const open = (label: string) =>
   fireEvent.click(within(screen.getByText(label).closest(".row") as HTMLElement).getByRole("button", { name: "Open" }));
 
 describe("LauncherAbout", () => {
-  it("shows the launcher's version, license and the non-affiliation notice", () => {
+  it("shows the launcher's version and license", () => {
     render(LauncherAbout, { onreportbug });
     expect(screen.getByText(`v${LAUNCHER_VERSION}`)).toBeInTheDocument();
     expect(screen.getByText("GNU GPL v3")).toBeInTheDocument();
-    expect(screen.getByText(/Not affiliated with or endorsed by/)).toBeInTheDocument();
   });
 
   it("opens the launcher's repository and each credit's page", async () => {
     render(LauncherAbout, { onreportbug });
     await open("Repository");
-    await open("Tauri");
+    await open("Built with Tauri");
     expect(links.openLink).toHaveBeenNthCalledWith(1, "https://github.com/To-Recomp/launcher");
     expect(links.openLink).toHaveBeenNthCalledWith(2, "https://github.com/tauri-apps/tauri");
   });

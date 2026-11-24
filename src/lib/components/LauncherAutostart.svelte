@@ -29,22 +29,14 @@
   }
 </script>
 
+<!-- A row for the card of the "Application" settings; it shows nothing where the system can't start the launcher. -->
 {#if supported}
-  <div class="group">
-    <Row label={t("launcher.autostart.label")} help={t("launcher.autostart.help")}>
-      <Toggle label={t("launcher.autostart.label")} checked={enabled} onchange={change} />
-    </Row>
-  </div>
+  <Row label={t("launcher.autostart.label")} help={t("launcher.autostart.help")}>
+    <Toggle label={t("launcher.autostart.label")} checked={enabled} onchange={change} />
+  </Row>
   {#if error}<p class="error" role="alert">{error}</p>{/if}
 {/if}
 
 <style>
-  .group {
-    margin-top: var(--space-2);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    background: var(--color-surface);
-    overflow: hidden;
-  }
-  .error { margin: var(--space-2) var(--space-4) 0; color: var(--color-primary); }
+  .error { margin: 0; padding: var(--space-2) var(--space-4); color: var(--color-primary); }
 </style>

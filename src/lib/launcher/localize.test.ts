@@ -40,8 +40,15 @@ describe("the launcher's built-in settings", () => {
     setLocale("fr");
     const shown = localizeSetting(view(language));
     expect(shown.label).toBe("Langue");
-    expect(shown.group).toBe("Interface");
+    expect(shown.group).toBe("Application");
     expect(shown.control.type === "choices" && shown.control.options).toEqual(["Système", "English", "Français"]);
+  });
+
+  it("tell that GNOME has no notification area only where it can matter, on Linux", () => {
+    const tray = manifest.settings.find((s) => s.id === "minimizeToTray")!;
+    expect(localizeSetting(view(tray), true).help).toMatch(/GNOME/);
+    expect(localizeSetting(view(tray), false).help).not.toMatch(/GNOME/);
+    expect(localizeSetting(view(manifest.settings[0]), true).help).toBeNull(); // no other setting gets the note
   });
 
   it("keep what the manifest says when there is no message for it", () => {

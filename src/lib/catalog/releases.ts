@@ -12,8 +12,21 @@ export interface ReleaseNote {
   prerelease: boolean;
 }
 
-/** The newest releases of `owner/name`, newest first; empty when there are none. */
-export const gameReleases = (repository: string) => invoke<ReleaseNote[]>("game_releases", { repository });
+/** How long a repository's releases are kept for the session (the backend keeps GitHub's answer as long). */
+const RELEASES_TTL_MS = 15 * 60 * 1000;
+const releasesCache = new Map<string, { notes: ReleaseNote[]; at: number }>();
+
+/** What was read for a repository this session, shown at once when the player comes back to a game. */
+export const cachedReleases = (repository: string): ReleaseNote[] | undefined => releasesCache.get(repository)?.notes;
+
+/** The newest releases of `owner/name`, newest first; empty when there are none. Read once per 15 minutes. */
+export async function gameReleases(repository: string): Promise<ReleaseNote[]> {
+  const hit = releasesCache.get(repository);
+  if (hit && Date.now() - hit.at < RELEASES_TTL_MS) return hit.notes;
+  const notes = await invoke<ReleaseNote[]>("game_releases", { repository });
+  releasesCache.set(repository, { notes, at: Date.now() });
+  return notes;
+}
 
 /** The license GitHub detected in a repository. */
 export interface RepositoryLicense {

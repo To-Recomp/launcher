@@ -10,8 +10,7 @@
     {
       "id": "language",
       "label": "Language",
-      "help": "Applies after a restart.",
-      "group": "Interface",
+      "group": "Application",
       "choices": [
         {
           "label": "System",
@@ -34,6 +33,51 @@
       ],
       "defaults": {
         "language": "\"auto\""
+      }
+    },
+    {
+      "id": "minimizeToTray",
+      "label": "Keep running in the notification area",
+      "help": "Closing the window hides it there instead of quitting.",
+      "group": "Application",
+      "choices": [
+        {
+          "label": "Off",
+          "set": {
+            "behavior/tray": "false"
+          }
+        },
+        {
+          "label": "On",
+          "set": {
+            "behavior/tray": "true"
+          }
+        }
+      ],
+      "defaults": {
+        "behavior/tray": "false"
+      }
+    },
+    {
+      "id": "closeOnLaunch",
+      "label": "Close the launcher when a game starts",
+      "group": "Application",
+      "choices": [
+        {
+          "label": "Off",
+          "set": {
+            "behavior/closeOnLaunch": "false"
+          }
+        },
+        {
+          "label": "On",
+          "set": {
+            "behavior/closeOnLaunch": "true"
+          }
+        }
+      ],
+      "defaults": {
+        "behavior/closeOnLaunch": "false"
       }
     },
     {
@@ -83,83 +127,10 @@
       }
     },
     {
-      "id": "minimizeToTray",
-      "label": "Keep running in the notification area",
-      "help": "Closing the window hides it there instead of quitting. Needs a notification area: GNOME shows none without an extension.",
-      "group": "Behavior",
-      "choices": [
-        {
-          "label": "Off",
-          "set": {
-            "behavior/tray": "false"
-          }
-        },
-        {
-          "label": "On",
-          "set": {
-            "behavior/tray": "true"
-          }
-        }
-      ],
-      "defaults": {
-        "behavior/tray": "false"
-      }
-    },
-    {
-      "id": "closeOnLaunch",
-      "label": "Close the launcher when a game starts",
-      "group": "Behavior",
-      "choices": [
-        {
-          "label": "Off",
-          "set": {
-            "behavior/closeOnLaunch": "false"
-          }
-        },
-        {
-          "label": "On",
-          "set": {
-            "behavior/closeOnLaunch": "true"
-          }
-        }
-      ],
-      "defaults": {
-        "behavior/closeOnLaunch": "false"
-      }
-    },
-    {
-      "id": "theme",
-      "label": "Theme",
-      "group": "Appearance",
-      "choices": [
-        {
-          "label": "Dark",
-          "set": {
-            "appearance/theme": "\"dark\""
-          }
-        },
-        {
-          "label": "Light",
-          "set": {
-            "appearance/theme": "\"light\""
-          }
-        },
-        {
-          "label": "System",
-          "set": {
-            "appearance/theme": "\"system\""
-          }
-        }
-      ],
-      "defaults": {
-        "appearance/theme": "\"dark\""
-      }
-    },
-    {
       "id": "downloadLimit",
       "label": "Game download speed",
       "help": "Applies to game downloads only, shared by all of them. The game list and launcher updates aren't limited.",
-      "group": "Downloads",
+      "group": "Network",
       "choices": [
         {
           "label": "Unlimited",

@@ -17,7 +17,6 @@
   import { t } from "./lib/i18n/index.svelte";
   import { instanceLocation } from "./lib/library/api";
   import { gameJob, installJob, instanceId, prepareJob } from "./lib/library/types";
-  import { appearance } from "./lib/launcher/appearance.svelte";
   import { syncTray } from "./lib/launcher/tray";
   import { launcherUpdates } from "./lib/launcher/updates.svelte";
   import { LibraryStore } from "./lib/library/store.svelte";
@@ -154,7 +153,7 @@
   }
 </script>
 
-<div class="app" style={paletteStyle(view === "launcher" || !appearance.usesGamePalette ? null : palette)}>
+<div class="app" style={paletteStyle(view === "launcher" ? null : palette)}>
   <Sidebar
     {games}
     selectedId={view === "launcher" ? "" : (game?.id ?? "")}

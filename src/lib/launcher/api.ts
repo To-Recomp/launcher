@@ -52,13 +52,6 @@ export const autostartEnabled = () => invoke<boolean>("autostart_enabled");
 /** Resolves with what the system says afterwards. */
 export const setAutostart = (enabled: boolean) => invoke<boolean>("set_autostart", { enabled });
 
-/** How the interface looks (src-tauri/src/launcher_settings). */
-export interface Appearance {
-  theme: "dark" | "light" | "system";
-}
-
-export const launcherAppearance = () => invoke<Appearance>("launcher_appearance");
-
 /** The proxy every request of the launcher goes through (src-tauri/src/net). */
 export interface ProxySettings {
   mode: "system" | "none" | "manual";

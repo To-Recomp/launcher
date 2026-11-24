@@ -2,7 +2,7 @@
   export type IconName =
     | "download" | "settings" | "play" | "chevron-down" | "chevron-right" | "folder"
     | "info" | "minimize" | "maximize" | "close" | "display" | "graphics" | "audio"
-    | "controls" | "saves" | "game" | "about" | "gear" | "trash";
+    | "controls" | "saves" | "game" | "about" | "gear" | "trash" | "check" | "alert";
 </script>
 
 <script lang="ts">
@@ -28,6 +28,8 @@
     game: "M4 8h16M4 16h16M9 5v6M15 13v6",
     about: "M12 11v5m0-8.5v.01M12 21a9 9 0 100-18 9 9 0 000 18z",
     gear: "M12 15a3 3 0 100-6 3 3 0 000 6zM19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z",
+    check: "M5 12.5l4.5 4.5L19 7.5",
+    alert: "M12 9v4.5m0 3.5v.01M10.3 4.2L2.8 17.5A2 2 0 004.5 20.5h15a2 2 0 001.7-3L13.7 4.2a2 2 0 00-3.4 0z",
   };
 </script>
 

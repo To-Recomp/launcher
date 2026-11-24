@@ -40,7 +40,7 @@ const catalog: Catalog = {
   games: [
     game("toe", "Tales of Eternia", 2000, [{ platform: "PS1", regions: ["USA"], state: "playable", maturity: "alpha", releaseYear: null }]),
     game("tos", "Tales of Symphonia", 2003, [
-      { platform: "PlayStation 2", regions: ["Japan"], state: "planned", maturity: null, releaseYear: 2002 },
+      { platform: "PlayStation 2", regions: ["Japan"], state: "playable", maturity: "alpha", releaseYear: 2002 },
       { platform: "GameCube", regions: ["France (PAL)", "Japan"], state: "playable", maturity: "beta", releaseYear: null },
     ]),
   ],

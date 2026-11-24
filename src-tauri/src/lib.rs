@@ -66,7 +66,6 @@ pub fn run() {
             updater::check_launcher_update,
             launcher_settings::launcher_update_preferences,
             launcher_settings::launcher_language,
-            launcher_settings::launcher_appearance,
             net::proxy_settings,
             net::set_proxy,
             net::test_proxy,

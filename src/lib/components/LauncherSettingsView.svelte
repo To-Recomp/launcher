@@ -3,7 +3,7 @@
   import { t } from "../i18n/index.svelte";
   import { startLanguage } from "../i18n/start";
   import LauncherAbout from "./LauncherAbout.svelte";
-  import LauncherBehavior from "./LauncherBehavior.svelte";
+  import LauncherAutostart from "./LauncherAutostart.svelte";
   import LauncherCatalog from "./LauncherCatalog.svelte";
   import LauncherDiagnostics from "./LauncherDiagnostics.svelte";
   import LauncherProxy from "./LauncherProxy.svelte";
@@ -12,9 +12,9 @@
   import RestartBanner from "./RestartBanner.svelte";
   import SettingRow from "./SettingRow.svelte";
   import type { CatalogStatus } from "../catalog/status";
+  import { nonAffiliation } from "../data";
   import { applyDownloadLimit, loadLauncherSettings, setLauncherSetting } from "../launcher/api";
   import { errorMessage } from "../settings/api";
-  import { appearance } from "../launcher/appearance.svelte";
   import { localizeSetting } from "../launcher/localize";
   import { restartNeeded } from "../launcher/restart.svelte";
   import { syncTray } from "../launcher/tray";
@@ -55,7 +55,6 @@
     try {
       view = await setLauncherSetting(setting.id, input);
       if (setting.id === "updateChannel") launcherUpdates.forget();
-      if (setting.id === "theme") await appearance.reload();
       if (setting.id === "downloadLimit") await applyDownloadLimit();
       if (setting.id === "minimizeToTray") await syncTray();
       if (setting.id === "language") {
@@ -70,7 +69,14 @@
     }
   }
 
-  const sections = $derived(sectionsOf((view?.settings ?? []).map(localizeSetting)));
+  /** The manifest's settings by its own group ids; what is shown of each is localized. */
+  const sections = $derived(sectionsOf(view?.settings ?? []));
+  const itemsOf = (group: string) => sections.find((s) => s.group === group)?.items ?? [];
+  /** The cards the launcher always shows, in this order: the manifest fills them with its settings and each
+   *  adds rows of its own (Application the games folder, Updates the launcher and the game list, Network the
+   *  proxy). A group the manifest adds later gets a card of its own before About. */
+  const CARDS = ["Application", "Updates", "Network"];
+  const otherSections = $derived(sections.filter((s) => !CARDS.includes(s.group ?? "")));
 </script>
 
 <section class="settings">
@@ -89,31 +95,47 @@
     <p class="empty" role="alert">{loadError}</p>
   {:else if !view}
     <p class="empty">{t("launcher.settings.loading")}</p>
-  {:else}
-    {#each sections as section, i (i)}
-      {#if section.group}<h2>{section.group}</h2>{/if}
-      <div class="group">
-        {#each section.items as setting (setting.id)}
-          <SettingRow {setting} onchange={(input) => apply(setting, input)} />
-        {/each}
-      </div>
-    {/each}
   {/if}
 
-  <LauncherBehavior />
+  <h2>{t("launcher.group.Application")}</h2>
+  <div class="group">
+    {#each itemsOf("Application") as setting (setting.id)}
+      {@render row(setting)}
+      <!-- Starting with the system belongs right under the language. -->
+      {#if setting.id === "language"}<LauncherAutostart />{/if}
+    {/each}
+    <LauncherFolders />
+  </div>
 
-  <LauncherUpdates />
+  <h2>{t("launcher.group.Updates")}</h2>
+  <div class="group">
+    {#each itemsOf("Updates") as setting (setting.id)}{@render row(setting)}{/each}
+    <LauncherUpdates />
+    <LauncherCatalog status={catalogStatus} refreshing={refreshingCatalog} onrefresh={onrefreshcatalog} />
+  </div>
 
-  <LauncherCatalog status={catalogStatus} refreshing={refreshingCatalog} onrefresh={onrefreshcatalog} />
+  <LauncherProxy>
+    {#each itemsOf("Network") as setting (setting.id)}{@render row(setting)}{/each}
+  </LauncherProxy>
 
-  <LauncherFolders />
+  {#each otherSections as section, i (i)}
+    {#if section.group}<h2>{localizeSetting(section.items[0]).group}</h2>{/if}
+    <div class="group">
+      {#each section.items as setting (setting.id)}{@render row(setting)}{/each}
+    </div>
+  {/each}
 
-  <LauncherProxy />
-
-  <LauncherDiagnostics {oncleaned} />
-
-  <LauncherAbout {onreportbug} />
+  <h2>{t("launcher.about.heading")}</h2>
+  <div class="group">
+    <LauncherAbout {onreportbug} />
+    <LauncherDiagnostics {oncleaned} />
+    <p class="notice">{nonAffiliation()}</p>
+  </div>
 </section>
+
+{#snippet row(setting: SettingView)}
+  <SettingRow setting={localizeSetting(setting)} onchange={(input) => apply(setting, input)} />
+{/snippet}
 
 <style>
   .settings { padding: var(--space-6); }
@@ -126,6 +148,7 @@
     background: var(--color-surface);
     /* No overflow clipping: a dropdown's list opens over the edge of its group. */
   }
+  .notice { margin: 0; padding: var(--space-3) var(--space-4); border-top: 1px solid var(--color-border); font-size: 12px; color: var(--color-text-muted); }
   .empty { margin-top: var(--space-5); color: var(--color-text-muted); }
   .error {
     display: flex;
