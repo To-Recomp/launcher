@@ -287,3 +287,31 @@ fn each_download_speed_choice_is_read_back_as_that_many_megabytes_per_second() {
     .unwrap();
     assert_eq!(read(), 0);
 }
+
+fn ids(view: &SettingsView) -> Vec<&str> {
+    view.settings.iter().map(|s| s.id.as_str()).collect()
+}
+
+#[test]
+fn a_change_shows_the_same_settings_as_loading_whether_or_not_the_launcher_updates_itself() {
+    for updater in [false, true] {
+        let dir = TempDir::new().unwrap();
+        let loaded = load_view(dir.path(), updater).unwrap();
+        // Tray: Off, On.
+        let changed = change_view(
+            dir.path(),
+            "minimizeToTray",
+            SettingInput::Choice { index: 1 },
+            updater,
+        )
+        .unwrap();
+        assert_eq!(ids(&changed), ids(&loaded), "updater: {updater}");
+
+        let update_rows = ["autoUpdate", "updateChannel"];
+        assert_eq!(
+            update_rows.iter().all(|id| ids(&changed).contains(id)),
+            updater,
+            "the update settings are offered only where the launcher updates itself"
+        );
+    }
+}

@@ -96,15 +96,39 @@ pub(crate) fn config_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
         .map_err(|e| format!("Can't find the launcher's settings folder: {e}"))
 }
 
-#[tauri::command(async)]
-pub fn load_launcher_settings(app: tauri::AppHandle) -> Result<SettingsView, String> {
-    let mut view = settings::build_view(&instance(&config_dir(&app)?), &manifest()?)?;
-    if !crate::updater::updater_available() {
+/// What the page shows: the update settings only where the launcher can replace itself. Both
+/// commands go through this, so a change never brings back what loading left out.
+fn shown(mut view: SettingsView, updater_available: bool) -> SettingsView {
+    if !updater_available {
         // Another way of updating (a package, a ZIP): nothing to choose here.
         view.settings
             .retain(|s| s.group.as_deref() != Some(UPDATES_GROUP));
     }
-    Ok(view)
+    view
+}
+
+fn load_view(dir: &Path, updater_available: bool) -> Result<SettingsView, String> {
+    Ok(shown(
+        settings::build_view(&instance(dir), &manifest()?)?,
+        updater_available,
+    ))
+}
+
+fn change_view(
+    dir: &Path,
+    id: &str,
+    input: SettingInput,
+    updater_available: bool,
+) -> Result<SettingsView, String> {
+    Ok(shown(
+        settings::apply_with(&instance(dir), &manifest()?, id, input)?,
+        updater_available,
+    ))
+}
+
+#[tauri::command(async)]
+pub fn load_launcher_settings(app: tauri::AppHandle) -> Result<SettingsView, String> {
+    load_view(&config_dir(&app)?, crate::updater::updater_available())
 }
 
 #[tauri::command(async)]
@@ -113,7 +137,12 @@ pub fn set_launcher_setting(
     id: String,
     input: SettingInput,
 ) -> Result<SettingsView, String> {
-    settings::apply_with(&instance(&config_dir(&app)?), &manifest()?, &id, input)
+    change_view(
+        &config_dir(&app)?,
+        &id,
+        input,
+        crate::updater::updater_available(),
+    )
 }
 
 /// Where the games are kept: the player's choice, what this session uses, and the default.
