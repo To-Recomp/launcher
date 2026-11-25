@@ -11,6 +11,7 @@ pub(crate) mod manifest;
 pub(crate) mod paths;
 mod state;
 mod store;
+pub(crate) mod saves;
 
 use std::collections::HashMap;
 use std::fs;

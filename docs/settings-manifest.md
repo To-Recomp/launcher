@@ -29,6 +29,13 @@ a path or a list of `{path, if}`. Placeholders: `{install}`, `{data}`, `{home}`,
 - `control`: `"toggle"` (exactly two choices), `"segmented"` or `"dropdown"`, to override the
   automatic choice above.
 - `text`: `{ "key": "player/name" }`, a free-text value of at most 256 characters.
+- `saves` (top level, the same list the library keeps when a build is deleted): the **Saves** tab
+  shows, above the manifest's own `Saves` settings, one section per listed folder with its files
+  (size, date, an Open button for the folder, a two-click Delete per file) and two actions:
+  **Back up** writes every file to one `.tar.gz` (each folder under `save<i>/`), **Restore** puts a
+  backup's files back, replacing files of the same name and leaving the others. A backup with a
+  path outside the listed folders, a link or anything but files is refused whole, before anything is
+  written. Commands: `list_saves`, `export_saves`, `import_saves`, `delete_save`.
 
 ## Validation
 
