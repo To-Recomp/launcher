@@ -246,7 +246,8 @@
   }
   .file {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+    /* The label is as wide as its text (at most 40%); the path gets everything else. */
+    grid-template-columns: fit-content(40%) minmax(0, 1fr);
     align-items: center;
     gap: var(--space-4);
     padding: var(--space-3) var(--space-4);
