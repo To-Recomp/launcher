@@ -95,14 +95,15 @@
     if (current) reload(current);
   });
 
+  /** How much of the end of a path is always shown: enough for the end of the file name and its extension. */
+  const PATH_END = 22;
+
   /**
-   * "/a/b/c/d/file.iso" -> ["/a/b/c/", "d/file.iso"]: the start of a path, and its end (the file and the folder
-   * it is in) that must stay readable; the room between them is what gives way (Windows paths too).
+   * A path as its start and its end: the end (the last characters, the extension with them) never shrinks, the
+   * start takes what room is left and is cut with an ellipsis, so the ellipsis falls in the middle.
    */
   function splitPath(path: string): [string, string] {
-    const fileAt = path.search(/[^/\\]*$/);
-    const folderAt = path.slice(0, Math.max(0, fileAt - 1)).search(/[^/\\]*$/);
-    const cut = folderAt > 0 ? folderAt : fileAt;
+    const cut = Math.max(0, path.length - PATH_END);
     return [path.slice(0, cut), path.slice(cut)];
   }
 
@@ -257,12 +258,11 @@
     /* No overflow clipping: a dropdown's list opens over the edge of its group. */
   }
   .file-control { display: flex; align-items: center; gap: var(--space-3); width: 100%; min-width: 0; }
-  /* The path takes the room the (short) label leaves, about three quarters of the card: its start and its end
-     are shown, and what is cut is in the middle, with an ellipsis. The end goes last: only when nothing is
-     left of the start does it give way. */
+  /* The path takes the room the (short) label leaves: its start (as much as fits) and its end are shown, and
+     the ellipsis is between them. */
   .path { display: flex; flex: 1; min-width: 0; font-size: 13px; user-select: text; color: var(--color-text-muted); white-space: nowrap; }
-  .head { flex: 0 100 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-  .tail { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .head { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .tail { flex: none; }
   .path.none { font-style: italic; }
   .empty { margin-top: var(--space-5); color: var(--color-text-muted); }
   .error {

@@ -207,10 +207,10 @@ describe("SettingsView", () => {
     expect(screen.queryByRole("heading", { name: "Files" })).not.toBeInTheDocument(); // not on Display
     await openTab("Game");
     expect(screen.getByRole("heading", { level: 2, name: "Files" })).toBeInTheDocument();
-    // The start of the path gives way first; its end (the folder of the file and the file) stays.
+    // A short path is all "end"; a long one is cut between its start and its end.
     const path = screen.getByTitle("/iso/eternia.iso");
-    expect(path.querySelector(".head")?.textContent).toBe("/");
-    expect(path.querySelector(".tail")?.textContent).toBe("iso/eternia.iso");
+    expect(path.querySelector(".head")?.textContent).toBe("");
+    expect(path.querySelector(".tail")?.textContent).toBe("/iso/eternia.iso");
     expect(screen.getAllByText("Disc")).toHaveLength(2);
     expect(screen.getByText("Not chosen")).toBeInTheDocument();
     // The files come first; the settings (here: none yet) follow.
@@ -246,11 +246,14 @@ describe("a path in the Files section", () => {
     return [el.querySelector(".head")?.textContent, el.querySelector(".tail")?.textContent];
   };
 
-  it("keeps the file and the folder it is in at the end, whatever the separator", async () => {
-    expect(await shown("/mnt/library/games/Tales of/Symphonia/GameCube/Disc 1.iso")).toEqual(["/mnt/library/games/Tales of/Symphonia/", "GameCube/Disc 1.iso"]);
+  it("keeps the last 22 characters (the extension with them) apart from the start", async () => {
+    const path = "/mnt/library/games/Tales of/Symphonia/Tales of Symphonia (France) (Disc 1) (2).iso";
+    const [head, tail] = await shown(path);
+    expect(tail).toBe(path.slice(-22));
+    expect(tail).toMatch(/\.iso$/);
+    expect(`${head}${tail}`).toBe(path);
+    expect(head?.startsWith("/mnt/library/")).toBe(true);
     cleanup();
-    expect(await shown("D:\\Games\\Tales\\Disc 1.iso")).toEqual(["D:\\Games\\", "Tales\\Disc 1.iso"]);
-    cleanup();
-    expect(await shown("disc.iso")).toEqual(["", "disc.iso"]);
+    expect(await shown("D:\\Games\\Disc 1.iso")).toEqual(["", "D:\\Games\\Disc 1.iso"]); // short: all end
   });
 });
