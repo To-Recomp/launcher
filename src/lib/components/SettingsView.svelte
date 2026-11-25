@@ -95,9 +95,14 @@
     if (current) reload(current);
   });
 
-  /** "/games/a/b.iso" -> ["/games/a/", "b.iso"] (Windows paths too). */
+  /**
+   * "/a/b/c/d/file.iso" -> ["/a/b/c/", "d/file.iso"]: the start of a path, and its end (the file and the folder
+   * it is in) that must stay readable; the room between them is what gives way (Windows paths too).
+   */
   function splitPath(path: string): [string, string] {
-    const cut = path.search(/[^/\\]*$/);
+    const fileAt = path.search(/[^/\\]*$/);
+    const folderAt = path.slice(0, Math.max(0, fileAt - 1)).search(/[^/\\]*$/);
+    const cut = folderAt > 0 ? folderAt : fileAt;
     return [path.slice(0, cut), path.slice(cut)];
   }
 
@@ -146,12 +151,12 @@
     <h2>{t("game.settings.files.title")}</h2>
     <div class="group">
       {#each files.current as file (file.id)}
-        <Row label={file.label} labelMax="35%">
+        <Row label={file.label} labelMax="22%">
           <div class="file-control">
             {#if file.path}
-              {@const [folder, name] = splitPath(file.path)}
+              {@const [head, tail] = splitPath(file.path)}
               <span class="path" title={file.path}>
-                <span class="folder">{folder}</span><span class="name">{name}</span>
+                <span class="head">{head}</span><span class="tail">{tail}</span>
               </span>
             {:else}
               <span class="path none">{t("game.settings.files.notChosen")}</span>
@@ -251,12 +256,13 @@
     background: color-mix(in srgb, var(--game-card-top, var(--color-surface)) 55%, transparent);
     /* No overflow clipping: a dropdown's list opens over the edge of its group. */
   }
-  .file-control { display: flex; align-items: center; gap: var(--space-3); min-width: 0; }
-  /* The end of the path, the file name, is always shown whole; the folder in front of it gives way, with an
-     ellipsis. The path may take up to 560px so a long name leaves room for some folder. */
-  .path { display: flex; min-width: 0; max-width: 560px; font-size: 13px; user-select: text; color: var(--color-text-muted); white-space: nowrap; }
-  .folder { flex: 0 100 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-  .name { flex: none; }
+  .file-control { display: flex; align-items: center; gap: var(--space-3); width: 100%; min-width: 0; }
+  /* The path takes the room the (short) label leaves, about three quarters of the card: its start and its end
+     are shown, and what is cut is in the middle, with an ellipsis. The end goes last: only when nothing is
+     left of the start does it give way. */
+  .path { display: flex; flex: 1; min-width: 0; font-size: 13px; user-select: text; color: var(--color-text-muted); white-space: nowrap; }
+  .head { flex: 0 100 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .tail { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
   .path.none { font-style: italic; }
   .empty { margin-top: var(--space-5); color: var(--color-text-muted); }
   .error {

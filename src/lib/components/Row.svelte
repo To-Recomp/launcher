@@ -22,7 +22,7 @@
     <span>{label}</span>
     {#if help}<small>{help}</small>{/if}
   </div>
-  <div class="control" style:min-width={labelMax ? "0" : undefined} inert={disabled} aria-disabled={disabled}>
+  <div class="control" style:min-width={labelMax ? "0" : undefined} style:flex={labelMax ? "1" : undefined} inert={disabled} aria-disabled={disabled}>
     {@render children()}
   </div>
 </div>

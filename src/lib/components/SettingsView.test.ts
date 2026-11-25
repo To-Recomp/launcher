@@ -207,9 +207,10 @@ describe("SettingsView", () => {
     expect(screen.queryByRole("heading", { name: "Files" })).not.toBeInTheDocument(); // not on Display
     await openTab("Game");
     expect(screen.getByRole("heading", { level: 2, name: "Files" })).toBeInTheDocument();
-    const path = screen.getByTitle("/iso/eternia.iso"); // the folder is cut first, the file name always shows
-    expect(path.querySelector(".folder")?.textContent).toBe("/iso/");
-    expect(path.querySelector(".name")?.textContent).toBe("eternia.iso");
+    // The start of the path gives way first; its end (the folder of the file and the file) stays.
+    const path = screen.getByTitle("/iso/eternia.iso");
+    expect(path.querySelector(".head")?.textContent).toBe("/");
+    expect(path.querySelector(".tail")?.textContent).toBe("iso/eternia.iso");
     expect(screen.getAllByText("Disc")).toHaveLength(2);
     expect(screen.getByText("Not chosen")).toBeInTheDocument();
     // The files come first; the settings (here: none yet) follow.
@@ -234,5 +235,22 @@ describe("SettingsView", () => {
     expect(screen.queryByRole("button", { name: /^Change / })).not.toBeInTheDocument();
     await fireEvent.click(screen.getByRole("button", { name: "Back" }));
     expect(onback).toHaveBeenCalledOnce();
+  });
+});
+
+describe("a path in the Files section", () => {
+  const shown = async (path: string) => {
+    render(SettingsView, { ...props, files: { hasInputs: true, current: [{ id: "d", label: "Disc", path }], busy: false, onchange: vi.fn() } });
+    await openTab("Game");
+    const el = screen.getByTitle(path);
+    return [el.querySelector(".head")?.textContent, el.querySelector(".tail")?.textContent];
+  };
+
+  it("keeps the file and the folder it is in at the end, whatever the separator", async () => {
+    expect(await shown("/mnt/library/games/Tales of/Symphonia/GameCube/Disc 1.iso")).toEqual(["/mnt/library/games/Tales of/Symphonia/", "GameCube/Disc 1.iso"]);
+    cleanup();
+    expect(await shown("D:\\Games\\Tales\\Disc 1.iso")).toEqual(["D:\\Games\\", "Tales\\Disc 1.iso"]);
+    cleanup();
+    expect(await shown("disc.iso")).toEqual(["", "disc.iso"]);
   });
 });
