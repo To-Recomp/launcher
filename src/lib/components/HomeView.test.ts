@@ -138,7 +138,7 @@ describe("HomeView actions", () => {
 
     expect(await screen.findByRole("button", { name: "Rebuild" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Update" })).not.toBeInTheDocument();
-    expect(screen.getByText("The game needs a new build after the update.")).toBeInTheDocument();
+    expect(screen.getByText("The game needs a new build.")).toBeInTheDocument();
   });
 
   it("opens the game's settings once the game is installed, not before", async () => {
@@ -152,7 +152,7 @@ describe("HomeView actions", () => {
 
   it("says an update needs a new build, and offers Rebuild when the instance kept what it needs", () => {
     show(installed("needsRebuild", { keepsCopy: true }));
-    expect(screen.getByText("The game needs a new build after the update.")).toBeInTheDocument();
+    expect(screen.getByText("The game needs a new build.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Rebuild" })).toBeInTheDocument();
   });
 

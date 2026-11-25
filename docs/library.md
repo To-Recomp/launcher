@@ -30,6 +30,11 @@
   show `needs rebuild`. With `prepare.keeps_copy` the rebuild starts from what the last run kept
   in the instance, not from the dump (the launcher leaves out arguments naming the copy);
   otherwise the earlier files are reused if they still exist, and asked for if not.
+- **Choosing another file** (`set_instance_input`, from the game's settings → Game → Files): the file
+  is validated like a prepared one and kept in the instance's record; nothing is built. A prepared
+  instance is then `needs rebuild` (`inputs_changed` in `instance.json`), and the rebuild uses the
+  new files, not what the last build kept. The same file (also by another path) changes nothing, and
+  it can't be done while the instance is being prepared or played.
 - **Play**: `start` with the manifest's arguments, then the player's `args` settings; the output
   goes to `game.log`.
 - **Delete the build**: the trash button next to Play (a prepared instance, nothing running)

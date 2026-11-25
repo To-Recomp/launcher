@@ -7,6 +7,7 @@ const api = vi.hoisted(() => ({
   latestReleaseTag: vi.fn(),
   installGame: vi.fn(),
   prepareInstance: vi.fn(),
+  setInstanceInput: vi.fn(),
   startGame: vi.fn(),
   cancelJob: vi.fn(),
   readInstanceLog: vi.fn(),
@@ -161,22 +162,34 @@ describe("LibraryStore state", () => {
     ]);
   });
 
-  it("changes one input: only that file is picked and sent, the backend keeps the others", async () => {
+  it("keeps a chosen file without building anything, and does nothing for the file already in use", async () => {
     const store = new LibraryStore();
-    api.librarySnapshot.mockResolvedValue([installation("ready")]);
+    api.librarySnapshot.mockResolvedValue([installation("ready", { instances: [{ id: "gamecube", platform: "GameCube", state: "ready", inputs: { disc1: "/old/disc1.iso" } }] })]);
     await store.start();
-    api.pickInput.mockResolvedValue("/new/disc2.iso");
-    api.prepareInstance.mockResolvedValue({});
-    await store.changeInput(game, platform, "disc2");
-    expect(api.pickInput).toHaveBeenCalledTimes(1);
-    expect(api.pickInput.mock.calls[0][0]).toMatchObject({ id: "disc2" });
-    expect(api.prepareInstance).toHaveBeenCalledWith("tos", "GameCube", { disc2: "/new/disc2.iso" });
-    expect(store.status?.tone).toBe("success");
 
-    api.pickInput.mockResolvedValue(null); // the dialog was closed: nothing changes
-    api.prepareInstance.mockClear();
+    api.pickInput.mockResolvedValue("/new/disc2.iso");
+    api.setInstanceInput.mockResolvedValue({ id: "gamecube", platform: "GameCube", state: "needsRebuild", inputs: { disc1: "/old/disc1.iso", disc2: "/new/disc2.iso" } });
+    await store.changeInput(game, platform, "disc2");
+    expect(api.pickInput.mock.calls[0][0]).toMatchObject({ id: "disc2" });
+    expect(api.setInstanceInput).toHaveBeenCalledWith("tos", "GameCube", "disc2", "/new/disc2.iso");
+    expect(api.prepareInstance).not.toHaveBeenCalled(); // no rebuild of its own
+    expect(store.status).toEqual({ tone: "success", text: "The new file is kept. Rebuild the game to use it." });
+
+    api.setInstanceInput.mockClear();
+    api.pickInput.mockResolvedValue("/old/disc1.iso"); // exactly the file already in use
     await store.changeInput(game, platform, "disc1");
-    expect(api.prepareInstance).not.toHaveBeenCalled();
+    expect(api.setInstanceInput).not.toHaveBeenCalled();
+    expect(store.status?.text).toMatch(/already in use/);
+
+    api.pickInput.mockResolvedValue("/old/./disc1.iso"); // the same file by another path: the backend keeps its own
+    api.setInstanceInput.mockResolvedValue({ id: "gamecube", platform: "GameCube", state: "ready", inputs: { disc1: "/old/disc1.iso" } });
+    await store.changeInput(game, platform, "disc1");
+    expect(store.status?.text).toMatch(/already in use/);
+
+    api.pickInput.mockResolvedValue(null); // the dialog was closed
+    api.setInstanceInput.mockClear();
+    await store.changeInput(game, platform, "disc1");
+    expect(api.setInstanceInput).not.toHaveBeenCalled();
     expect(store.status?.tone).toBe("info");
   });
 

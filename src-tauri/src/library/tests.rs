@@ -1469,3 +1469,55 @@ fn real_tos_release_prepares_from_real_discs() {
     .unwrap();
     assert_eq!(view.state, InstanceState::Ready);
 }
+
+#[test]
+fn choosing_another_file_changes_nothing_but_the_choice_and_asks_for_a_new_build() {
+    let s = setup();
+    installed_and_published(&s);
+    let dir = TempDir::new().unwrap();
+    let picked = discs(dir.path(), "one", "two");
+    do_prepare(&s, picked.clone()).unwrap();
+    let location = instance_location(&s);
+    let built = || fs::read_to_string(location.data.join("built.bin")).unwrap();
+    assert_eq!(built(), "built from one+two");
+
+    // The same file again: nothing is recorded, the game stays ready.
+    let view = set_input(&s.env, GAME, "GameCube", "disc1", picked["disc1"].clone()).unwrap();
+    assert_eq!(view.state, InstanceState::Ready);
+    // So does the same file reached by another path.
+    let again = dir.path().join(".").join("d1.iso");
+    let view = set_input(&s.env, GAME, "GameCube", "disc1", again).unwrap();
+    assert_eq!(view.state, InstanceState::Ready);
+
+    // Another file: kept as the one to use, and nothing is built (the old build is untouched).
+    let other = file(dir.path(), "other.iso", "three");
+    let view = set_input(&s.env, GAME, "GameCube", "disc1", other.clone()).unwrap();
+    assert_eq!(view.state, InstanceState::NeedsRebuild);
+    assert_eq!(view.inputs["disc1"], other.to_string_lossy());
+    assert_eq!(view.inputs["disc2"], picked["disc2"].to_string_lossy());
+    assert_eq!(built(), "built from one+two");
+
+    // The rebuild, when the player asks, uses the new file and the one that stayed.
+    let view = do_prepare(&s, BTreeMap::new()).unwrap();
+    assert_eq!(view.state, InstanceState::Ready);
+    assert_eq!(built(), "built from three+two");
+}
+
+#[test]
+fn a_wrong_file_is_refused_and_not_remembered() {
+    let s = setup();
+    installed_and_published(&s);
+    let dir = TempDir::new().unwrap();
+    do_prepare(&s, discs(dir.path(), "one", "two")).unwrap();
+    let text = file(dir.path(), "notes.txt", "x");
+    assert!(set_input(&s.env, GAME, "GameCube", "disc1", text)
+        .unwrap_err()
+        .contains("expected a .iso file"));
+    assert!(
+        set_input(&s.env, GAME, "GameCube", "disc9", dir.path().join("d1.iso"))
+            .unwrap_err()
+            .contains("doesn't ask for `disc9`")
+    );
+    let view = set_input(&s.env, GAME, "GameCube", "disc1", dir.path().join("d1.iso")).unwrap();
+    assert_eq!(view.state, InstanceState::Ready);
+}

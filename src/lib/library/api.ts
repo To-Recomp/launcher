@@ -12,6 +12,10 @@ export const installGame = (gameId: string, repository: string) =>
 /** The tag an install would fetch now; rejects when GitHub can't be reached. */
 export const latestReleaseTag = (repository: string) => invoke<string>("latest_release_tag", { repository });
 
+/** Remembers another file for one input of an instance, without building anything. */
+export const setInstanceInput = (gameId: string, platform: string, inputId: string, path: string) =>
+  invoke<InstanceView>("set_instance_input", { gameId, platform, inputId, path });
+
 export const prepareInstance = (gameId: string, platform: string, inputs: Record<string, string>) =>
   invoke<InstanceView>("prepare_instance", { gameId, platform, inputs });
 

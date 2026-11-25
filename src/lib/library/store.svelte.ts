@@ -275,8 +275,8 @@ export class LibraryStore {
   }
 
   /**
-   * Chooses another file for one input of an instance and prepares it again with it. The backend keeps the
-   * files of the other inputs from the instance's record, so only this one is asked for.
+   * Chooses another file for one input of an instance. Nothing is built: the choice is kept, and the game then
+   * offers a rebuild that uses it, when the player wants it. The same file as the one in use changes nothing.
    */
   async changeInput(game: Game, platform: Platform, inputId: string) {
     const installation = this.installationOf(game.id);
@@ -287,13 +287,22 @@ export class LibraryStore {
       this.status = { tone: "info", text: t("shell.library.nothingChanged") };
       return;
     }
-    await this.#run(
-      prepareJob(game.id, instanceId(platform.platform)),
-      { game, platform },
-      installation.prepareLabel ?? t("shell.library.preparing"),
-      () => api.prepareInstance(game.id, platform.platform, { [input.id]: picked }),
-      () => t("shell.library.ready", { game: game.name }),
-    );
+    const id = instanceId(platform.platform);
+    if (installation.instances.find((i) => i.id === id)?.inputs[inputId] === picked) {
+      this.status = { tone: "info", text: t("shell.library.sameFile") };
+      return;
+    }
+    try {
+      const view = await api.setInstanceInput(game.id, platform.platform, inputId, picked);
+      // The backend also knows the same file reached by another path: it kept the one it had.
+      this.status =
+        view.inputs[inputId] === picked
+          ? { tone: "success", text: t("shell.library.fileKept") }
+          : { tone: "info", text: t("shell.library.sameFile") };
+    } catch (e) {
+      this.status = { tone: "error", text: errorMessage(e) };
+    }
+    await this.refresh();
   }
 
   async play(game: Game, platform: Platform) {

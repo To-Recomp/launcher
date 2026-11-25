@@ -342,7 +342,8 @@ pub fn prepare(
     validate_inputs(&manifest, &picked)?;
     let rebuild_from_kept = manifest.prepare.as_ref().is_some_and(|p| p.keeps_copy)
         && picked.is_empty()
-        && instance.prepared_release.is_some();
+        && instance.prepared_release.is_some()
+        && !instance.inputs_changed;
 
     // The player's files: earlier picks that still exist, overridden by new ones.
     let mut inputs: BTreeMap<String, PathBuf> = instance
@@ -409,6 +410,7 @@ pub fn prepare(
         .map(|(k, v)| (k.clone(), v.to_string_lossy().into_owned()))
         .collect();
     instance.prepared_release = Some(record.tag.clone());
+    instance.inputs_changed = false;
     library.save_instance_record(game_id, &id, &instance)?;
 
     let state = store::instance_state(&manifest, &record, &instance, &location);
@@ -424,6 +426,50 @@ pub fn prepare(
         id,
         platform: platform.to_string(),
         state,
+        inputs: instance.inputs,
+    })
+}
+
+/// Chooses another file for one input of an instance **without** preparing anything: the choice is kept,
+/// and a prepared instance is marked as needing a new build from it (the player starts that when they
+/// want). Choosing the file already in use changes nothing.
+pub fn set_input(
+    env: &Env,
+    game_id: &str,
+    platform: &str,
+    input_id: &str,
+    picked: PathBuf,
+) -> Result<InstanceView, String> {
+    let library = &env.library;
+    let record = library
+        .installation(game_id)?
+        .ok_or("This game isn't installed yet.")?;
+    let manifest = read_manifest(&library.release_dir(game_id)?)?;
+    let id = store::instance_id(platform);
+    let location = library.location(game_id, &id)?;
+    let mut instance = library.instance_record(game_id, &id, platform)?;
+
+    validate_inputs(
+        &manifest,
+        &BTreeMap::from([(input_id.to_string(), picked.clone())]),
+    )?;
+    let same = instance.inputs.get(input_id).is_some_and(|current| {
+        let current = Path::new(current);
+        current == picked || matches!((fs::canonicalize(current), fs::canonicalize(&picked)), (Ok(a), Ok(b)) if a == b)
+    });
+    if !same {
+        instance
+            .inputs
+            .insert(input_id.to_string(), picked.to_string_lossy().into_owned());
+        if instance.prepared_release.is_some() {
+            instance.inputs_changed = true;
+        }
+        library.save_instance_record(game_id, &id, &instance)?;
+    }
+    Ok(InstanceView {
+        state: store::instance_state(&manifest, &record, &instance, &location),
+        id,
+        platform: platform.to_string(),
         inputs: instance.inputs,
     })
 }
@@ -725,6 +771,24 @@ pub fn latest_release_tag(app: tauri::AppHandle, repository: String) -> Result<S
     let env = app_env(&app)?;
     release::latest_release(&env.api, &repository, env.os, &env.cache, false)
         .map(|release| release.tag)
+}
+
+/// Remembers another file for one input of an instance, without preparing it (see `set_input`).
+#[tauri::command(async)]
+pub fn set_instance_input(
+    app: tauri::AppHandle,
+    jobs: tauri::State<Jobs>,
+    game_id: String,
+    platform: String,
+    input_id: String,
+    path: String,
+) -> Result<InstanceView, String> {
+    let env = app_env(&app)?;
+    // Not while a preparation or the game runs on this instance: they read these files.
+    let instance = store::instance_id(&platform);
+    let _preparing = jobs.begin(&format!("prepare:{game_id}/{instance}"))?;
+    let _playing = jobs.begin(&format!("game:{game_id}/{instance}"))?;
+    set_input(&env, &game_id, &platform, &input_id, PathBuf::from(path))
 }
 
 #[tauri::command(async)]

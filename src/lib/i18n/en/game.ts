@@ -13,7 +13,7 @@ export const game = {
   "game.home.unsupported": "This console isn't supported.",
   "game.home.hintInstall": "Install the game to get started.",
   "game.home.hintReady": "Ready to play.",
-  "game.home.hintRebuild": "The game needs a new build after the update.",
+  "game.home.hintRebuild": "The game needs a new build.",
   "game.home.hintChoose": "Choose your game files to get started.",
   "game.home.platform": "Platform",
   "game.home.state.planned": "Planned",
