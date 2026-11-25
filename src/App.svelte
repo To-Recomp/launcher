@@ -118,7 +118,7 @@
     return {
       hasInputs: (installation?.inputs.filter((i) => !i.optional).length ?? 0) > 0,
       /** Each file the game asks for and the path it was prepared from, if any. */
-      current: (installation?.inputs ?? []).map((input) => ({ label: input.label, path: used[input.id] ?? null })),
+      current: (installation?.inputs ?? []).map((input) => ({ id: input.id, label: input.label, path: used[input.id] ?? null })),
       busy:
         !game ||
         [installJob(game.id), prepareJob(game.id, instance), gameJob(game.id, instance)].some((job) =>

@@ -200,7 +200,8 @@ describe("SettingsView", () => {
 
   it("changes the game files from the top of the Game tab, even before the game is prepared, when nothing is running", async () => {
     const onchange = vi.fn();
-    const current = [{ label: "Disc 1", path: "/iso/eternia.iso" }, { label: "Disc 2", path: null }];
+    // Two inputs may share a label (a manifest can describe both discs the same way): they are told apart by id.
+    const current = [{ id: "disc1", label: "Disc", path: "/iso/eternia.iso" }, { id: "disc2", label: "Disc", path: null }];
     render(SettingsView, { ...props, location: null, files: { hasInputs: true, current, busy: false, onchange } });
     expect(screen.queryByRole("tab", { name: "Files" })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Files" })).not.toBeInTheDocument(); // not on Display
@@ -209,7 +210,7 @@ describe("SettingsView", () => {
     const path = screen.getByTitle("/iso/eternia.iso"); // the folder is cut first, the file name always shows
     expect(path.querySelector(".folder")?.textContent).toBe("/iso/");
     expect(path.querySelector(".name")?.textContent).toBe("eternia.iso");
-    expect(screen.getByText("Disc 2")).toBeInTheDocument();
+    expect(screen.getAllByText("Disc")).toHaveLength(2);
     expect(screen.getByText("Not chosen")).toBeInTheDocument();
     // The files come first; the settings (here: none yet) follow.
     expect(screen.getByRole("heading", { name: "Files" }).compareDocumentPosition(screen.getByText("Install and prepare Tales of Eternia to configure it."))).toBe(Node.DOCUMENT_POSITION_FOLLOWING);

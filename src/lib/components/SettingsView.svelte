@@ -28,7 +28,7 @@
     tag: string | null;
     location: Location | null;
     /** The files the game is built from, and what changing them does. */
-    files: { hasInputs: boolean; current: { label: string; path: string | null }[]; busy: boolean; onchange: () => void };
+    files: { hasInputs: boolean; current: { id: string; label: string; path: string | null }[]; busy: boolean; onchange: () => void };
     /** Back to the game's page. */
     onback: () => void;
     /** Settings → About → Report a bug, for this game. */
