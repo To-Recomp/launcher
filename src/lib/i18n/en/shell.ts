@@ -25,6 +25,8 @@ export const shell = {
   "shell.library.installed": "Installed {game} {tag}.",
   "shell.library.preparing": "Preparing the game",
   "shell.library.ready": "{game} is ready to play.",
+  "shell.library.sameFile": "That is the file already in use: nothing was changed.",
+  "shell.library.fileKept": "The new file is kept. Rebuild the game to use it.",
   "shell.library.nothingChanged": "Nothing was changed: no file was chosen.",
   "shell.library.runningProgress": "{game} is running",
   "shell.library.running": "{game} is running.",

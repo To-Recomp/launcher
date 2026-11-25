@@ -37,6 +37,10 @@ pub struct InstanceRecord {
     pub inputs: BTreeMap<String, String>,
     /// The release tag the instance was last prepared for.
     pub prepared_release: Option<String>,
+    /// A file was chosen again after the last preparation: the build no longer matches the player's files
+    /// and is to be made again (from these files, not from what the last build kept).
+    #[serde(default)]
+    pub inputs_changed: bool,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
@@ -239,7 +243,7 @@ pub fn instance_state(
         .done
         .iter()
         .all(|file| location.resolve(file).is_ok_and(|p| p.exists()));
-    if *prepared != installation.tag || !done_ok {
+    if *prepared != installation.tag || !done_ok || record.inputs_changed {
         InstanceState::NeedsRebuild
     } else if inputs_ok {
         InstanceState::Ready

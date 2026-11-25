@@ -48,7 +48,7 @@ const props = {
   tag: "v0.3.0",
   location,
   onreportbug,
-  files: { hasInputs: false, current: [], busy: false, onchange: vi.fn() },
+  files: { hasInputs: false, current: [], busy: false, onchange: vi.fn(), notice: null, clearNotice: vi.fn() },
   onback: vi.fn(),
 };
 
@@ -198,29 +198,44 @@ describe("SettingsView", () => {
     expect(onreportbug).toHaveBeenCalledOnce();
   });
 
-  it("changes the game files from the top of the Game tab, even before the game is prepared, when nothing is running", async () => {
+  it("changes one file at a time from the top of the Game tab, even before the game is prepared, when nothing is running", async () => {
     const onchange = vi.fn();
-    const current = [{ label: "Disc 1", path: "/iso/eternia.iso" }, { label: "Disc 2", path: null }];
-    render(SettingsView, { ...props, location: null, files: { hasInputs: true, current, busy: false, onchange } });
+    // Two inputs may share a label (a manifest can describe both discs the same way): they are told apart by id.
+    const current = [{ id: "disc1", label: "Disc", path: "/iso/eternia.iso" }, { id: "disc2", label: "Disc", path: null }];
+    render(SettingsView, { ...props, location: null, files: { hasInputs: true, current, busy: false, onchange, notice: null, clearNotice: vi.fn() } });
     expect(screen.queryByRole("tab", { name: "Files" })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Files" })).not.toBeInTheDocument(); // not on Display
     await openTab("Game");
     expect(screen.getByRole("heading", { level: 2, name: "Files" })).toBeInTheDocument();
-    const path = screen.getByTitle("/iso/eternia.iso"); // the folder is cut first, the file name always shows
-    expect(path.querySelector(".folder")?.textContent).toBe("/iso/");
-    expect(path.querySelector(".name")?.textContent).toBe("eternia.iso");
-    expect(screen.getByText("Disc 2")).toBeInTheDocument();
+    // A short path is all "end"; a long one is cut between its start and its end.
+    const path = screen.getByTitle("/iso/eternia.iso");
+    expect(path.querySelector(".head")?.textContent).toBe("");
+    expect(path.querySelector(".tail")?.textContent).toBe("/iso/eternia.iso");
+    expect(screen.getAllByText("Disc")).toHaveLength(2);
     expect(screen.getByText("Not chosen")).toBeInTheDocument();
     // The files come first; the settings (here: none yet) follow.
     expect(screen.getByRole("heading", { name: "Files" }).compareDocumentPosition(screen.getByText("Install and prepare Tales of Eternia to configure it."))).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
-    await fireEvent.click(screen.getByRole("button", { name: "Change game files" }));
-    expect(onchange).toHaveBeenCalledOnce();
 
-    const busy = vi.fn();
+    const buttons = screen.getAllByRole("button", { name: "Change Disc" }); // one per file
+    expect(buttons).toHaveLength(2);
+    await fireEvent.click(buttons[1]);
+    expect(onchange).toHaveBeenCalledExactlyOnceWith("disc2");
+
     cleanup();
-    render(SettingsView, { ...props, files: { hasInputs: true, current, busy: true, onchange: busy } });
+    render(SettingsView, { ...props, files: { hasInputs: true, current, busy: true, onchange, notice: null, clearNotice: vi.fn() } });
     await openTab("Game");
-    expect(screen.getByRole("button", { name: "Change game files" })).toBeDisabled();
+    for (const button of screen.getAllByRole("button", { name: "Change Disc" })) expect(button).toBeDisabled();
+  });
+
+  it("says what choosing a file did, in place, and forgets it when the settings are left", async () => {
+    const clearNotice = vi.fn();
+    const current = [{ id: "disc1", label: "Disc 1", path: "/iso/a.iso" }];
+    const { unmount } = render(SettingsView, { ...props, files: { hasInputs: true, current, busy: false, onchange: vi.fn(), notice: { tone: "success", text: "The new file is kept. Rebuild the game to use it." }, clearNotice } });
+    await openTab("Game");
+    expect(screen.getByRole("status")).toHaveTextContent("The new file is kept. Rebuild the game to use it.");
+    expect(clearNotice).not.toHaveBeenCalled();
+    unmount();
+    expect(clearNotice).toHaveBeenCalledOnce();
   });
 
   it("has no Files section for a game that uses no files, and goes back to the game", async () => {
@@ -228,8 +243,28 @@ describe("SettingsView", () => {
     render(SettingsView, { ...props, onback });
     await openTab("Game");
     expect(screen.queryByRole("heading", { name: "Files" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Change game files" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Change / })).not.toBeInTheDocument();
     await fireEvent.click(screen.getByRole("button", { name: "Back" }));
     expect(onback).toHaveBeenCalledOnce();
+  });
+});
+
+describe("a path in the Files section", () => {
+  const shown = async (path: string) => {
+    render(SettingsView, { ...props, files: { hasInputs: true, current: [{ id: "d", label: "Disc", path }], busy: false, onchange: vi.fn(), notice: null, clearNotice: vi.fn() } });
+    await openTab("Game");
+    const el = screen.getByTitle(path);
+    return [el.querySelector(".head")?.textContent, el.querySelector(".tail")?.textContent];
+  };
+
+  it("keeps the last 22 characters (the extension with them) apart from the start", async () => {
+    const path = "/mnt/library/games/Tales of/Symphonia/Tales of Symphonia (France) (Disc 1) (2).iso";
+    const [head, tail] = await shown(path);
+    expect(tail).toBe(path.slice(-22));
+    expect(tail).toMatch(/\.iso$/);
+    expect(`${head}${tail}`).toBe(path);
+    expect(head?.startsWith("/mnt/library/")).toBe(true);
+    cleanup();
+    expect(await shown("D:\\Games\\Disc 1.iso")).toEqual(["", "D:\\Games\\Disc 1.iso"]); // short: all end
   });
 });

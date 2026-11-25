@@ -5,16 +5,24 @@
     label,
     help = null,
     disabled = false,
+    labelMax,
     children,
-  }: { label: string; help?: string | null; disabled?: boolean; children: Snippet } = $props();
+  }: {
+    label: string;
+    help?: string | null;
+    disabled?: boolean;
+    /** A CSS width the label may not pass (a long label then wraps and the control keeps its room). */
+    labelMax?: string;
+    children: Snippet;
+  } = $props();
 </script>
 
 <div class="row" class:disabled>
-  <div class="text">
+  <div class="text" style:max-width={labelMax} style:flex-shrink={labelMax ? "0" : undefined}>
     <span>{label}</span>
     {#if help}<small>{help}</small>{/if}
   </div>
-  <div class="control" inert={disabled} aria-disabled={disabled}>
+  <div class="control" style:min-width={labelMax ? "0" : undefined} style:flex={labelMax ? "1" : undefined} inert={disabled} aria-disabled={disabled}>
     {@render children()}
   </div>
 </div>

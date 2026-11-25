@@ -48,6 +48,7 @@ pub fn run() {
             library::game_license,
             library::latest_release_tag,
             library::prepare_instance,
+            library::set_instance_input,
             library::start_game,
             library::cancel_job,
             library::delete_build,

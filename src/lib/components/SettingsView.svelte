@@ -1,7 +1,8 @@
 <script lang="ts">
-  import { untrack } from "svelte";
+  import { onMount, untrack } from "svelte";
   import GameAbout from "./GameAbout.svelte";
   import Icon, { type IconName } from "./Icon.svelte";
+  import Row from "./Row.svelte";
   import SettingRow from "./SettingRow.svelte";
   import { errorMessage, loadSettings, setSetting } from "../settings/api";
   import { sectionsOf } from "../settings/sections";
@@ -27,8 +28,16 @@
     /** The installed release; `null` when the game isn't installed. */
     tag: string | null;
     location: Location | null;
-    /** The files the game is built from, and what changing them does. */
-    files: { hasInputs: boolean; current: { label: string; path: string | null }[]; busy: boolean; onchange: () => void };
+    /** The files the game is built from; `onchange` chooses another file for one of them (nothing is built). */
+    files: {
+      hasInputs: boolean;
+      current: { id: string; label: string; path: string | null }[];
+      busy: boolean;
+      onchange: (inputId: string) => void;
+      /** What the last choice said, until the settings are left (`clearNotice`). */
+      notice: { tone: "info" | "success" | "error"; text: string } | null;
+      clearNotice: () => void;
+    };
     /** Back to the game's page. */
     onback: () => void;
     /** Settings → About → Report a bug, for this game. */
@@ -61,6 +70,7 @@
   };
 
   let tab = $state<Tab>("Display");
+  onMount(() => () => files.clearNotice()); // what the last choice said isn't kept for the next visit
   let view = $state<SettingsView | null>(null);
   let loadError = $state<string | null>(null);
   let actionError = $state<string | null>(null);
@@ -94,9 +104,15 @@
     if (current) reload(current);
   });
 
-  /** "/games/a/b.iso" -> ["/games/a/", "b.iso"] (Windows paths too). */
+  /** How much of the end of a path is always shown: enough for the end of the file name and its extension. */
+  const PATH_END = 22;
+
+  /**
+   * A path as its start and its end: the end (the last characters, the extension with them) never shrinks, the
+   * start takes what room is left and is cut with an ellipsis, so the ellipsis falls in the middle.
+   */
   function splitPath(path: string): [string, string] {
-    const cut = path.search(/[^/\\]*$/);
+    const cut = Math.max(0, path.length - PATH_END);
     return [path.slice(0, cut), path.slice(cut)];
   }
 
@@ -143,23 +159,34 @@
   {#if tab === "Game" && files.hasInputs}
     <!-- Shown even before the game is prepared: it is where the files are chosen. A game without files has no section. -->
     <h2>{t("game.settings.files.title")}</h2>
-    <p class="help">{t("game.settings.files.help")}</p>
     <div class="group">
-      {#each files.current as file (file.label)}
-        <div class="file">
-          <span class="file-label" title={file.label}>{file.label}</span>
-          {#if file.path}
-            {@const [folder, name] = splitPath(file.path)}
-            <span class="path" title={file.path}>
-              <span class="folder">{folder}</span><span class="name">{name}</span>
-            </span>
-          {:else}
-            <span class="path none">{t("game.settings.files.notChosen")}</span>
-          {/if}
-        </div>
+      {#each files.current as file (file.id)}
+        <Row label={file.label} labelMax="22%">
+          <div class="file-control">
+            {#if file.path}
+              {@const [head, tail] = splitPath(file.path)}
+              <span class="path" title={file.path}>
+                <span class="head">{head}</span><span class="tail">{tail}</span>
+              </span>
+            {:else}
+              <span class="path none">{t("game.settings.files.notChosen")}</span>
+            {/if}
+            <button
+              class="small"
+              disabled={files.busy}
+              title={t("game.settings.files.help")}
+              aria-label={t("game.settings.files.change", { file: file.label })}
+              onclick={() => files.onchange(file.id)}
+            >
+              {t("game.settings.files.changeButton")}
+            </button>
+          </div>
+        </Row>
       {/each}
     </div>
-    <button class="change-files" disabled={files.busy} onclick={files.onchange}>{t("game.home.changeFiles")}</button>
+    {#if files.notice}
+      <p class="file-notice {files.notice.tone}" role={files.notice.tone === "error" ? "alert" : "status"}>{files.notice.text}</p>
+    {/if}
   {/if}
 
   {#if tab === "About"}
@@ -242,22 +269,15 @@
     background: color-mix(in srgb, var(--game-card-top, var(--color-surface)) 55%, transparent);
     /* No overflow clipping: a dropdown's list opens over the edge of its group. */
   }
-  .file {
-    display: grid;
-    /* The label is as wide as its text (at most 40%); the path gets everything else. */
-    grid-template-columns: fit-content(40%) minmax(0, 1fr);
-    align-items: center;
-    gap: var(--space-4);
-    padding: var(--space-3) var(--space-4);
-    min-height: 55px;
-  }
-  .file + .file { border-top: 1px solid var(--color-border); }
-  /* A long label is cut after two lines (the full text is its tooltip). */
-  .file-label { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
-  /* The folder gives way first, with an ellipsis; the file name stays in view. */
-  .path { display: flex; min-width: 0; user-select: text; color: var(--color-text-muted); white-space: nowrap; }
-  .folder { flex: 0 100 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-  .name { flex: 0 1 auto; min-width: 12ch; overflow: hidden; text-overflow: ellipsis; }
+  .file-notice { margin: var(--space-2) 0 0 var(--space-4); font-size: 12px; color: var(--color-text-muted); }
+  .file-notice.success { color: var(--color-success); }
+  .file-notice.error { color: var(--color-error); }
+  .file-control { display: flex; align-items: center; gap: var(--space-3); width: 100%; min-width: 0; }
+  /* The path takes the room the (short) label leaves: its start (as much as fits) and its end are shown, and
+     the ellipsis is between them. */
+  .path { display: flex; flex: 1; min-width: 0; font-size: 13px; user-select: text; color: var(--color-text-muted); white-space: nowrap; }
+  .head { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .tail { flex: none; }
   .path.none { font-style: italic; }
   .empty { margin-top: var(--space-5); color: var(--color-text-muted); }
   .error {
@@ -271,8 +291,15 @@
     background: rgb(200 48 44 / 0.15);
   }
   .error button { border: 0; background: none; font-size: 18px; color: var(--color-text-muted); }
-  .help { margin: 0 0 0 var(--space-4); font-size: 12px; color: var(--color-text-muted); }
-  .change-files, .advanced {
+  .small {
+    padding: 6px 14px;
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-pill);
+    background: var(--color-surface-alt);
+    font-weight: 500;
+  }
+  .small:disabled { opacity: 0.5; cursor: default; }
+  .advanced {
     margin-top: var(--space-5);
     padding: 8px 16px;
     border: 1px solid color-mix(in srgb, var(--color-accent) 45%, transparent);
@@ -280,6 +307,4 @@
     background: color-mix(in srgb, var(--color-accent) 12%, transparent);
     font-weight: 500;
   }
-  .change-files { margin-bottom: var(--space-3); }
-  .advanced:disabled, .change-files:disabled { opacity: 0.5; cursor: default; }
 </style>

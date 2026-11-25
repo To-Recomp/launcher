@@ -7,6 +7,7 @@ const api = vi.hoisted(() => ({
   latestReleaseTag: vi.fn(),
   installGame: vi.fn(),
   prepareInstance: vi.fn(),
+  setInstanceInput: vi.fn(),
   startGame: vi.fn(),
   cancelJob: vi.fn(),
   readInstanceLog: vi.fn(),
@@ -159,6 +160,38 @@ describe("LibraryStore state", () => {
       { id: "verify", title: "Checking the discs", index: 1, count: 2, state: "ok", fraction: 1, text: "", seconds: 3.5 },
       { id: "compile", title: "Compiling", index: 2, count: 2, state: "running", fraction: 0.25, text: "12/48 files", seconds: null },
     ]);
+  });
+
+  it("keeps a chosen file without building anything, and does nothing for the file already in use", async () => {
+    const store = new LibraryStore();
+    api.librarySnapshot.mockResolvedValue([installation("ready", { instances: [{ id: "gamecube", platform: "GameCube", state: "ready", inputs: { disc1: "/old/disc1.iso" } }] })]);
+    await store.start();
+
+    api.pickInput.mockResolvedValue("/new/disc2.iso");
+    api.setInstanceInput.mockResolvedValue({ id: "gamecube", platform: "GameCube", state: "needsRebuild", inputs: { disc1: "/old/disc1.iso", disc2: "/new/disc2.iso" } });
+    await store.changeInput(game, platform, "disc2");
+    expect(api.pickInput.mock.calls[0][0]).toMatchObject({ id: "disc2" });
+    expect(api.setInstanceInput).toHaveBeenCalledWith("tos", "GameCube", "disc2", "/new/disc2.iso");
+    expect(api.prepareInstance).not.toHaveBeenCalled(); // no rebuild of its own
+    expect(store.inputNotice).toEqual({ tone: "success", text: "The new file is kept. Rebuild the game to use it." });
+    expect(store.status).toBeNull(); // the game page's status is left alone
+
+    api.setInstanceInput.mockClear();
+    api.pickInput.mockResolvedValue("/old/disc1.iso"); // exactly the file already in use
+    await store.changeInput(game, platform, "disc1");
+    expect(api.setInstanceInput).not.toHaveBeenCalled();
+    expect(store.inputNotice?.text).toMatch(/already in use/);
+
+    api.pickInput.mockResolvedValue("/old/./disc1.iso"); // the same file by another path: the backend keeps its own
+    api.setInstanceInput.mockResolvedValue({ id: "gamecube", platform: "GameCube", state: "ready", inputs: { disc1: "/old/disc1.iso" } });
+    await store.changeInput(game, platform, "disc1");
+    expect(store.inputNotice?.text).toMatch(/already in use/);
+
+    api.pickInput.mockResolvedValue(null); // the dialog was closed
+    api.setInstanceInput.mockClear();
+    await store.changeInput(game, platform, "disc1");
+    expect(api.setInstanceInput).not.toHaveBeenCalled();
+    expect(store.inputNotice).toBeNull();
   });
 
   it("ignores progress that arrives after its job ended, so a cancelled job doesn't come back", async () => {
