@@ -28,8 +28,8 @@
     /** The installed release; `null` when the game isn't installed. */
     tag: string | null;
     location: Location | null;
-    /** The files the game is built from, and what changing them does. */
-    files: { hasInputs: boolean; current: { id: string; label: string; path: string | null }[]; busy: boolean; onchange: () => void };
+    /** The files the game is built from; `onchange` chooses another file for one of them and rebuilds. */
+    files: { hasInputs: boolean; current: { id: string; label: string; path: string | null }[]; busy: boolean; onchange: (inputId: string) => void };
     /** Back to the game's page. */
     onback: () => void;
     /** Settings → About → Report a bug, for this game. */
@@ -147,19 +147,27 @@
     <div class="group">
       {#each files.current as file (file.id)}
         <Row label={file.label}>
-          {#if file.path}
-            {@const [folder, name] = splitPath(file.path)}
-            <span class="path" title={file.path}>
-              <span class="folder">{folder}</span><span class="name">{name}</span>
-            </span>
-          {:else}
-            <span class="path none">{t("game.settings.files.notChosen")}</span>
-          {/if}
+          <div class="file-control">
+            {#if file.path}
+              {@const [folder, name] = splitPath(file.path)}
+              <span class="path" title={file.path}>
+                <span class="folder">{folder}</span><span class="name">{name}</span>
+              </span>
+            {:else}
+              <span class="path none">{t("game.settings.files.notChosen")}</span>
+            {/if}
+            <button
+              class="small"
+              disabled={files.busy}
+              title={t("game.settings.files.help")}
+              aria-label={t("game.settings.files.change", { file: file.label })}
+              onclick={() => files.onchange(file.id)}
+            >
+              {t("game.settings.files.changeButton")}
+            </button>
+          </div>
         </Row>
       {/each}
-      <Row label={t("game.settings.files.changeLabel")} help={t("game.settings.files.help")}>
-        <button class="small" disabled={files.busy} onclick={files.onchange}>{t("game.home.changeFiles")}</button>
-      </Row>
     </div>
   {/if}
 
@@ -243,6 +251,7 @@
     background: color-mix(in srgb, var(--game-card-top, var(--color-surface)) 55%, transparent);
     /* No overflow clipping: a dropdown's list opens over the edge of its group. */
   }
+  .file-control { display: flex; align-items: center; gap: var(--space-3); }
   /* A path is as the other values of the settings: muted, at most 320px; the folder gives way first, the file name stays in view. */
   .path { display: flex; max-width: 320px; font-size: 13px; user-select: text; color: var(--color-text-muted); white-space: nowrap; }
   .folder { flex: 0 100 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }

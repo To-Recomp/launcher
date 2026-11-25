@@ -274,6 +274,28 @@ export class LibraryStore {
     await run(inputs);
   }
 
+  /**
+   * Chooses another file for one input of an instance and prepares it again with it. The backend keeps the
+   * files of the other inputs from the instance's record, so only this one is asked for.
+   */
+  async changeInput(game: Game, platform: Platform, inputId: string) {
+    const installation = this.installationOf(game.id);
+    const input = installation?.inputs.find((i) => i.id === inputId);
+    if (!installation || !input) return;
+    const picked = await api.pickInput(input);
+    if (!picked) {
+      this.status = { tone: "info", text: t("shell.library.nothingChanged") };
+      return;
+    }
+    await this.#run(
+      prepareJob(game.id, instanceId(platform.platform)),
+      { game, platform },
+      installation.prepareLabel ?? t("shell.library.preparing"),
+      () => api.prepareInstance(game.id, platform.platform, { [input.id]: picked }),
+      () => t("shell.library.ready", { game: game.name }),
+    );
+  }
+
   async play(game: Game, platform: Platform) {
     const job = gameJob(game.id, instanceId(platform.platform));
     this.progress[job] = { job, fraction: null, message: t("shell.library.runningProgress", { game: game.name }) };

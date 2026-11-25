@@ -161,6 +161,25 @@ describe("LibraryStore state", () => {
     ]);
   });
 
+  it("changes one input: only that file is picked and sent, the backend keeps the others", async () => {
+    const store = new LibraryStore();
+    api.librarySnapshot.mockResolvedValue([installation("ready")]);
+    await store.start();
+    api.pickInput.mockResolvedValue("/new/disc2.iso");
+    api.prepareInstance.mockResolvedValue({});
+    await store.changeInput(game, platform, "disc2");
+    expect(api.pickInput).toHaveBeenCalledTimes(1);
+    expect(api.pickInput.mock.calls[0][0]).toMatchObject({ id: "disc2" });
+    expect(api.prepareInstance).toHaveBeenCalledWith("tos", "GameCube", { disc2: "/new/disc2.iso" });
+    expect(store.status?.tone).toBe("success");
+
+    api.pickInput.mockResolvedValue(null); // the dialog was closed: nothing changes
+    api.prepareInstance.mockClear();
+    await store.changeInput(game, platform, "disc1");
+    expect(api.prepareInstance).not.toHaveBeenCalled();
+    expect(store.status?.tone).toBe("info");
+  });
+
   it("ignores progress that arrives after its job ended, so a cancelled job doesn't come back", async () => {
     const { store, answer, done, job } = await preparing();
     progressListener({ job, fraction: 0.7, message: "Compiling" });

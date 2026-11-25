@@ -198,7 +198,7 @@ describe("SettingsView", () => {
     expect(onreportbug).toHaveBeenCalledOnce();
   });
 
-  it("changes the game files from the top of the Game tab, even before the game is prepared, when nothing is running", async () => {
+  it("changes one file at a time from the top of the Game tab, even before the game is prepared, when nothing is running", async () => {
     const onchange = vi.fn();
     // Two inputs may share a label (a manifest can describe both discs the same way): they are told apart by id.
     const current = [{ id: "disc1", label: "Disc", path: "/iso/eternia.iso" }, { id: "disc2", label: "Disc", path: null }];
@@ -214,14 +214,16 @@ describe("SettingsView", () => {
     expect(screen.getByText("Not chosen")).toBeInTheDocument();
     // The files come first; the settings (here: none yet) follow.
     expect(screen.getByRole("heading", { name: "Files" }).compareDocumentPosition(screen.getByText("Install and prepare Tales of Eternia to configure it."))).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
-    await fireEvent.click(screen.getByRole("button", { name: "Change game files" }));
-    expect(onchange).toHaveBeenCalledOnce();
 
-    const busy = vi.fn();
+    const buttons = screen.getAllByRole("button", { name: "Change Disc" }); // one per file
+    expect(buttons).toHaveLength(2);
+    await fireEvent.click(buttons[1]);
+    expect(onchange).toHaveBeenCalledExactlyOnceWith("disc2");
+
     cleanup();
-    render(SettingsView, { ...props, files: { hasInputs: true, current, busy: true, onchange: busy } });
+    render(SettingsView, { ...props, files: { hasInputs: true, current, busy: true, onchange } });
     await openTab("Game");
-    expect(screen.getByRole("button", { name: "Change game files" })).toBeDisabled();
+    for (const button of screen.getAllByRole("button", { name: "Change Disc" })) expect(button).toBeDisabled();
   });
 
   it("has no Files section for a game that uses no files, and goes back to the game", async () => {
@@ -229,7 +231,7 @@ describe("SettingsView", () => {
     render(SettingsView, { ...props, onback });
     await openTab("Game");
     expect(screen.queryByRole("heading", { name: "Files" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Change game files" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Change / })).not.toBeInTheDocument();
     await fireEvent.click(screen.getByRole("button", { name: "Back" }));
     expect(onback).toHaveBeenCalledOnce();
   });

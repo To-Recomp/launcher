@@ -124,10 +124,10 @@
         [installJob(game.id), prepareJob(game.id, instance), gameJob(game.id, instance)].some((job) =>
           library.isRunning(job),
         ),
-      onchange: () => {
+      onchange: (inputId: string) => {
         if (!game || !platform) return;
         view = "game"; // the preparation reports its progress on the game's page
-        void library.prepare(game, platform);
+        void library.changeInput(game, platform, inputId);
       },
     };
   });
