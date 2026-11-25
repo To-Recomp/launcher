@@ -75,6 +75,7 @@ export const fr: Catalog = {
   "game.home.hideLiveLog": "Masquer le journal en direct",
   "game.home.gameLog": "Journal du jeu",
   "game.home.log": "Journal",
+  "game.home.closeLog": "Fermer le journal",
   "game.home.latestUpdates": "Dernières mises à jour",
   "game.home.releasesLoading": "Chargement des versions…",
   "game.home.releasesError": "Les versions ne peuvent pas être lues pour le moment.",

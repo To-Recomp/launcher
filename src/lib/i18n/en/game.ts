@@ -37,6 +37,7 @@ export const game = {
   "game.home.hideLiveLog": "Hide live log",
   "game.home.gameLog": "Game log",
   "game.home.log": "Log",
+  "game.home.closeLog": "Close the log",
   "game.home.latestUpdates": "Latest updates",
   "game.home.releasesLoading": "Loading the releases…",
   "game.home.releasesError": "The releases can't be read right now.",

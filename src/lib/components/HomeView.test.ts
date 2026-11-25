@@ -251,6 +251,24 @@ describe("HomeView status", () => {
     await fireEvent.click(screen.getByRole("button", { name: "Game log" }));
     expect(api.readInstanceLog).toHaveBeenLastCalledWith("toe", "PS1", "game");
   });
+
+  it("closes the log, a followed one included, which then isn't re-read", async () => {
+    const library = show(installed("ready"));
+    api.readInstanceLog.mockResolvedValue("a line");
+    await fireEvent.click(await screen.findByRole("button", { name: "Preparation log" }));
+    expect(await screen.findByLabelText("Log")).toHaveTextContent("a line");
+    await fireEvent.click(screen.getByRole("button", { name: "Close the log" }));
+    expect(screen.queryByLabelText("Log")).not.toBeInTheDocument();
+    expect(library.log).toBeNull();
+
+    // The same button closes the live log of a running preparation and stops it.
+    library.progress["prepare:toe/ps1"] = { job: "prepare:toe/ps1", fraction: 0.2, message: "Compiling" };
+    await fireEvent.click(await screen.findByRole("button", { name: "Live log" }));
+    expect(await screen.findByLabelText("Log")).toBeInTheDocument();
+    await fireEvent.click(screen.getByRole("button", { name: "Close the log" }));
+    expect(screen.queryByLabelText("Log")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Live log" })).toHaveAttribute("aria-pressed", "false");
+  });
 });
 
 describe("HomeView availability", () => {
