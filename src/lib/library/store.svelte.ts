@@ -65,6 +65,12 @@ export class LibraryStore {
 
   #unlisten: (() => void)[] = [];
   #checking = new Set<string>();
+  /**
+   * The install and preparation jobs this session is running. Events travel separately from the command's
+   * answer, so one sent just before a job ended (a cancel) can arrive after it: without this it would
+   * bring a finished job back, with its Cancel button and a progress bar that never goes away.
+   */
+  #running = new Set<string>();
   /** When each game's update check may run again (epoch ms). */
   #dueAt = new Map<string, number>();
   /** The games started by this session, to say which instance a non-zero exit belongs to. */
@@ -74,7 +80,11 @@ export class LibraryStore {
   async start() {
     try {
       this.#unlisten.push(
-        await api.onProgress((e) => (e.stage ? this.#task(e.job, e.stage) : (this.progress[e.job] = e))),
+        await api.onProgress((e) => {
+          if (!this.#running.has(e.job)) return;
+          if (e.stage) this.#task(e.job, e.stage);
+          else this.progress[e.job] = e;
+        }),
         await api.onGameExited(async (e) => {
           delete this.progress[e.job];
           const started = this.#started[e.job];
@@ -197,6 +207,7 @@ export class LibraryStore {
     this.status = null;
     this.failure = null;
     this.log = null;
+    this.#running.add(job);
     try {
       const result = await work();
       this.status = { tone: "success", text: done(result) };
@@ -212,6 +223,7 @@ export class LibraryStore {
       }
       return null;
     } finally {
+      this.#running.delete(job);
       delete this.progress[job];
       delete this.tasks[job];
       await this.refresh();
