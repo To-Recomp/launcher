@@ -146,7 +146,7 @@
     <h2>{t("game.settings.files.title")}</h2>
     <div class="group">
       {#each files.current as file (file.id)}
-        <Row label={file.label}>
+        <Row label={file.label} labelMax="35%">
           <div class="file-control">
             {#if file.path}
               {@const [folder, name] = splitPath(file.path)}
