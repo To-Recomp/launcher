@@ -198,25 +198,36 @@ describe("SettingsView", () => {
     expect(onreportbug).toHaveBeenCalledOnce();
   });
 
-  it("changes the game files from the Files tab, when the game has some and nothing is running", async () => {
+  it("changes the game files from the top of the Game tab, even before the game is prepared, when nothing is running", async () => {
     const onchange = vi.fn();
     const current = [{ label: "Disc 1", path: "/iso/eternia.iso" }, { label: "Disc 2", path: null }];
-    render(SettingsView, { ...props, files: { hasInputs: true, current, busy: false, onchange } });
-    await openTab("Files");
+    render(SettingsView, { ...props, location: null, files: { hasInputs: true, current, busy: false, onchange } });
+    expect(screen.queryByRole("tab", { name: "Files" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Files" })).not.toBeInTheDocument(); // not on Display
+    await openTab("Game");
+    expect(screen.getByRole("heading", { level: 2, name: "Files" })).toBeInTheDocument();
     const path = screen.getByTitle("/iso/eternia.iso"); // the folder is cut first, the file name always shows
     expect(path.querySelector(".folder")?.textContent).toBe("/iso/");
     expect(path.querySelector(".name")?.textContent).toBe("eternia.iso");
     expect(screen.getByText("Disc 2")).toBeInTheDocument();
     expect(screen.getByText("Not chosen")).toBeInTheDocument();
+    // The files come first; the settings (here: none yet) follow.
+    expect(screen.getByRole("heading", { name: "Files" }).compareDocumentPosition(screen.getByText("Install and prepare Tales of Eternia to configure it."))).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     await fireEvent.click(screen.getByRole("button", { name: "Change game files" }));
     expect(onchange).toHaveBeenCalledOnce();
+
+    const busy = vi.fn();
+    cleanup();
+    render(SettingsView, { ...props, files: { hasInputs: true, current, busy: true, onchange: busy } });
+    await openTab("Game");
+    expect(screen.getByRole("button", { name: "Change game files" })).toBeDisabled();
   });
 
-  it("has nothing to change in the Files tab for a game that uses no files, and goes back to the game", async () => {
+  it("has no Files section for a game that uses no files, and goes back to the game", async () => {
     const onback = vi.fn();
     render(SettingsView, { ...props, onback });
-    await openTab("Files");
-    expect(screen.getByText("This game doesn't use files of your own.")).toBeInTheDocument();
+    await openTab("Game");
+    expect(screen.queryByRole("heading", { name: "Files" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Change game files" })).not.toBeInTheDocument();
     await fireEvent.click(screen.getByRole("button", { name: "Back" }));
     expect(onback).toHaveBeenCalledOnce();

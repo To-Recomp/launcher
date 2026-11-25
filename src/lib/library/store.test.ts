@@ -120,14 +120,24 @@ describe("LibraryStore state", () => {
     expect(store.gameState("tos")).toBe("ready");
   });
 
-  it("follows the backend's progress and the end of a game", async () => {
+  /** A store with a preparation of the game under way (the backend's answer is held back); `job` is its key. */
+  async function preparing() {
     const store = new LibraryStore();
+    api.librarySnapshot.mockResolvedValue([installation("needsRebuild")]);
     await store.start();
-    progressListener({ job: "prepare:tos/x", fraction: 0.5, message: "Compiling" });
-    expect(store.isRunning("prepare:tos/x")).toBe(true);
-    expect(store.progress["prepare:tos/x"].message).toBe("Compiling");
+    const answer = Promise.withResolvers<unknown>();
+    api.prepareInstance.mockReturnValue(answer.promise);
+    const done = store.prepare(game, platform);
+    return { store, answer, done, job: "prepare:tos/gamecube" };
+  }
 
-    progressListener({ job: "game:tos/x", fraction: null, message: "running" });
+  it("follows the backend's progress and the end of a game", async () => {
+    const { store, job } = await preparing();
+    progressListener({ job, fraction: 0.5, message: "Compiling" });
+    expect(store.isRunning(job)).toBe(true);
+    expect(store.progress[job].message).toBe("Compiling");
+
+    store.progress["game:tos/x"] = { job: "game:tos/x", fraction: null, message: "running" };
     api.librarySnapshot.mockResolvedValue([installation("ready")]);
     await exitListener({ job: "game:tos/x", code: 3 });
     expect(store.isRunning("game:tos/x")).toBe(false);
@@ -136,9 +146,7 @@ describe("LibraryStore state", () => {
   });
 
   it("keeps the list of tasks a step reports, apart from the overall progress", async () => {
-    const store = new LibraryStore();
-    await store.start();
-    const job = "prepare:tos/x";
+    const { store, job } = await preparing();
     progressListener({ job, fraction: 0.2, message: "Copying", stage: null });
     progressListener({ job, fraction: null, message: "", stage: { id: "verify", event: "start", index: 1, count: 2, title: "Checking the discs" } });
     progressListener({ job, fraction: null, message: "", stage: { id: "verify", event: "end", status: "ok", seconds: 3.5 } });
@@ -151,6 +159,23 @@ describe("LibraryStore state", () => {
       { id: "verify", title: "Checking the discs", index: 1, count: 2, state: "ok", fraction: 1, text: "", seconds: 3.5 },
       { id: "compile", title: "Compiling", index: 2, count: 2, state: "running", fraction: 0.25, text: "12/48 files", seconds: null },
     ]);
+  });
+
+  it("ignores progress that arrives after its job ended, so a cancelled job doesn't come back", async () => {
+    const { store, answer, done, job } = await preparing();
+    progressListener({ job, fraction: 0.7, message: "Compiling" });
+    expect(store.isRunning(job)).toBe(true);
+
+    answer.reject("Cancelled."); // the backend's answer to a Cancel...
+    await done;
+    expect(store.isRunning(job)).toBe(false);
+    expect(store.status).toEqual({ tone: "info", text: "Cancelled." });
+
+    // ...and an event sent just before it, delivered just after.
+    progressListener({ job, fraction: 0.7, message: "Compiling" });
+    progressListener({ job, fraction: null, message: "", stage: { id: "compile", event: "start", index: 1, count: 1, title: "Compiling" } });
+    expect(store.isRunning(job)).toBe(false);
+    expect(store.tasks[job]).toBeUndefined();
   });
 
   it("re-reads a log every second until stopped, and drops a read that finishes after that", async () => {

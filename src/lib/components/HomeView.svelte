@@ -104,9 +104,13 @@
   let follow = $state(false);
   let logElement = $state<HTMLPreElement>();
   let pinned = true;
+  function closeLog() {
+    follow = false; // a followed log stops being re-read
+    library.log = null;
+  }
   function toggleLiveLog() {
-    follow = !follow;
-    if (!follow) library.log = null;
+    if (follow) closeLog();
+    else follow = true;
   }
   $effect(() => {
     // The job ended while the log was followed: read the last lines once more and keep them.
@@ -206,8 +210,15 @@
   /** The tint of the action status: idle with no message, else the message's tone (a running action is info). */
   const tone = $derived<"idle" | "info" | "success" | "error">(active ? "info" : (library.status?.tone ?? "idle"));
 
-  /** Consoles the game isn't available on (planned, in progress, unsupported): listed, but not selectable. */
-  const unavailablePlatforms = $derived(game.platforms.filter((p) => p.state !== "playable").map((p) => p.platform));
+  /** What the selector says next to a console the game can't be played on, by its state; those consoles are listed but not selectable. */
+  const stateNames = $derived({
+    planned: t("game.home.state.planned"),
+    "in-progress": t("game.home.state.inProgress"),
+    unsupported: t("game.home.state.unsupported"),
+  });
+  const platformNotes = $derived(
+    Object.fromEntries(game.platforms.flatMap((p) => (p.state === "playable" ? [] : [[p.platform, stateNames[p.state]]]))),
+  );
 </script>
 
 <svelte:window
@@ -239,8 +250,8 @@
       label={t("game.home.platform")}
       options={game.platforms.map((p) => p.platform)}
       prefixes={Object.fromEntries(game.platforms.map((p) => [p.platform, String(p.year)]))}
-      disabled={unavailablePlatforms}
-      notes={Object.fromEntries(unavailablePlatforms.map((name) => [name, t("game.home.notAvailable")]))}
+      disabled={Object.keys(platformNotes)}
+      notes={platformNotes}
       sizing={platformSizing}
       value={platform?.platform ?? ""}
       onchange={onplatform}
@@ -366,7 +377,12 @@
     </div>
   </div>
   {#if library.log !== null}
-    <pre class="log" aria-label={t("game.home.log")} bind:this={logElement}>{library.log}</pre>
+    <div class="log-box">
+      <pre class="log" aria-label={t("game.home.log")} bind:this={logElement}>{library.log}</pre>
+      <button class="log-close" aria-label={t("game.home.closeLog")} title={t("game.home.closeLog")} onclick={closeLog}>
+        <Icon name="close" size={14} />
+      </button>
+    </div>
   {/if}
 
   <h2>{t("game.home.latestUpdates")}</h2>
@@ -573,9 +589,25 @@
   .tasks .bar { grid-column: 2 / 4; height: 6px; margin-top: var(--space-2); }
   @keyframes spin { to { transform: rotate(360deg); } }
   @keyframes slide { from { margin-left: 0; } to { margin-left: 70%; } }
+  .log-box { position: relative; margin-top: var(--space-3); }
+  .log-close {
+    position: absolute;
+    top: var(--space-2);
+    right: calc(var(--space-4) + 6px);
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface-alt);
+    color: var(--color-text-muted);
+  }
+  .log-close:hover { color: var(--color-text); border-color: var(--color-accent); }
   .log {
     max-height: 260px;
-    margin: var(--space-3) 0 0;
+    margin: 0;
     padding: var(--space-3) var(--space-4);
     overflow: auto;
     border: 1px solid var(--color-border);

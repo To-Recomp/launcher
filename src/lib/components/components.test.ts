@@ -100,7 +100,7 @@ describe("Dropdown with options that can't be chosen", () => {
   const show = () => {
     const onchange = vi.fn();
     render(Dropdown, {
-      options: ["A", "B", "C", "D"], value: "A", label: "Platform", disabled: ["B", "D"], notes: { B: "N/A", D: "N/A" }, onchange,
+      options: ["A", "B", "C", "D"], value: "A", label: "Platform", disabled: ["B", "D"], notes: { B: "Planned", D: "In progress" }, onchange,
     });
     return { onchange, box: screen.getByRole("combobox", { name: "Platform" }) };
   };
@@ -109,7 +109,7 @@ describe("Dropdown with options that can't be chosen", () => {
     const { onchange, box } = show();
     await fireEvent.click(box);
     expect(screen.getByRole("option", { name: /B/ })).toHaveAttribute("aria-disabled", "true");
-    expect(screen.getByRole("option", { name: /B/ })).toHaveTextContent("N/A");
+    expect(screen.getByRole("option", { name: /B/ })).toHaveTextContent("Planned");
     await fireEvent.click(screen.getByRole("option", { name: /B/ }));
     expect(onchange).not.toHaveBeenCalled();
     await fireEvent.click(screen.getByRole("option", { name: "C" }));
