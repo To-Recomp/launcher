@@ -35,9 +35,9 @@
     onreportbug: () => Promise<void> | void;
   } = $props();
 
-  /** The manifest's tabs, and the launcher's own "Files" before "About". */
-  type Tab = SettingsTab | "Files";
-  const tabs: Tab[] = [...settingsTabs.slice(0, -1), "Files", "About"];
+  /** The manifest's tabs; the game's files are a section of "Game". */
+  type Tab = SettingsTab;
+  const tabs: Tab[] = [...settingsTabs];
 
   const icons: Record<Tab, IconName> = {
     Display: "display",
@@ -46,7 +46,6 @@
     Controls: "controls",
     Saves: "saves",
     Game: "game",
-    Files: "folder",
     About: "about",
   };
 
@@ -58,7 +57,6 @@
     Controls: "game.settings.tab.controls",
     Saves: "game.settings.tab.saves",
     Game: "game.settings.tab.game",
-    Files: "game.settings.tab.files",
     About: "game.settings.tab.about",
   };
 
@@ -142,29 +140,29 @@
     </div>
   {/if}
 
-  {#if tab === "Files"}
-    {#if files.hasInputs}
-      <p class="empty">{t("game.settings.files.help")}</p>
-      <div class="group">
-        {#each files.current as file (file.label)}
-          <div class="file">
-            <span class="file-label" title={file.label}>{file.label}</span>
-            {#if file.path}
-              {@const [folder, name] = splitPath(file.path)}
-              <span class="path" title={file.path}>
-                <span class="folder">{folder}</span><span class="name">{name}</span>
-              </span>
-            {:else}
-              <span class="path none">{t("game.settings.files.notChosen")}</span>
-            {/if}
-          </div>
-        {/each}
-      </div>
-      <button class="advanced" disabled={files.busy} onclick={files.onchange}>{t("game.home.changeFiles")}</button>
-    {:else}
-      <p class="empty">{t("game.settings.files.none")}</p>
-    {/if}
-  {:else if tab === "About"}
+  {#if tab === "Game" && files.hasInputs}
+    <!-- Shown even before the game is prepared: it is where the files are chosen. A game without files has no section. -->
+    <h2>{t("game.settings.files.title")}</h2>
+    <p class="help">{t("game.settings.files.help")}</p>
+    <div class="group">
+      {#each files.current as file (file.label)}
+        <div class="file">
+          <span class="file-label" title={file.label}>{file.label}</span>
+          {#if file.path}
+            {@const [folder, name] = splitPath(file.path)}
+            <span class="path" title={file.path}>
+              <span class="folder">{folder}</span><span class="name">{name}</span>
+            </span>
+          {:else}
+            <span class="path none">{t("game.settings.files.notChosen")}</span>
+          {/if}
+        </div>
+      {/each}
+    </div>
+    <button class="change-files" disabled={files.busy} onclick={files.onchange}>{t("game.home.changeFiles")}</button>
+  {/if}
+
+  {#if tab === "About"}
     <GameAbout name={gameName} {repository} {platform} {tag} {location} {onreportbug} />
   {:else if !location}
     <p class="empty">{t("game.settings.installFirst", { game: gameName })}</p>
@@ -185,7 +183,7 @@
     {/each}
   {/if}
 
-  {#if tab !== "Files" && hasAdvanced && view}
+  {#if hasAdvanced && view}
     <button class="advanced" onclick={toggleAdvanced}>
       {showAdvanced ? t("game.settings.hideAdvanced") : t("game.settings.showAdvanced")}
     </button>
@@ -273,7 +271,8 @@
     background: rgb(200 48 44 / 0.15);
   }
   .error button { border: 0; background: none; font-size: 18px; color: var(--color-text-muted); }
-  .advanced {
+  .help { margin: 0 0 0 var(--space-4); font-size: 12px; color: var(--color-text-muted); }
+  .change-files, .advanced {
     margin-top: var(--space-5);
     padding: 8px 16px;
     border: 1px solid color-mix(in srgb, var(--color-accent) 45%, transparent);
@@ -281,5 +280,6 @@
     background: color-mix(in srgb, var(--color-accent) 12%, transparent);
     font-weight: 500;
   }
-  .advanced:disabled { opacity: 0.5; cursor: default; }
+  .change-files { margin-bottom: var(--space-3); }
+  .advanced:disabled, .change-files:disabled { opacity: 0.5; cursor: default; }
 </style>

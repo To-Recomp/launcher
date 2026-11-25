@@ -166,8 +166,8 @@ describe("App", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: "Game settings" })).toBeEnabled());
     await fireEvent.click(screen.getByRole("button", { name: "Game settings" }));
     expect(screen.getByRole("heading", { level: 1, name: "Settings" })).toBeInTheDocument();
-    await fireEvent.click(screen.getByRole("tab", { name: "Files" }));
-    expect(screen.getByText("This game doesn't use files of your own.")).toBeInTheDocument();
+    await fireEvent.click(screen.getByRole("tab", { name: "Game" }));
+    expect(screen.queryByRole("heading", { name: "Files" })).not.toBeInTheDocument(); // this game asks for no file
     await fireEvent.click(screen.getByRole("button", { name: "Back" }));
     expect(screen.getByText("Action status")).toBeInTheDocument();
   });
