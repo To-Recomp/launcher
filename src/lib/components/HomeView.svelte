@@ -206,8 +206,15 @@
   /** The tint of the action status: idle with no message, else the message's tone (a running action is info). */
   const tone = $derived<"idle" | "info" | "success" | "error">(active ? "info" : (library.status?.tone ?? "idle"));
 
-  /** Consoles the game isn't available on (planned, in progress, unsupported): listed, but not selectable. */
-  const unavailablePlatforms = $derived(game.platforms.filter((p) => p.state !== "playable").map((p) => p.platform));
+  /** What the selector says next to a console the game can't be played on, by its state; those consoles are listed but not selectable. */
+  const stateNames = $derived({
+    planned: t("game.home.state.planned"),
+    "in-progress": t("game.home.state.inProgress"),
+    unsupported: t("game.home.state.unsupported"),
+  });
+  const platformNotes = $derived(
+    Object.fromEntries(game.platforms.flatMap((p) => (p.state === "playable" ? [] : [[p.platform, stateNames[p.state]]]))),
+  );
 </script>
 
 <svelte:window
@@ -239,8 +246,8 @@
       label={t("game.home.platform")}
       options={game.platforms.map((p) => p.platform)}
       prefixes={Object.fromEntries(game.platforms.map((p) => [p.platform, String(p.year)]))}
-      disabled={unavailablePlatforms}
-      notes={Object.fromEntries(unavailablePlatforms.map((name) => [name, t("game.home.notAvailable")]))}
+      disabled={Object.keys(platformNotes)}
+      notes={platformNotes}
       sizing={platformSizing}
       value={platform?.platform ?? ""}
       onchange={onplatform}

@@ -30,7 +30,7 @@
     sizing?: { option: string; prefix?: string }[];
     /** Options that are listed but can't be chosen. */
     disabled?: string[];
-    /** A small text shown at the end of an option (like "N/A"), by option. */
+    /** A small text shown at the end of an option (like "Planned"), by option. */
     notes?: Record<string, string>;
     onchange: (value: string) => void;
   } = $props();

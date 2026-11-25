@@ -22,6 +22,7 @@ vi.mock("../catalog/releases", async (orig) => ({ ...(await orig<object>()), ...
 const links = vi.hoisted(() => ({ openLink: vi.fn() }));
 vi.mock("../diagnostics/api", () => ({ ...links, repositoryUrl: (repository: string) => `https://github.com/${repository}` }));
 
+import { setLocale } from "../i18n/index.svelte";
 import { LibraryStore } from "../library/store.svelte";
 import type { InstallationView, InstanceState } from "../library/types";
 import HomeView from "./HomeView.svelte";
@@ -253,6 +254,16 @@ describe("HomeView status", () => {
 });
 
 describe("HomeView availability", () => {
+  it("says the state of an unavailable console in the interface language", async () => {
+    setLocale("fr");
+    const library = new LibraryStore();
+    const planned = { platform: "Windows", regions: ["Worldwide"], state: "planned" as const, maturity: null, releaseYear: 2012, year: 2012 };
+    render(HomeView, { game: { ...eternia, platforms: [platform, planned] }, platform, library, platformSizing: [], onplatform: () => {}, onsettings });
+    await fireEvent.click(screen.getByRole("combobox", { name: "Plateforme" }));
+    expect(screen.getByRole("option", { name: /Windows/ })).toHaveTextContent("Prévue");
+    setLocale("en");
+  });
+
   it.each([
     ["planned", "This console is planned: nothing to install yet."],
     ["in-progress", "This console is in progress: there is nothing to install yet."],
@@ -267,12 +278,15 @@ describe("HomeView availability", () => {
 
   it("lists consoles only in the selector, each with the year the game came out on it", async () => {
     const library = new LibraryStore();
-    const game = { ...eternia, platforms: [platform, { platform: "Windows", regions: ["Worldwide"], state: "planned" as const, maturity: null, releaseYear: 2012, year: 2012 }] };
+    const other = (name: string, state: "planned" | "in-progress" | "unsupported", year: number) => ({ platform: name, regions: ["Worldwide"], state, maturity: null, releaseYear: year, year });
+    const game = { ...eternia, platforms: [platform, other("Windows", "planned", 2012), other("Switch", "in-progress", 2013), other("Xbox", "unsupported", 2014)] };
     const onplatform = vi.fn();
     render(HomeView, { game, platform, library, platformSizing: [], onplatform, onsettings });
     await fireEvent.click(screen.getByRole("combobox", { name: "Platform" }));
-    expect(screen.getAllByRole("option").map((o) => o.textContent?.trim())).toEqual(["2000 · PS1", "2012 · Windows N/A"]);
-    // A console the game isn't available on is listed but can't be chosen.
+    expect(screen.getAllByRole("option").map((o) => o.textContent?.trim())).toEqual([
+      "2000 · PS1", "2012 · Windows Planned", "2013 · Switch In progress", "2014 · Xbox Unsupported",
+    ]);
+    // A console the game isn't available on says why, is listed but can't be chosen.
     expect(screen.getByRole("option", { name: /Windows/ })).toHaveAttribute("aria-disabled", "true");
     expect(screen.getByRole("option", { name: /PS1/ })).not.toHaveAttribute("aria-disabled");
     await fireEvent.click(screen.getByRole("option", { name: /Windows/ }));
