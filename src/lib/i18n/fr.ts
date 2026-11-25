@@ -98,6 +98,7 @@ export const fr: Catalog = {
   "game.settings.tab.about": "À propos",
   "game.settings.back": "Retour",
   "game.settings.files.title": "Fichiers",
+  "game.settings.files.changeLabel": "Utiliser d'autres fichiers",
   "game.settings.files.help": "Les fichiers à partir desquels ce jeu a été construit. Choisissez-les à nouveau pour reconstruire le jeu à partir d'autres fichiers.",
   "game.settings.files.notChosen": "Non choisi",
   "game.settings.dismiss": "Fermer",

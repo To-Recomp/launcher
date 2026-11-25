@@ -60,6 +60,7 @@ export const game = {
   "game.settings.tab.about": "About",
   "game.settings.back": "Back",
   "game.settings.files.title": "Files",
+  "game.settings.files.changeLabel": "Use other files",
   "game.settings.files.help": "The files this game was built from. Choose them again to rebuild the game from other files.",
   "game.settings.files.notChosen": "Not chosen",
   "game.settings.dismiss": "Dismiss",
