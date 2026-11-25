@@ -48,7 +48,7 @@ const props = {
   tag: "v0.3.0",
   location,
   onreportbug,
-  files: { hasInputs: false, current: [], busy: false, onchange: vi.fn() },
+  files: { hasInputs: false, current: [], busy: false, onchange: vi.fn(), notice: null, clearNotice: vi.fn() },
   onback: vi.fn(),
 };
 
@@ -202,7 +202,7 @@ describe("SettingsView", () => {
     const onchange = vi.fn();
     // Two inputs may share a label (a manifest can describe both discs the same way): they are told apart by id.
     const current = [{ id: "disc1", label: "Disc", path: "/iso/eternia.iso" }, { id: "disc2", label: "Disc", path: null }];
-    render(SettingsView, { ...props, location: null, files: { hasInputs: true, current, busy: false, onchange } });
+    render(SettingsView, { ...props, location: null, files: { hasInputs: true, current, busy: false, onchange, notice: null, clearNotice: vi.fn() } });
     expect(screen.queryByRole("tab", { name: "Files" })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Files" })).not.toBeInTheDocument(); // not on Display
     await openTab("Game");
@@ -222,9 +222,20 @@ describe("SettingsView", () => {
     expect(onchange).toHaveBeenCalledExactlyOnceWith("disc2");
 
     cleanup();
-    render(SettingsView, { ...props, files: { hasInputs: true, current, busy: true, onchange } });
+    render(SettingsView, { ...props, files: { hasInputs: true, current, busy: true, onchange, notice: null, clearNotice: vi.fn() } });
     await openTab("Game");
     for (const button of screen.getAllByRole("button", { name: "Change Disc" })) expect(button).toBeDisabled();
+  });
+
+  it("says what choosing a file did, in place, and forgets it when the settings are left", async () => {
+    const clearNotice = vi.fn();
+    const current = [{ id: "disc1", label: "Disc 1", path: "/iso/a.iso" }];
+    const { unmount } = render(SettingsView, { ...props, files: { hasInputs: true, current, busy: false, onchange: vi.fn(), notice: { tone: "success", text: "The new file is kept. Rebuild the game to use it." }, clearNotice } });
+    await openTab("Game");
+    expect(screen.getByRole("status")).toHaveTextContent("The new file is kept. Rebuild the game to use it.");
+    expect(clearNotice).not.toHaveBeenCalled();
+    unmount();
+    expect(clearNotice).toHaveBeenCalledOnce();
   });
 
   it("has no Files section for a game that uses no files, and goes back to the game", async () => {
@@ -240,7 +251,7 @@ describe("SettingsView", () => {
 
 describe("a path in the Files section", () => {
   const shown = async (path: string) => {
-    render(SettingsView, { ...props, files: { hasInputs: true, current: [{ id: "d", label: "Disc", path }], busy: false, onchange: vi.fn() } });
+    render(SettingsView, { ...props, files: { hasInputs: true, current: [{ id: "d", label: "Disc", path }], busy: false, onchange: vi.fn(), notice: null, clearNotice: vi.fn() } });
     await openTab("Game");
     const el = screen.getByTitle(path);
     return [el.querySelector(".head")?.textContent, el.querySelector(".tail")?.textContent];

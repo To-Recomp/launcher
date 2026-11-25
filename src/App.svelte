@@ -124,10 +124,12 @@
         [installJob(game.id), prepareJob(game.id, instance), gameJob(game.id, instance)].some((job) =>
           library.isRunning(job),
         ),
+      /** What the last choice of a file said; gone when the settings are left. */
+      notice: library.inputNotice,
+      clearNotice: () => (library.inputNotice = null),
       onchange: (inputId: string) => {
         if (!game || !platform) return;
-        view = "game"; // the preparation reports its progress on the game's page
-        void library.changeInput(game, platform, inputId);
+        void library.changeInput(game, platform, inputId); // stays on the settings: nothing to follow on the game's page
       },
     };
   });

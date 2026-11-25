@@ -173,24 +173,25 @@ describe("LibraryStore state", () => {
     expect(api.pickInput.mock.calls[0][0]).toMatchObject({ id: "disc2" });
     expect(api.setInstanceInput).toHaveBeenCalledWith("tos", "GameCube", "disc2", "/new/disc2.iso");
     expect(api.prepareInstance).not.toHaveBeenCalled(); // no rebuild of its own
-    expect(store.status).toEqual({ tone: "success", text: "The new file is kept. Rebuild the game to use it." });
+    expect(store.inputNotice).toEqual({ tone: "success", text: "The new file is kept. Rebuild the game to use it." });
+    expect(store.status).toBeNull(); // the game page's status is left alone
 
     api.setInstanceInput.mockClear();
     api.pickInput.mockResolvedValue("/old/disc1.iso"); // exactly the file already in use
     await store.changeInput(game, platform, "disc1");
     expect(api.setInstanceInput).not.toHaveBeenCalled();
-    expect(store.status?.text).toMatch(/already in use/);
+    expect(store.inputNotice?.text).toMatch(/already in use/);
 
     api.pickInput.mockResolvedValue("/old/./disc1.iso"); // the same file by another path: the backend keeps its own
     api.setInstanceInput.mockResolvedValue({ id: "gamecube", platform: "GameCube", state: "ready", inputs: { disc1: "/old/disc1.iso" } });
     await store.changeInput(game, platform, "disc1");
-    expect(store.status?.text).toMatch(/already in use/);
+    expect(store.inputNotice?.text).toMatch(/already in use/);
 
     api.pickInput.mockResolvedValue(null); // the dialog was closed
     api.setInstanceInput.mockClear();
     await store.changeInput(game, platform, "disc1");
     expect(api.setInstanceInput).not.toHaveBeenCalled();
-    expect(store.status?.tone).toBe("info");
+    expect(store.inputNotice).toBeNull();
   });
 
   it("ignores progress that arrives after its job ended, so a cancelled job doesn't come back", async () => {

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { untrack } from "svelte";
+  import { onMount, untrack } from "svelte";
   import GameAbout from "./GameAbout.svelte";
   import Icon, { type IconName } from "./Icon.svelte";
   import Row from "./Row.svelte";
@@ -28,8 +28,16 @@
     /** The installed release; `null` when the game isn't installed. */
     tag: string | null;
     location: Location | null;
-    /** The files the game is built from; `onchange` chooses another file for one of them and rebuilds. */
-    files: { hasInputs: boolean; current: { id: string; label: string; path: string | null }[]; busy: boolean; onchange: (inputId: string) => void };
+    /** The files the game is built from; `onchange` chooses another file for one of them (nothing is built). */
+    files: {
+      hasInputs: boolean;
+      current: { id: string; label: string; path: string | null }[];
+      busy: boolean;
+      onchange: (inputId: string) => void;
+      /** What the last choice said, until the settings are left (`clearNotice`). */
+      notice: { tone: "info" | "success" | "error"; text: string } | null;
+      clearNotice: () => void;
+    };
     /** Back to the game's page. */
     onback: () => void;
     /** Settings → About → Report a bug, for this game. */
@@ -62,6 +70,7 @@
   };
 
   let tab = $state<Tab>("Display");
+  onMount(() => () => files.clearNotice()); // what the last choice said isn't kept for the next visit
   let view = $state<SettingsView | null>(null);
   let loadError = $state<string | null>(null);
   let actionError = $state<string | null>(null);
@@ -175,6 +184,9 @@
         </Row>
       {/each}
     </div>
+    {#if files.notice}
+      <p class="file-notice {files.notice.tone}" role={files.notice.tone === "error" ? "alert" : "status"}>{files.notice.text}</p>
+    {/if}
   {/if}
 
   {#if tab === "About"}
@@ -257,6 +269,9 @@
     background: color-mix(in srgb, var(--game-card-top, var(--color-surface)) 55%, transparent);
     /* No overflow clipping: a dropdown's list opens over the edge of its group. */
   }
+  .file-notice { margin: var(--space-2) 0 0 var(--space-4); font-size: 12px; color: var(--color-text-muted); }
+  .file-notice.success { color: var(--color-success); }
+  .file-notice.error { color: var(--color-error); }
   .file-control { display: flex; align-items: center; gap: var(--space-3); width: 100%; min-width: 0; }
   /* The path takes the room the (short) label leaves: its start (as much as fits) and its end are shown, and
      the ellipsis is between them. */

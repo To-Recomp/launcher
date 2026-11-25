@@ -54,6 +54,8 @@ export class LibraryStore {
   /** The tasks a running step has reported, by job key, in the order they started. */
   tasks = $state<Record<string, TaskView[]>>({});
   status = $state<Status | null>(null);
+  /** What choosing a file said (kept, same file, refused): shown by the settings, where the choice is made. */
+  inputNotice = $state<Status | null>(null);
   log = $state<string | null>(null);
   failure = $state<Failure | null>(null);
   diagnostic = $state<Diagnostic | null>(null);
@@ -282,25 +284,23 @@ export class LibraryStore {
     const installation = this.installationOf(game.id);
     const input = installation?.inputs.find((i) => i.id === inputId);
     if (!installation || !input) return;
+    this.inputNotice = null;
     const picked = await api.pickInput(input);
-    if (!picked) {
-      this.status = { tone: "info", text: t("shell.library.nothingChanged") };
-      return;
-    }
+    if (!picked) return; // the dialog was closed: nothing to say
     const id = instanceId(platform.platform);
     if (installation.instances.find((i) => i.id === id)?.inputs[inputId] === picked) {
-      this.status = { tone: "info", text: t("shell.library.sameFile") };
+      this.inputNotice = { tone: "info", text: t("shell.library.sameFile") };
       return;
     }
     try {
       const view = await api.setInstanceInput(game.id, platform.platform, inputId, picked);
       // The backend also knows the same file reached by another path: it kept the one it had.
-      this.status =
+      this.inputNotice =
         view.inputs[inputId] === picked
           ? { tone: "success", text: t("shell.library.fileKept") }
           : { tone: "info", text: t("shell.library.sameFile") };
     } catch (e) {
-      this.status = { tone: "error", text: errorMessage(e) };
+      this.inputNotice = { tone: "error", text: errorMessage(e) };
     }
     await this.refresh();
   }
