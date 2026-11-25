@@ -6,7 +6,7 @@
 
 Name:           to-recomp-launcher
 Version:        0.1.0
-Release:        0.2.rc.2%{?dist}
+Release:        0.3.rc.3%{?dist}
 Summary:        Install, prepare, configure and launch the Tales of recompilations
 License:        GPL-3.0-only
 URL:            https://github.com/To-Recomp/launcher
@@ -66,6 +66,12 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/org.torecomp.launcher
 %{_datadir}/icons/hicolor/*/apps/org.torecomp.launcher.png
 
 %changelog
+* Wed Nov 25 2026 To Recomp maintainers <noreply@users.noreply.github.com> - 0.1.0-0.3.rc.3
+- Third pre-release (0.1.0-rc.3): update detection and an Update button for installed games, quick
+  play from the sidebar, a Files section in the game settings (one Change button per file, no automatic
+  rebuild), four launcher settings cards, no light theme, far fewer GitHub requests, a Cancel and a
+  log panel that work, the tray's left click.
+
 * Tue Nov 24 2026 To Recomp maintainers <noreply@users.noreply.github.com> - 0.1.0-0.2.rc.2
 - Second pre-release (0.1.0-rc.2): game settings page with a Files tab, hot-swapped language,
   quick play from the sidebar, cached GitHub requests, release_year per console.

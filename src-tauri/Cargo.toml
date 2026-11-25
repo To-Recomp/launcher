@@ -1,6 +1,6 @@
 [package]
 name = "to-recomp-launcher"
-version = "0.1.0-rc.2"
+version = "0.1.0-rc.3"
 description = "To Recomp Launcher"
 license = "GPL-3.0-only"
 edition = "2021"
