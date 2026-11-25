@@ -129,17 +129,12 @@ pub fn export(instance: &Instance, target: &Path) -> Result<usize, String> {
             .map_err(fail)?;
         count += 1;
     }
-    tar.into_inner()
-        .and_then(|gz| gz.finish())
-        .map_err(fail)?;
+    tar.into_inner().and_then(|gz| gz.finish()).map_err(fail)?;
     Ok(count)
 }
 
 /// The save folder an archive entry belongs to and the path inside it; `None` for a folder entry.
-fn entry_target(
-    folders: &[PathBuf],
-    path: &Path,
-) -> Result<Option<(usize, PathBuf)>, String> {
+fn entry_target(folders: &[PathBuf], path: &Path) -> Result<Option<(usize, PathBuf)>, String> {
     let bad = || format!("The backup has an unexpected path: {}", path.display());
     let mut parts = path.components();
     let Some(Component::Normal(first)) = parts.next() else {
@@ -288,7 +283,11 @@ mod tests {
         let view = list(&instance).unwrap();
         assert_eq!(view.folders.len(), 2);
         assert!(view.folders[0].exists);
-        let names: Vec<_> = view.folders[0].files.iter().map(|f| f.name.as_str()).collect();
+        let names: Vec<_> = view.folders[0]
+            .files
+            .iter()
+            .map(|f| f.name.as_str())
+            .collect();
         assert_eq!(names, ["b.raw", "sub/a.raw"]);
         assert_eq!(view.folders[0].files[0].size, 2);
         assert!(!view.folders[1].exists && view.folders[1].files.is_empty());
@@ -351,9 +350,18 @@ mod tests {
     fn a_backup_with_a_foreign_path_or_a_link_changes_nothing() {
         let (dir, instance) = instance(r#"["{data}/saves"]"#);
         for entries in [
-            vec![("save0/ok.raw", tar::EntryType::Regular), ("save0/../../evil", tar::EntryType::Regular)],
-            vec![("save0/ok.raw", tar::EntryType::Regular), ("save7/x.raw", tar::EntryType::Regular)],
-            vec![("save0/ok.raw", tar::EntryType::Regular), ("save0/link", tar::EntryType::Symlink)],
+            vec![
+                ("save0/ok.raw", tar::EntryType::Regular),
+                ("save0/../../evil", tar::EntryType::Regular),
+            ],
+            vec![
+                ("save0/ok.raw", tar::EntryType::Regular),
+                ("save7/x.raw", tar::EntryType::Regular),
+            ],
+            vec![
+                ("save0/ok.raw", tar::EntryType::Regular),
+                ("save0/link", tar::EntryType::Symlink),
+            ],
             vec![("elsewhere/x.raw", tar::EntryType::Regular)],
         ] {
             let bad = archive(dir.path(), &entries);

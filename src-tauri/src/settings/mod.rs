@@ -9,9 +9,9 @@ mod format;
 mod keys;
 pub(crate) mod manifest;
 pub(crate) mod paths;
+pub(crate) mod saves;
 mod state;
 mod store;
-pub(crate) mod saves;
 
 use std::collections::HashMap;
 use std::fs;
