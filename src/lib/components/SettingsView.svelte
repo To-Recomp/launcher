@@ -251,11 +251,12 @@
     background: color-mix(in srgb, var(--game-card-top, var(--color-surface)) 55%, transparent);
     /* No overflow clipping: a dropdown's list opens over the edge of its group. */
   }
-  .file-control { display: flex; align-items: center; gap: var(--space-3); }
-  /* A path is as the other values of the settings: muted, at most 320px; the folder gives way first, the file name stays in view. */
-  .path { display: flex; max-width: 320px; font-size: 13px; user-select: text; color: var(--color-text-muted); white-space: nowrap; }
+  .file-control { display: flex; align-items: center; gap: var(--space-3); min-width: 0; }
+  /* The end of the path, the file name, is always shown whole; the folder in front of it gives way, with an
+     ellipsis. The path may take up to 560px so a long name leaves room for some folder. */
+  .path { display: flex; min-width: 0; max-width: 560px; font-size: 13px; user-select: text; color: var(--color-text-muted); white-space: nowrap; }
   .folder { flex: 0 100 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-  .name { flex: 0 1 auto; min-width: 12ch; overflow: hidden; text-overflow: ellipsis; }
+  .name { flex: none; }
   .path.none { font-style: italic; }
   .empty { margin-top: var(--space-5); color: var(--color-text-muted); }
   .error {
