@@ -329,7 +329,8 @@ describe("HomeView availability", () => {
 describe("HomeView platform selector state", () => {
   it("says a console's state in the closed control too, when it isn't playable", () => {
     const library = new LibraryStore();
-    render(HomeView, { game: eternia, platform: { ...platform, state: "planned", maturity: null }, library, platformSizing: [], onplatform: () => {}, onsettings });
+    const planned = { ...platform, state: "planned" as const, maturity: null };
+    render(HomeView, { game: { ...eternia, platforms: [planned] }, platform: planned, library, platformSizing: [], onplatform: () => {}, onsettings });
     expect(screen.getByRole("combobox", { name: "Platform" })).toHaveTextContent("Planned");
   });
 });
