@@ -67,7 +67,7 @@
     margin-top: var(--space-5);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
-    background: var(--color-surface);
+    background: color-mix(in srgb, var(--game-card-top, var(--color-surface)) 55%, transparent);
     overflow: hidden;
   }
   .muted { color: var(--color-text-muted); }
