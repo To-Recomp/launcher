@@ -1,7 +1,9 @@
 /* Design tokens, sampled from the Figma mockups (see design/). */
 :root {
   color-scheme: dark;
+  /* Both fonts ship with the app, so the text is the same size and shape on every OS. */
   --font-sans: "Inter Variable", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
 
   --color-bg: #15131f;
   --color-bg-sunken: #11101a;
@@ -57,9 +59,13 @@ body {
   font-size: 14px;
   overflow: hidden;
   user-select: none;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 button, select { font: inherit; color: inherit; }
+input, textarea { font: inherit; }
+pre, code { font-family: var(--font-mono); }
 button { cursor: pointer; }
 
 :focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
