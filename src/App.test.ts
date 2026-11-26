@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/svelte";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { version } from "../package.json";
 import type { Catalog } from "./lib/catalog/types";
 
 const api = vi.hoisted(() => ({ cachedCatalog: vi.fn(), refreshCatalog: vi.fn() }));
@@ -205,7 +206,7 @@ describe("App", () => {
 
   it("always shows the launcher version and the non-affiliation notice", async () => {
     render(App);
-    expect(within(screen.getByRole("complementary")).getByText("v0.1.0")).toBeInTheDocument();
+    expect(within(screen.getByRole("complementary")).getByText(`v${version}`)).toBeInTheDocument();
     expect(screen.getByText(/Not affiliated with or endorsed by/)).toBeInTheDocument();
   });
 });
