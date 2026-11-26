@@ -37,7 +37,9 @@
   it can't be done while the instance is being prepared or played.
 - **Play**: `start` with the manifest's arguments, then the player's `args` settings; the output
   goes to `game.log`.
-- **Delete the build**: the trash button next to Play (a prepared instance, nothing running)
+- **Play menu** (the chevron on the main button, once the game is installed): **Game settings** (also
+  before the game is prepared, to choose its files) and **Delete the build**.
+- **Delete the build**: its item in the Play menu (a prepared instance, nothing running)
   asks for confirmation, then the `delete_build` command removes the instance's record, logs and
   data, so the game can be prepared again from the player's files. The paths the manifest lists in
   `saves` (`"saves": ["{data}/saves"]`) are kept and found again by the next preparation. The

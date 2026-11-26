@@ -195,14 +195,16 @@
   ]);
   const unusable = $derived(busy || !platform || unavailable !== null);
 
-  /** The build can be deleted once it exists; the action sits in the main button's menu. */
+  /** The build can be deleted once it exists. */
   const hasBuild = $derived(
     installation !== undefined && platform !== undefined && (instanceState === "ready" || instanceState === "needsRebuild"),
   );
+  /** The main button's menu: the game's settings once it is installed (also before it is prepared, to choose its files), and deleting the build. */
+  const hasMenu = $derived(installation !== undefined && platform !== undefined);
   let menuOpen = $state(false);
   let split = $state<HTMLDivElement>();
   $effect(() => {
-    if (!hasBuild || busy) menuOpen = false;
+    if (!hasMenu) menuOpen = false;
   });
 
   const releaseUrl = (note: ReleaseNote) => `${repositoryUrl(game.repository)}/releases/tag/${encodeURIComponent(note.tag)}`;
@@ -256,7 +258,7 @@
       value={platform?.platform ?? ""}
       onchange={onplatform}
     />
-    <div class="split" class:has-menu={hasBuild} bind:this={split}>
+    <div class="split" class:has-menu={hasMenu} bind:this={split}>
       <button class="main" disabled={unusable} onclick={primary.run}>
         <Icon name={primary.icon} size={20} />
         <span class="label">
@@ -264,11 +266,10 @@
           <span>{primary.label}</span>
         </span>
       </button>
-      {#if hasBuild && platform}
+      {#if hasMenu && platform}
         <span class="separator" aria-hidden="true"></span>
         <button
           class="chevron"
-          disabled={busy}
           aria-label={t("game.home.moreActions")}
           aria-haspopup="menu"
           aria-expanded={menuOpen}
@@ -283,12 +284,27 @@
                 role="menuitem"
                 onclick={() => {
                   menuOpen = false;
-                  library.deleteBuild(game, platform);
+                  onsettings();
                 }}
               >
-                <Icon name="trash" size={16} />{t("game.home.deleteBuild")}
+                <Icon name="settings" size={16} />{t("game.home.settings")}
               </button>
             </li>
+            {#if hasBuild}
+              <li role="none">
+                <button
+                  class="danger"
+                  role="menuitem"
+                  disabled={busy}
+                  onclick={() => {
+                    menuOpen = false;
+                    library.deleteBuild(game, platform);
+                  }}
+                >
+                  <Icon name="trash" size={16} />{t("game.home.deleteBuild")}
+                </button>
+              </li>
+            {/if}
           </ul>
         {/if}
       {/if}
@@ -298,15 +314,6 @@
         <Icon name="download" size={18} />{t("game.home.update")}
       </button>
     {/if}
-    <button
-      class="icon-button"
-      disabled={!installation}
-      aria-label={t("game.home.settings")}
-      title={t("game.home.settings")}
-      onclick={onsettings}
-    >
-      <Icon name="settings" size={20} />
-    </button>
   </div>
 
   <div class="status {tone}" role="status">
@@ -490,7 +497,9 @@
     white-space: nowrap;
     text-align: left;
   }
-  .menu button:hover { background: color-mix(in srgb, var(--color-accent) 16%, transparent); color: rgb(230 90 86); }
+  .menu button:hover:not(:disabled) { background: color-mix(in srgb, var(--color-accent) 16%, transparent); }
+  .menu button.danger:hover:not(:disabled) { color: rgb(230 90 86); }
+  .menu button:disabled { opacity: 0.5; cursor: default; }
   .update {
     display: inline-flex;
     align-items: center;
@@ -504,17 +513,6 @@
   }
   .update:hover:not(:disabled) { background: color-mix(in srgb, var(--color-accent) 24%, transparent); }
   .update:disabled { opacity: 0.5; cursor: default; }
-  .icon-button {
-    display: inline-grid;
-    place-items: center;
-    width: 48px;
-    border: 1px solid var(--color-border-strong);
-    border-radius: var(--radius-md);
-    background: transparent;
-    color: var(--color-text-muted);
-  }
-  .icon-button:hover:not(:disabled) { color: var(--color-text); border-color: var(--color-accent); }
-  .icon-button:disabled { opacity: 0.5; cursor: default; }
   /* One tint per state: icon, border and background always share it. Idle is neutral; a running action
      or an info message takes the app's palette (the game's accent); success is green and an error red. */
   .status {

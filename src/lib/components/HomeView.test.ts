@@ -143,11 +143,13 @@ describe("HomeView actions", () => {
 
   it("opens the game's settings once the game is installed, not before", async () => {
     show(null);
-    expect(screen.getByRole("button", { name: "Game settings" })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "More actions" })).not.toBeInTheDocument(); // no menu, so no settings
     cleanup();
-    show(installed(null));
-    await fireEvent.click(screen.getByRole("button", { name: "Game settings" }));
+    show(installed(null)); // installed, not prepared: the settings are where its files are chosen
+    await fireEvent.click(screen.getByRole("button", { name: "More actions" }));
+    await fireEvent.click(screen.getByRole("menuitem", { name: "Game settings" }));
     expect(onsettings).toHaveBeenCalledOnce();
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument(); // the menu closes
   });
 
   it("says an update needs a new build, and offers Rebuild when the instance kept what it needs", () => {
@@ -174,9 +176,11 @@ describe("HomeView actions", () => {
     await waitFor(() => expect(library.status?.text).toMatch(/build of .* was deleted/));
   });
 
-  it("offers no build to delete before the game is prepared", () => {
+  it("offers no build to delete before the game is prepared, only its settings", async () => {
     show(installed(null));
-    expect(screen.queryByRole("button", { name: "More actions" })).not.toBeInTheDocument();
+    await fireEvent.click(screen.getByRole("button", { name: "More actions" }));
+    expect(screen.getByRole("menuitem", { name: "Game settings" })).toBeInTheDocument();
+    expect(screen.queryByRole("menuitem", { name: "Delete the build" })).not.toBeInTheDocument();
   });
 });
 
