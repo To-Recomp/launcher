@@ -14,6 +14,7 @@
     sizing = [],
     disabled = [],
     notes = {},
+    noteSizing = [],
     onchange,
   }: {
     options: string[];
@@ -32,9 +33,13 @@
     disabled?: string[];
     /** A small text shown at the end of an option (like "Planned"), by option. */
     notes?: Record<string, string>;
+    /** Notes that may show later, besides the current ones: the control has room for the longest. */
+    noteSizing?: string[];
     onchange: (value: string) => void;
   } = $props();
 
+  /** The longest text a note may take, so the control keeps its width whatever the chosen option's note is. */
+  const widestNote = $derived([...Object.values(notes), ...noteSizing].reduce((a, b) => (b.length > a.length ? b : a), ""));
   const sizes = $derived([...options.map((option) => ({ option, prefix: prefixes[option] })), ...sizing]);
 
   const id = `dropdown-${counter++}`;
@@ -116,9 +121,13 @@
     <span class="shown">
       <!-- Invisible copies of every text the control may show: together they set its width. -->
       {#each sizes as size}
-        <span class="sizer" aria-hidden="true">{@render named(size.option, size.prefix)}</span>
+        <span class="sizer" aria-hidden="true">
+          {@render named(size.option, size.prefix)}{#if widestNote}<span class="note">{widestNote}</span>{/if}
+        </span>
       {/each}
-      <span class="value">{@render named(value, prefixes[value])}</span>
+      <span class="value">
+        {@render named(value, prefixes[value])}{#if notes[value]}<span class="note">{notes[value]}</span>{/if}
+      </span>
     </span>
   </button>
   <span class="chevron" class:open><Icon name="chevron-down" size={16} /></span>
@@ -229,6 +238,7 @@
   }
   li.disabled { cursor: default; opacity: 0.45; }
   .note { font-size: 11px; color: var(--color-text-muted); }
+  .value .note, .sizer .note { margin-left: var(--space-2); }
   li.active { background: color-mix(in srgb, var(--color-accent) 16%, transparent); }
   li.selected { color: var(--color-accent); font-weight: 600; }
   .shown { display: grid; width: 100%; }

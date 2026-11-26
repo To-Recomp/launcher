@@ -269,6 +269,7 @@
       prefixes={Object.fromEntries(game.platforms.map((p) => [p.platform, String(p.year)]))}
       disabled={unplayable}
       notes={platformNotes}
+      noteSizing={Object.values(instanceNames)}
       sizing={platformSizing}
       value={platform?.platform ?? ""}
       onchange={onplatform}

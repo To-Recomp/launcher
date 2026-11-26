@@ -334,6 +334,8 @@ describe("HomeView platform selector state", () => {
     [null, "Not prepared"],
   ] as const)("says where the console's instance stands once the game is installed: %s", async (state, text) => {
     show(installed(state));
+    // The closed control says it too.
+    expect(screen.getByRole("combobox", { name: "Platform" })).toHaveTextContent(text);
     await fireEvent.click(screen.getByRole("combobox", { name: "Platform" }));
     expect(screen.getByRole("option", { name: /PS1/ })).toHaveTextContent(text);
     expect(screen.getByRole("option", { name: /PS1/ })).not.toHaveAttribute("aria-disabled");
