@@ -37,9 +37,14 @@
   it can't be done while the instance is being prepared or played.
 - **Play**: `start` with the manifest's arguments, then the player's `args` settings; the output
   goes to `game.log`.
-- **Delete the build**: the trash button next to Play (a prepared instance, nothing running)
-  asks for confirmation, then the `delete_build` command removes the instance's record, logs and
-  data, so the game can be prepared again from the player's files. The paths the manifest lists in
+- **Play menu** (the chevron on the main button, once the game is installed): **Game settings** (also
+  before the game is prepared, to choose its files) and **Delete the build**.
+- **Delete the build**: its item in the Play menu (a prepared instance, nothing running)
+  asks for confirmation, then the `delete_build` command removes the instance's logs and data, so
+  the game can be prepared again. The files the player chose stay in the instance's record, which
+  then only says nothing is prepared: "Prepare" starts again without asking for them (only a file with
+  no path, or one that has disappeared, is asked for, one dialog per file). The same goes for files chosen in the game's settings
+  before the first preparation. The paths the manifest lists in
   `saves` (`"saves": ["{data}/saves"]`) are kept and found again by the next preparation. The
   installed release is untouched.
 - **Releases on the home page**: "Latest updates" lists the three newest published releases of

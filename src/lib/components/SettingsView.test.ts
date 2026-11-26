@@ -85,8 +85,10 @@ describe("SettingsView", () => {
     expect(screen.getByText("Shown in saves.")).toBeInTheDocument();
     await openTab("Controls");
     expect(screen.getByRole("button", { name: "Cross: Space" })).toBeInTheDocument();
-    await openTab("Saves");
-    expect(screen.getByText("No settings in this section.")).toBeInTheDocument();
+    // A tab without any setting is disabled, About stays.
+    expect(screen.getByRole("tab", { name: "Saves" })).toBeDisabled();
+    expect(screen.getByRole("tab", { name: "Audio" })).toBeEnabled();
+    expect(screen.getByRole("tab", { name: "About" })).toBeEnabled();
   });
 
   it("shows a value that matches no choice as it is, and greys out unavailable settings", async () => {

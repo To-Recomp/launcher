@@ -133,6 +133,18 @@
   const visible = $derived(inTab.filter((s) => showAdvanced || !s.advanced));
 
   const sections = $derived(sectionsOf(visible));
+
+  /** A tab without any setting is disabled; "Game" also counts the files it shows, and About is always there. */
+  function enabled(name: Tab): boolean {
+    if (name === "About") return true;
+    if (name === "Game" && files.hasInputs) return true;
+    return (view?.settings ?? []).some((s) => s.tab === name);
+  }
+  // Once the settings are known, leave a disabled tab for the first one that has something. Without settings
+  // (not installed, unreadable), the tab stays: the message under it says why.
+  $effect(() => {
+    if (view !== null && !enabled(tab)) tab = tabs.find(enabled) ?? "About";
+  });
 </script>
 
 <section class="settings">
@@ -143,7 +155,13 @@
 
   <div class="subtabs" role="tablist">
     {#each tabs as name (name)}
-      <button role="tab" aria-selected={name === tab} class:active={name === tab} onclick={() => (tab = name)}>
+      <button
+        role="tab"
+        aria-selected={name === tab}
+        class:active={name === tab}
+        disabled={!enabled(name)}
+        onclick={() => (tab = name)}
+      >
         <Icon name={icons[name]} size={18} />{t(tabLabels[name])}
       </button>
     {/each}
@@ -197,7 +215,7 @@
     <p class="empty" role="alert">{loadError}</p>
   {:else if !view}
     <p class="empty">{t("game.settings.loading")}</p>
-  {:else if sections.length === 0}
+  {:else if sections.length === 0 && !(tab === "Game" && files.hasInputs)}
     <p class="empty">{t("game.settings.noSettings")}</p>
   {:else}
     {#each sections as section, i (i)}
@@ -218,7 +236,12 @@
 </section>
 
 <style>
-  .settings { padding: var(--space-6); }
+  /* The page follows the game's palette: its buttons (here and in About) are tinted with the accent. */
+  .settings {
+    --button-bg: color-mix(in srgb, var(--color-accent) 12%, transparent);
+    --button-border: color-mix(in srgb, var(--color-accent) 45%, transparent);
+    padding: var(--space-6);
+  }
   h1 { margin: var(--space-4) 0 var(--space-5); font-size: 40px; font-weight: 700; }
   h2 { margin: var(--space-5) 0 var(--space-2) var(--space-4); font-size: 12px; font-weight: 500; color: var(--color-text-muted); }
   .back {
@@ -236,12 +259,12 @@
   /* The page follows the game's palette: surfaces are its shades, selections its accent. */
   .subtabs {
     display: flex;
-    flex-wrap: wrap;
-    width: fit-content;
-    max-width: 100%;
-    gap: var(--space-1);
+    /* One line whatever the OS's text width: the tabs share the bar, and scroll in a very narrow window. */
+    overflow-x: auto;
+    width: 100%;
+    gap: 2px;
     padding: 4px;
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-md);
     background: var(--game-bg-mid, var(--color-bg-sunken));
     border: 1px solid var(--color-border);
   }
@@ -249,14 +272,20 @@
     display: inline-flex;
     align-items: center;
     gap: var(--space-2);
-    padding: 8px 14px;
+    flex: 1 1 auto;
+    justify-content: center;
+    padding: 8px 10px;
+    white-space: nowrap;
+    outline-offset: -2px; /* inside: the bar clips what is outside it */
     border: 1px solid transparent;
-    border-radius: var(--radius-pill);
+    border-radius: var(--radius-md);
     background: none;
     color: var(--color-text-muted);
     font-weight: 500;
   }
-  .subtabs button:hover { color: var(--color-text); }
+  .subtabs button:hover:not(:disabled) { color: var(--color-text); }
+  /* Dimmed but legible: at 0.4 the muted text was about 2.1:1 on a game's dark background; 0.6 gives 3:1 or more. */
+  .subtabs button:disabled { opacity: 0.6; cursor: default; }
   .subtabs button.active {
     background: color-mix(in srgb, var(--color-accent) 18%, transparent);
     border-color: color-mix(in srgb, var(--color-accent) 45%, transparent);
@@ -293,18 +322,18 @@
   .error button { border: 0; background: none; font-size: 18px; color: var(--color-text-muted); }
   .small {
     padding: 6px 14px;
-    border: 1px solid var(--color-border-strong);
+    border: 1px solid var(--button-border);
     border-radius: var(--radius-pill);
-    background: var(--color-surface-alt);
+    background: var(--button-bg);
     font-weight: 500;
   }
   .small:disabled { opacity: 0.5; cursor: default; }
   .advanced {
     margin-top: var(--space-5);
     padding: 8px 16px;
-    border: 1px solid color-mix(in srgb, var(--color-accent) 45%, transparent);
+    border: 1px solid var(--button-border);
     border-radius: var(--radius-pill);
-    background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+    background: var(--button-bg);
     font-weight: 500;
   }
 </style>

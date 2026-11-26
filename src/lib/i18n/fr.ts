@@ -36,7 +36,7 @@ export const fr: Catalog = {
   "shell.library.running": "{game} est en cours d'exécution.",
   "shell.library.logEmpty": "Le journal est vide.",
   "shell.library.deleteBuildTitle": "Supprimer le build",
-  "shell.library.deleteBuildConfirm": "Supprimer le build de {game} ? Ses sauvegardes sont conservées. Vous devrez le préparer à nouveau à partir de vos fichiers de jeu.",
+  "shell.library.deleteBuildConfirm": "Supprimer le build de {game} ? Ses sauvegardes et les fichiers que vous avez choisis sont conservés : vous pouvez le préparer à nouveau tout de suite.",
   "shell.library.buildDeleted": "Le build de {game} a été supprimé. Préparez-le à nouveau quand vous voulez.",
 
   // game

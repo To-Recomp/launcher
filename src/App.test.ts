@@ -156,15 +156,15 @@ describe("App", () => {
     render(App);
     await screen.findByRole("heading", { level: 1, name: "Eternia" });
     expect(screen.queryByRole("tab", { name: "Settings" })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Game settings" })).toBeDisabled(); // not installed
+    expect(screen.queryByRole("button", { name: "More actions" })).not.toBeInTheDocument(); // not installed: no menu, no settings
     cleanup();
 
     library.librarySnapshot.mockResolvedValue([
       { gameId: "toe", repository: "To-Recomp/toe", tag: "v1", inputs: [], prepareLabel: null, canPrepare: false, keepsCopy: false, instances: [] },
     ]);
     render(App);
-    await waitFor(() => expect(screen.getByRole("button", { name: "Game settings" })).toBeEnabled());
-    await fireEvent.click(screen.getByRole("button", { name: "Game settings" }));
+    await fireEvent.click(await screen.findByRole("button", { name: "More actions" }));
+    await fireEvent.click(screen.getByRole("menuitem", { name: "Game settings" }));
     expect(screen.getByRole("heading", { level: 1, name: "Settings" })).toBeInTheDocument();
     await fireEvent.click(screen.getByRole("tab", { name: "Game" }));
     expect(screen.queryByRole("heading", { name: "Files" })).not.toBeInTheDocument(); // this game asks for no file

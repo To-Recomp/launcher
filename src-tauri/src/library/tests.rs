@@ -784,19 +784,20 @@ fn deleting_the_build_keeps_the_saves_and_the_game_can_be_prepared_again() {
     remove_build(&s.env, GAME, "GameCube").unwrap();
 
     assert!(!location.data.join("built.bin").exists());
-    assert!(!instance_dir.join("instance.json").exists());
     assert!(!instance_dir.join("prepare.log").exists());
     assert_eq!(
         fs::read_to_string(location.data.join("saves").join("card.raw")).unwrap(),
         "my save"
     );
-    assert!(
-        snapshot(&s.env)[0].instances.is_empty(),
-        "nothing is prepared any more"
-    );
+    // Nothing is prepared any more, but the files the player chose are still known.
+    let instances = &snapshot(&s.env)[0].instances;
+    assert_eq!(instances.len(), 1);
+    assert_eq!(instances[0].state, InstanceState::NotPrepared);
+    assert_eq!(instances[0].inputs.len(), 2);
     assert!(start(&s.env, GAME, "GameCube", |_| {}).is_err());
 
-    let again = do_prepare(&s, discs(dir.path(), "one", "two")).unwrap();
+    // Prepared again without being given the files again.
+    let again = do_prepare(&s, BTreeMap::new()).unwrap();
     assert_eq!(again.state, InstanceState::Ready);
     assert_eq!(
         fs::read_to_string(location.data.join("saves").join("card.raw")).unwrap(),
@@ -805,7 +806,7 @@ fn deleting_the_build_keeps_the_saves_and_the_game_can_be_prepared_again() {
 }
 
 #[test]
-fn deleting_a_build_that_does_not_exist_is_not_an_error_and_nothing_is_kept_without_saves() {
+fn deleting_a_missing_build_is_fine_and_only_the_chosen_files_stay_without_saves() {
     let s = setup();
     installed_and_published(&s);
     remove_build(&s.env, GAME, "GameCube").unwrap();
@@ -815,12 +816,16 @@ fn deleting_a_build_that_does_not_exist_is_not_an_error_and_nothing_is_kept_with
     let location = instance_location(&s);
     fs::write(location.data.join("save.dat"), "no saves declared").unwrap();
     remove_build(&s.env, GAME, "GameCube").unwrap();
-    assert!(!s
+    let dir = s
         .env
         .library
         .instance_dir(GAME, &store::instance_id("GameCube"))
+        .unwrap();
+    let left: Vec<_> = fs::read_dir(&dir)
         .unwrap()
-        .exists());
+        .map(|e| e.unwrap().file_name())
+        .collect();
+    assert_eq!(left, ["instance.json"], "only the chosen files are kept");
 }
 
 #[test]

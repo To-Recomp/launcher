@@ -34,6 +34,6 @@
     background: none;
     color: var(--color-text-muted);
   }
-  .controls button:hover { background: var(--color-surface-alt); color: var(--color-text); }
+  .controls button:hover { background: color-mix(in srgb, var(--color-accent) 16%, transparent); color: var(--color-text); }
   .controls .close:hover { background: var(--color-primary); color: #fff; }
 </style>

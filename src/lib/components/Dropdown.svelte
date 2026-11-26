@@ -35,6 +35,8 @@
     onchange: (value: string) => void;
   } = $props();
 
+  /** The longest note of the list, so the control keeps its width whichever option is chosen. */
+  const widestNote = $derived(Object.values(notes).reduce((a, b) => (b.length > a.length ? b : a), ""));
   const sizes = $derived([...options.map((option) => ({ option, prefix: prefixes[option] })), ...sizing]);
 
   const id = `dropdown-${counter++}`;
@@ -116,9 +118,13 @@
     <span class="shown">
       <!-- Invisible copies of every text the control may show: together they set its width. -->
       {#each sizes as size}
-        <span class="sizer" aria-hidden="true">{@render named(size.option, size.prefix)}</span>
+        <span class="sizer" aria-hidden="true">
+          {@render named(size.option, size.prefix)}{#if widestNote}<span class="note">{widestNote}</span>{/if}
+        </span>
       {/each}
-      <span class="value">{@render named(value, prefixes[value])}</span>
+      <span class="value">
+        {@render named(value, prefixes[value])}{#if notes[value]}<span class="note">{notes[value]}</span>{/if}
+      </span>
     </span>
   </button>
   <span class="chevron" class:open><Icon name="chevron-down" size={16} /></span>
@@ -183,6 +189,10 @@
   .caption { margin-bottom: 2px; font-size: 11px; font-weight: 400; color: var(--color-text-muted); }
   .value { overflow: hidden; max-width: 100%; text-overflow: ellipsis; white-space: nowrap; }
   .chevron {
+    /* A grid, so the icon fills the box (no line strut under it): the box is centred and rotates about
+       the icon's own centre, which keeps the chevron in the same place open or closed. */
+    display: grid;
+    place-items: center;
     position: absolute;
     right: 12px;
     top: 50%;
@@ -214,7 +224,7 @@
   }
   li {
     display: flex;
-    align-items: center;
+    align-items: baseline; /* the year, the name and the state share one baseline */
     justify-content: space-between;
     gap: var(--space-4);
     padding: 8px 12px;
@@ -225,6 +235,7 @@
   }
   li.disabled { cursor: default; opacity: 0.45; }
   .note { font-size: 11px; color: var(--color-text-muted); }
+  .value .note, .sizer .note { margin-left: var(--space-2); }
   li.active { background: color-mix(in srgb, var(--color-accent) 16%, transparent); }
   li.selected { color: var(--color-accent); font-weight: 600; }
   .shown { display: grid; width: 100%; }

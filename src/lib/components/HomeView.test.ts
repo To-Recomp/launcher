@@ -117,6 +117,15 @@ describe("HomeView actions", () => {
     expect(screen.getByRole("button", { name: label })).toBeInTheDocument();
   });
 
+  it("offers to prepare, not to choose files, once the settings gave every required file", () => {
+    show(installed("notPrepared", {
+      inputs: [input("disc1"), input("disc2")],
+      instances: [{ id: "ps1", platform: "PS1", state: "notPrepared", inputs: { disc1: "/a.iso", disc2: "/b.iso" } }],
+    }));
+    expect(screen.getByRole("button", { name: "Prepare" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Choose files" })).not.toBeInTheDocument();
+  });
+
   it("plays a ready instance and can prepare it again", async () => {
     show(installed("ready"));
     api.startGame.mockResolvedValue(undefined);
@@ -143,11 +152,13 @@ describe("HomeView actions", () => {
 
   it("opens the game's settings once the game is installed, not before", async () => {
     show(null);
-    expect(screen.getByRole("button", { name: "Game settings" })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "More actions" })).not.toBeInTheDocument(); // no menu, so no settings
     cleanup();
-    show(installed(null));
-    await fireEvent.click(screen.getByRole("button", { name: "Game settings" }));
+    show(installed(null)); // installed, not prepared: the settings are where its files are chosen
+    await fireEvent.click(screen.getByRole("button", { name: "More actions" }));
+    await fireEvent.click(screen.getByRole("menuitem", { name: "Game settings" }));
     expect(onsettings).toHaveBeenCalledOnce();
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument(); // the menu closes
   });
 
   it("says an update needs a new build, and offers Rebuild when the instance kept what it needs", () => {
@@ -174,9 +185,11 @@ describe("HomeView actions", () => {
     await waitFor(() => expect(library.status?.text).toMatch(/build of .* was deleted/));
   });
 
-  it("offers no build to delete before the game is prepared", () => {
+  it("offers no build to delete before the game is prepared, only its settings", async () => {
     show(installed(null));
-    expect(screen.queryByRole("button", { name: "More actions" })).not.toBeInTheDocument();
+    await fireEvent.click(screen.getByRole("button", { name: "More actions" }));
+    expect(screen.getByRole("menuitem", { name: "Game settings" })).toBeInTheDocument();
+    expect(screen.queryByRole("menuitem", { name: "Delete the build" })).not.toBeInTheDocument();
   });
 });
 
@@ -310,6 +323,15 @@ describe("HomeView availability", () => {
     await fireEvent.click(screen.getByRole("option", { name: /Windows/ }));
     expect(onplatform).not.toHaveBeenCalled();
     expect(screen.getByRole("listbox")).toBeInTheDocument(); // still open: nothing was chosen
+  });
+});
+
+describe("HomeView platform selector state", () => {
+  it("says a console's state in the closed control too, when it isn't playable", () => {
+    const library = new LibraryStore();
+    const planned = { ...platform, state: "planned" as const, maturity: null };
+    render(HomeView, { game: { ...eternia, platforms: [planned] }, platform: planned, library, platformSizing: [], onplatform: () => {}, onsettings });
+    expect(screen.getByRole("combobox", { name: "Platform" })).toHaveTextContent("Planned");
   });
 });
 

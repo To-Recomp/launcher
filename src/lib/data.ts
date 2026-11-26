@@ -31,5 +31,7 @@ export const CREDITS: readonly Credit[] = [
   { name: "Svelte", license: "MIT", url: "https://github.com/sveltejs/svelte" },
   { name: "ureq", license: "MIT or Apache-2.0", url: "https://github.com/algesten/ureq" },
   { name: "toml_edit", license: "MIT or Apache-2.0", url: "https://github.com/toml-rs/toml" },
+  { name: "Inter", license: "OFL-1.1", url: "https://github.com/rsms/inter" },
+  { name: "JetBrains Mono", license: "OFL-1.1", url: "https://github.com/JetBrains/JetBrainsMono" },
   { name: "Lucide", license: "ISC", url: "https://github.com/lucide-icons/lucide" },
 ];

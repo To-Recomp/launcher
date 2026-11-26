@@ -70,9 +70,9 @@
   .result.failed { color: var(--color-primary); }
   button {
     padding: 6px 14px;
-    border: 1px solid var(--color-border-strong);
+    border: 1px solid var(--button-border, var(--color-border-strong));
     border-radius: var(--radius-pill);
-    background: var(--color-surface-alt);
+    background: var(--button-bg, var(--color-surface-alt));
     font-weight: 500;
   }
   button:disabled { opacity: 0.5; }
