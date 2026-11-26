@@ -591,7 +591,7 @@
   .log-close {
     position: absolute;
     top: var(--space-2);
-    right: calc(var(--space-4) + 6px);
+    right: var(--space-2); /* as far from the right edge as from the top; the 6px scrollbar stays clear of it */
     display: grid;
     place-items: center;
     width: 26px;
