@@ -59,6 +59,8 @@ export const fr: Catalog = {
   "game.home.state.planned": "Prévue",
   "game.home.state.inProgress": "En cours",
   "game.home.state.unsupported": "Non prise en charge",
+  "game.home.maturity.alpha": "Alpha",
+  "game.home.maturity.beta": "Bêta",
   "game.home.actionStatus": "État des actions",
   "game.home.progress": "Progression",
   "game.home.tasks": "Tâches",

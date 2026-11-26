@@ -218,8 +218,19 @@
     "in-progress": t("game.home.state.inProgress"),
     unsupported: t("game.home.state.unsupported"),
   });
+  /** A playable console says how far it is, unless it is stable; it stays selectable. */
+  const maturityNames = $derived({
+    alpha: t("game.home.maturity.alpha"),
+    beta: t("game.home.maturity.beta"),
+  });
+  const unplayable = $derived(game.platforms.filter((p) => p.state !== "playable").map((p) => p.platform));
   const platformNotes = $derived(
-    Object.fromEntries(game.platforms.flatMap((p) => (p.state === "playable" ? [] : [[p.platform, stateNames[p.state]]]))),
+    Object.fromEntries(
+      game.platforms.flatMap((p) => {
+        const note = p.state === "playable" ? (p.maturity && p.maturity !== "stable" ? maturityNames[p.maturity] : undefined) : stateNames[p.state];
+        return note ? [[p.platform, note]] : [];
+      }),
+    ),
   );
 </script>
 
@@ -252,7 +263,7 @@
       label={t("game.home.platform")}
       options={game.platforms.map((p) => p.platform)}
       prefixes={Object.fromEntries(game.platforms.map((p) => [p.platform, String(p.year)]))}
-      disabled={Object.keys(platformNotes)}
+      disabled={unplayable}
       notes={platformNotes}
       sizing={platformSizing}
       value={platform?.platform ?? ""}

@@ -24,3 +24,4 @@ game's name and year, plus a quick play button (its own button, it doesn't open 
 lists consoles, not regions, each prefixed with its year and ordered from the most recent to the
 oldest, and opens on the console the game was last played on (remembered per game in `localStorage`), else the first playable one, else the most recent. It is as wide as the widest console of the whole catalog, so it never resizes. A
 console that isn't `playable` can't be installed or prepared: the game page says why.
+The selector says each console's state next to its name (also when closed): `Planned`, `In progress`, `Unsupported` (listed, not selectable), and for a playable console its `maturity` when it is `alpha` or `beta` (nothing for `stable`; it stays selectable).
