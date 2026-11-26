@@ -606,7 +606,7 @@
   .log {
     max-height: 260px;
     margin: 0;
-    padding: var(--space-3) var(--space-4);
+    padding: var(--space-4);
     overflow: auto;
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);

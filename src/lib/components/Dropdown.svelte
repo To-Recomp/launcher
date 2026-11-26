@@ -183,6 +183,10 @@
   .caption { margin-bottom: 2px; font-size: 11px; font-weight: 400; color: var(--color-text-muted); }
   .value { overflow: hidden; max-width: 100%; text-overflow: ellipsis; white-space: nowrap; }
   .chevron {
+    /* A grid, so the icon fills the box (no line strut under it): the box is centred and rotates about
+       the icon's own centre, which keeps the chevron in the same place open or closed. */
+    display: grid;
+    place-items: center;
     position: absolute;
     right: 12px;
     top: 50%;
@@ -214,7 +218,7 @@
   }
   li {
     display: flex;
-    align-items: center;
+    align-items: baseline; /* the year, the name and the state share one baseline */
     justify-content: space-between;
     gap: var(--space-4);
     padding: 8px 12px;
