@@ -15,7 +15,8 @@ Pushing a tag `vX.Y.Z` (or `vX.Y.Z-rc.1`, published as a pre-release) runs
 | `latest.json` | what the in-app updater reads (only when the build is signed) |
 
 The release description is built by `scripts/release-notes.mjs` from the commits since the previous
-release (every commit for the first one), grouped by conventional-commit type, with the
+release (every commit for the first one; a stable release is compared with the previous
+stable one, so its notes also cover its release candidates), grouped by conventional-commit type, with the
 pull request numbers and a link to the comparison. Preview it locally from a checkout with the
 tags: `node scripts/release-notes.mjs --tag vX.Y.Z --repo To-Recomp/launcher` (the tag must exist;
 use a temporary local tag to preview).
