@@ -14,7 +14,6 @@
     sizing = [],
     disabled = [],
     notes = {},
-    noteSizing = [],
     onchange,
   }: {
     options: string[];
@@ -33,13 +32,11 @@
     disabled?: string[];
     /** A small text shown at the end of an option (like "Planned"), by option. */
     notes?: Record<string, string>;
-    /** Notes that may show later, besides the current ones: the control has room for the longest. */
-    noteSizing?: string[];
     onchange: (value: string) => void;
   } = $props();
 
-  /** The longest text a note may take, so the control keeps its width whatever the chosen option's note is. */
-  const widestNote = $derived([...Object.values(notes), ...noteSizing].reduce((a, b) => (b.length > a.length ? b : a), ""));
+  /** The longest note of the list, so the control keeps its width whichever option is chosen. */
+  const widestNote = $derived(Object.values(notes).reduce((a, b) => (b.length > a.length ? b : a), ""));
   const sizes = $derived([...options.map((option) => ({ option, prefix: prefixes[option] })), ...sizing]);
 
   const id = `dropdown-${counter++}`;

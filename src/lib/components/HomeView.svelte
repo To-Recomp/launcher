@@ -218,24 +218,9 @@
     "in-progress": t("game.home.state.inProgress"),
     unsupported: t("game.home.state.unsupported"),
   });
-  const instanceNames = $derived({
-    ready: t("game.home.instance.ready"),
-    needsRebuild: t("game.home.instance.needsRebuild"),
-    notPrepared: t("game.home.instance.notPrepared"),
-  });
-  /** Next to a playable console: where its instance stands (once the game is installed). */
   const platformNotes = $derived(
-    Object.fromEntries(
-      game.platforms.flatMap((p) =>
-        p.state !== "playable"
-          ? [[p.platform, stateNames[p.state]]]
-          : installation
-            ? [[p.platform, instanceNames[library.instanceState(game.id, p)]]]
-            : [],
-      ),
-    ),
+    Object.fromEntries(game.platforms.flatMap((p) => (p.state === "playable" ? [] : [[p.platform, stateNames[p.state]]]))),
   );
-  const unplayable = $derived(game.platforms.filter((p) => p.state !== "playable").map((p) => p.platform));
 </script>
 
 <svelte:window
@@ -267,9 +252,8 @@
       label={t("game.home.platform")}
       options={game.platforms.map((p) => p.platform)}
       prefixes={Object.fromEntries(game.platforms.map((p) => [p.platform, String(p.year)]))}
-      disabled={unplayable}
+      disabled={Object.keys(platformNotes)}
       notes={platformNotes}
-      noteSizing={Object.values(instanceNames)}
       sizing={platformSizing}
       value={platform?.platform ?? ""}
       onchange={onplatform}

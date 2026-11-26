@@ -327,18 +327,10 @@ describe("HomeView availability", () => {
 });
 
 describe("HomeView platform selector state", () => {
-  it.each([
-    ["ready", "Ready"],
-    ["needsRebuild", "Needs a rebuild"],
-    ["notPrepared", "Not prepared"],
-    [null, "Not prepared"],
-  ] as const)("says where the console's instance stands once the game is installed: %s", async (state, text) => {
-    show(installed(state));
-    // The closed control says it too.
-    expect(screen.getByRole("combobox", { name: "Platform" })).toHaveTextContent(text);
-    await fireEvent.click(screen.getByRole("combobox", { name: "Platform" }));
-    expect(screen.getByRole("option", { name: /PS1/ })).toHaveTextContent(text);
-    expect(screen.getByRole("option", { name: /PS1/ })).not.toHaveAttribute("aria-disabled");
+  it("says a console's state in the closed control too, when it isn't playable", () => {
+    const library = new LibraryStore();
+    render(HomeView, { game: eternia, platform: { ...platform, state: "planned", maturity: null }, library, platformSizing: [], onplatform: () => {}, onsettings });
+    expect(screen.getByRole("combobox", { name: "Platform" })).toHaveTextContent("Planned");
   });
 });
 
