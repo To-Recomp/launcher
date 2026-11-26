@@ -259,10 +259,10 @@
   /* The page follows the game's palette: surfaces are its shades, selections its accent. */
   .subtabs {
     display: flex;
-    flex-wrap: wrap;
-    width: fit-content;
-    max-width: 100%;
-    gap: var(--space-1);
+    /* One line whatever the OS's text width: the tabs share the bar, and scroll in a very narrow window. */
+    overflow-x: auto;
+    width: 100%;
+    gap: 2px;
     padding: 4px;
     border-radius: var(--radius-md);
     background: var(--game-bg-mid, var(--color-bg-sunken));
@@ -272,7 +272,11 @@
     display: inline-flex;
     align-items: center;
     gap: var(--space-2);
-    padding: 8px 14px;
+    flex: 1 1 auto;
+    justify-content: center;
+    padding: 8px 10px;
+    white-space: nowrap;
+    outline-offset: -2px; /* inside: the bar clips what is outside it */
     border: 1px solid transparent;
     border-radius: var(--radius-md);
     background: none;
