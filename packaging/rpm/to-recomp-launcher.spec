@@ -8,7 +8,7 @@
 # tauri.conf.json, Cargo.toml). A pre-release 1.2.3-rc.1 is packaged as Version 1.2.3, Release
 # 0.rc.1 (it sorts before 1.2.3-1).
 # x-release-please-start-version
-%global upstream_version 0.1.0
+%global upstream_version 0.1.1
 # x-release-please-end
 %global rpm_version %(echo %{upstream_version} | cut -d- -f1)
 %global rpm_release %(echo %{upstream_version} | awk -F- 'NF > 1 { print "0." $2; next } { print 1 }')
