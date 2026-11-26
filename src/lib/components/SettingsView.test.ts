@@ -9,6 +9,9 @@ vi.mock("../settings/api", () => ({
   errorMessage: (e: unknown) => String(e),
 }));
 
+const saves = vi.hoisted(() => ({ listSaves: vi.fn() }));
+vi.mock("../settings/saves", () => saves);
+
 const releases = vi.hoisted(() => ({ gameLicense: vi.fn() }));
 vi.mock("../catalog/releases", () => releases);
 
@@ -60,6 +63,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   localStorage.clear();
   api.loadSettings.mockResolvedValue(all);
+  saves.listSaves.mockResolvedValue({ folders: [{ path: "/games/eternia/data/saves", exists: false, files: [] }] });
   releases.gameLicense.mockResolvedValue({ name: "GNU General Public License v3.0", url: "https://github.com/To-Recomp/toe/blob/main/LICENSE" });
 });
 
@@ -85,10 +89,13 @@ describe("SettingsView", () => {
     expect(screen.getByText("Shown in saves.")).toBeInTheDocument();
     await openTab("Controls");
     expect(screen.getByRole("button", { name: "Cross: Space" })).toBeInTheDocument();
-    // A tab without any setting is disabled, About stays.
-    expect(screen.getByRole("tab", { name: "Saves" })).toBeDisabled();
+    // Saves has its backups, so it stays enabled; a tab without any setting is disabled, About stays.
+    expect(screen.getByRole("tab", { name: "Saves" })).toBeEnabled();
     expect(screen.getByRole("tab", { name: "Audio" })).toBeEnabled();
     expect(screen.getByRole("tab", { name: "About" })).toBeEnabled();
+    await openTab("Saves");
+    expect(await screen.findByText(/No saves yet/)).toBeInTheDocument();
+    expect(screen.queryByText("No settings in this section.")).not.toBeInTheDocument();
   });
 
   it("shows a value that matches no choice as it is, and greys out unavailable settings", async () => {

@@ -9,6 +9,7 @@ mod format;
 mod keys;
 pub(crate) mod manifest;
 pub(crate) mod paths;
+pub(crate) mod saves;
 mod state;
 mod store;
 

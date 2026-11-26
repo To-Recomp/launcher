@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, untrack } from "svelte";
   import GameAbout from "./GameAbout.svelte";
+  import GameSaves from "./GameSaves.svelte";
   import Icon, { type IconName } from "./Icon.svelte";
   import Row from "./Row.svelte";
   import SettingRow from "./SettingRow.svelte";
@@ -134,9 +135,10 @@
 
   const sections = $derived(sectionsOf(visible));
 
-  /** A tab without any setting is disabled; "Game" also counts the files it shows, and About is always there. */
+  /** A tab without any setting is disabled; "Game" also counts the files it shows, "Saves" its backups, and About is always there. */
   function enabled(name: Tab): boolean {
     if (name === "About") return true;
+    if (name === "Saves" && location) return true;
     if (name === "Game" && files.hasInputs) return true;
     return (view?.settings ?? []).some((s) => s.tab === name);
   }
@@ -207,6 +209,10 @@
     {/if}
   {/if}
 
+  {#if tab === "Saves" && location}
+    <GameSaves {location} {gameId} />
+  {/if}
+
   {#if tab === "About"}
     <GameAbout name={gameName} {repository} {platform} {tag} {location} {onreportbug} />
   {:else if !location}
@@ -215,7 +221,7 @@
     <p class="empty" role="alert">{loadError}</p>
   {:else if !view}
     <p class="empty">{t("game.settings.loading")}</p>
-  {:else if sections.length === 0 && !(tab === "Game" && files.hasInputs)}
+  {:else if sections.length === 0 && !(tab === "Game" && files.hasInputs) && tab !== "Saves"}
     <p class="empty">{t("game.settings.noSettings")}</p>
   {:else}
     {#each sections as section, i (i)}
