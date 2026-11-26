@@ -1,0 +1,19 @@
+#!/bin/sh
+# Adds `Signed-off-by: <user.name> <user.email>` to every commit message (what `git commit -s`
+# does), so the DCO check passes without remembering the flag. Does nothing when the identical
+# line is already there; a sign-off by someone else is kept and yours is added after it.
+# Merge and squash messages are left alone (the DCO check skips merge commits).
+#
+# Enable once per clone: git config core.hooksPath .githooks   (see CONTRIBUTING.md)
+
+msg_file=$1
+case "$2" in
+  merge | squash) exit 0 ;;
+esac
+
+name=$(git config user.name) || exit 0
+email=$(git config user.email) || exit 0
+[ -n "$name" ] && [ -n "$email" ] || exit 0
+
+git interpret-trailers --in-place --if-exists addIfDifferent \
+  --trailer "Signed-off-by: $name <$email>" "$msg_file"
