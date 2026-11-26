@@ -84,6 +84,24 @@ describe("with a real git history", () => {
     expect(previousTag("v0.2.0-rc.1", "v0.2.0-rc.1^")).toBe("v0.1.0");
   });
 
+  it("compares a stable release with the previous stable one, not with a release candidate", () => {
+    const r = repo();
+    commit(r, "feat: one");
+    r.git("tag", "v0.1.0-rc.1");
+    commit(r, "fix: two");
+    r.git("tag", "v0.1.0-rc.2");
+    commit(r, "docs: three");
+    r.git("tag", "v0.1.0");
+    commit(r, "feat: four");
+    r.git("tag", "v0.2.0-rc.1");
+    commit(r, "fix: five");
+    r.git("tag", "v0.2.0");
+    process.chdir(r.dir);
+    expect(previousTag("v0.1.0", "v0.1.0^")).toBeNull(); // only candidates before it: the whole history
+    expect(previousTag("v0.2.0", "v0.2.0^")).toBe("v0.1.0");
+    expect(previousTag("v0.2.0-rc.1", "v0.2.0-rc.1^")).toBe("v0.1.0"); // a candidate follows the newest tag of any kind
+  });
+
   it("lists the whole history when there is no previous tag", () => {
     const r = repo();
     commit(r, "feat: one");

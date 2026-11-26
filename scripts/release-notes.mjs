@@ -76,11 +76,16 @@ function git(args) {
   return execFileSync("git", args, { encoding: "utf8" }).trim();
 }
 
-/** Newest `v*` tag reachable from `rev` (excluding `tag` itself), or null. */
+/**
+ * Newest `v*` tag reachable from `rev` (excluding `tag` itself), or null. A stable release (no `-`) is
+ * compared with the previous stable one, not with the last release candidate: its notes cover everything
+ * the candidates brought.
+ */
 export function previousTag(tag, rev) {
-  const tags = git(["tag", "--merged", rev, "--list", "v*", "--sort=-v:refname"])
+  const stable = !tag.includes("-");
+  const tags = git(["-c", "versionsort.suffix=-", "tag", "--merged", rev, "--list", "v*", "--sort=-v:refname"]) // v1.0.0-rc.1 sorts before v1.0.0
     .split("\n")
-    .filter((t) => t && t !== tag);
+    .filter((t) => t && t !== tag && (!stable || !t.includes("-")));
   return tags[0] ?? null;
 }
 
