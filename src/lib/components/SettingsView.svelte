@@ -284,7 +284,8 @@
     font-weight: 500;
   }
   .subtabs button:hover:not(:disabled) { color: var(--color-text); }
-  .subtabs button:disabled { opacity: 0.4; cursor: default; }
+  /* Dimmed but legible: at 0.4 the muted text was about 2.1:1 on a game's dark background; 0.6 gives 3:1 or more. */
+  .subtabs button:disabled { opacity: 0.6; cursor: default; }
   .subtabs button.active {
     background: color-mix(in srgb, var(--color-accent) 18%, transparent);
     border-color: color-mix(in srgb, var(--color-accent) 45%, transparent);
