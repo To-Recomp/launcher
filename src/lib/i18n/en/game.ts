@@ -19,6 +19,8 @@ export const game = {
   "game.home.state.planned": "Planned",
   "game.home.state.inProgress": "In progress",
   "game.home.state.unsupported": "Unsupported",
+  "game.home.maturity.alpha": "Alpha",
+  "game.home.maturity.beta": "Beta",
   "game.home.actionStatus": "Action status",
   "game.home.progress": "Progress",
   "game.home.tasks": "Tasks",

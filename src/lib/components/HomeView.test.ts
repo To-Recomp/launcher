@@ -315,7 +315,7 @@ describe("HomeView availability", () => {
     render(HomeView, { game, platform, library, platformSizing: [], onplatform, onsettings });
     await fireEvent.click(screen.getByRole("combobox", { name: "Platform" }));
     expect(screen.getAllByRole("option").map((o) => o.textContent?.trim())).toEqual([
-      "2000 · PS1", "2012 · Windows Planned", "2013 · Switch In progress", "2014 · Xbox Unsupported",
+      "2000 · PS1 Alpha", "2012 · Windows Planned", "2013 · Switch In progress", "2014 · Xbox Unsupported",
     ]);
     // A console the game isn't available on says why, is listed but can't be chosen.
     expect(screen.getByRole("option", { name: /Windows/ })).toHaveAttribute("aria-disabled", "true");
@@ -332,6 +332,22 @@ describe("HomeView platform selector state", () => {
     const planned = { ...platform, state: "planned" as const, maturity: null };
     render(HomeView, { game: { ...eternia, platforms: [planned] }, platform: planned, library, platformSizing: [], onplatform: () => {}, onsettings });
     expect(screen.getByRole("combobox", { name: "Platform" })).toHaveTextContent("Planned");
+  });
+});
+
+describe("HomeView platform maturity", () => {
+  it("says Alpha or Beta next to a playable console, nothing for Stable, and keeps it selectable", async () => {
+    const library = new LibraryStore();
+    const playable = (name: string, maturity: "alpha" | "beta" | "stable", year: number) => ({ platform: name, regions: ["Japan"], state: "playable" as const, maturity, releaseYear: year, year });
+    const game = { ...eternia, platforms: [playable("PS3", "alpha", 2012), playable("Wii", "beta", 2008), playable("PS1", "stable", 2000)] };
+    const onplatform = vi.fn();
+    render(HomeView, { game, platform: game.platforms[1], library, platformSizing: [], onplatform, onsettings });
+    expect(screen.getByRole("combobox", { name: "Platform" })).toHaveTextContent("Beta"); // closed control
+    await fireEvent.click(screen.getByRole("combobox", { name: "Platform" }));
+    expect(screen.getAllByRole("option").map((o) => o.textContent?.trim())).toEqual(["2012 · PS3 Alpha", "2008 · Wii Beta", "2000 · PS1"]);
+    for (const option of screen.getAllByRole("option")) expect(option).not.toHaveAttribute("aria-disabled");
+    await fireEvent.click(screen.getByRole("option", { name: /PS3/ }));
+    expect(onplatform).toHaveBeenCalledWith("PS3");
   });
 });
 

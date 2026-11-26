@@ -73,7 +73,7 @@ describe("App", () => {
     render(App);
     await fireEvent.click(await screen.findByRole("button", { name: /Tales of Symphonia/ }));
     await fireEvent.click(screen.getByRole("combobox", { name: "Platform" }));
-    expect(screen.getAllByRole("option").map((o) => o.textContent?.trim())).toEqual(["2003 · GameCube", "2002 · PlayStation 2"]);
+    expect(screen.getAllByRole("option").map((o) => o.textContent?.trim())).toEqual(["2003 · GameCube Beta", "2002 · PlayStation 2 Alpha"]);
   });
 
   it("shows the saved list at once, then the downloaded one", async () => {
