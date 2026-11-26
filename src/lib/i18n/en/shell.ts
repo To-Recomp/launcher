@@ -32,6 +32,6 @@ export const shell = {
   "shell.library.running": "{game} is running.",
   "shell.library.logEmpty": "The log is empty.",
   "shell.library.deleteBuildTitle": "Delete the build",
-  "shell.library.deleteBuildConfirm": "Delete the build of {game}? Its saves are kept. You will have to prepare it again from your game files.",
+  "shell.library.deleteBuildConfirm": "Delete the build of {game}? Its saves and the files you chose are kept: you can prepare it again right away.",
   "shell.library.buildDeleted": "The build of {game} was deleted. Prepare it again when you are ready.",
 } as const satisfies Record<string, string>;

@@ -134,7 +134,7 @@
   const required = $derived(installation?.inputs.filter((i) => !i.optional) ?? []);
 
   function chooseLabel(): string {
-    if (required.length === 0) return t("game.home.prepare");
+    if (required.length === 0 || (platform && library.filesChosen(game.id, platform))) return t("game.home.prepare");
     if (required.length > 1) return t("game.home.chooseFiles");
     return required[0].kinds.length === 1 && required[0].kinds[0] === "folder"
       ? t("game.home.chooseFolder")

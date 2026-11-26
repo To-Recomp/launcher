@@ -554,9 +554,9 @@ pub fn read_log(
     Ok(run::tail(&dir.join(file), max_lines))
 }
 
-/// Deletes what a preparation made for an instance (its files, logs and record), so the game can be
-/// prepared again from the player's files. The paths the manifest lists in `saves` are kept, and
-/// found again by the next preparation.
+/// Deletes what a preparation made for an instance (its files and logs), so the game can be prepared
+/// again. The paths the manifest lists in `saves` are kept, and found again by the next preparation; so
+/// are the files the player chose (in the record, which then only says that nothing is prepared).
 pub fn remove_build(env: &Env, game_id: &str, platform: &str) -> Result<(), String> {
     let id = store::instance_id(platform);
     let dir = env.library.instance_dir(game_id, &id)?;
@@ -565,17 +565,36 @@ pub fn remove_build(env: &Env, game_id: &str, platform: &str) -> Result<(), Stri
     }
     let manifest = read_manifest(&env.library.release_dir(game_id)?)?;
     let location = env.library.location(game_id, &id)?;
-    let keep: Vec<PathBuf> = manifest
+    let mut keep: Vec<PathBuf> = manifest
         .saves
         .iter()
         .filter_map(|save| location.resolve(save).ok())
         .filter(|path| path.starts_with(&dir))
         .collect();
     let fail = |e: std::io::Error| format!("Can't delete the build: {e}");
-    // The record goes first: whatever happens next, the instance no longer counts as prepared.
-    match fs::remove_file(dir.join("instance.json")) {
-        Err(e) if e.kind() != std::io::ErrorKind::NotFound => return Err(fail(e)),
-        _ => {}
+    let chosen = env
+        .library
+        .instance_record(game_id, &id, platform)
+        .map(|record| record.inputs)
+        .unwrap_or_default();
+    if chosen.is_empty() {
+        // The record goes first: whatever happens next, the instance no longer counts as prepared.
+        match fs::remove_file(dir.join("instance.json")) {
+            Err(e) if e.kind() != std::io::ErrorKind::NotFound => return Err(fail(e)),
+            _ => {}
+        }
+    } else {
+        env.library.save_instance_record(
+            game_id,
+            &id,
+            &store::InstanceRecord {
+                platform: platform.to_string(),
+                inputs: chosen,
+                prepared_release: None,
+                inputs_changed: false,
+            },
+        )?;
+        keep.push(dir.join("instance.json"));
     }
     prune(&dir, &keep).map_err(fail)?;
     let _ = fs::remove_dir(&dir); // only when nothing was kept

@@ -282,6 +282,29 @@ describe("LibraryStore actions", () => {
     expect(store.status?.tone).toBe("info");
   });
 
+  it("prepares from the files already chosen (in the settings, or kept after deleting the build) without asking", async () => {
+    const store = new LibraryStore();
+    const chosen = { disc1: "/discs/disc1.iso", disc2: "/discs/disc2.iso" };
+    api.librarySnapshot.mockResolvedValue([
+      installation(null, { instances: [{ id: "gamecube", platform: "GameCube", state: "notPrepared", inputs: chosen }] }),
+    ]);
+    await store.refresh();
+    expect(store.filesChosen("tos", platform)).toBe(true);
+    api.prepareInstance.mockResolvedValueOnce({ state: "ready" });
+    await store.prepare(game, platform);
+    expect(api.pickInput).not.toHaveBeenCalled();
+    expect(api.prepareInstance).toHaveBeenCalledWith("tos", "GameCube", {});
+  });
+
+  it("does not count a game as having its files while one required file has no path", async () => {
+    const store = new LibraryStore();
+    api.librarySnapshot.mockResolvedValue([
+      installation(null, { instances: [{ id: "gamecube", platform: "GameCube", state: "notPrepared", inputs: { disc1: "/discs/disc1.iso" } }] }),
+    ]);
+    await store.refresh();
+    expect(store.filesChosen("tos", platform)).toBe(false);
+  });
+
   it("rebuilds after an update without asking, and asks only if a file is missing", async () => {
     const store = new LibraryStore();
     api.librarySnapshot.mockResolvedValue([installation("needsRebuild")]);

@@ -117,6 +117,15 @@ describe("HomeView actions", () => {
     expect(screen.getByRole("button", { name: label })).toBeInTheDocument();
   });
 
+  it("offers to prepare, not to choose files, once the settings gave every required file", () => {
+    show(installed("notPrepared", {
+      inputs: [input("disc1"), input("disc2")],
+      instances: [{ id: "ps1", platform: "PS1", state: "notPrepared", inputs: { disc1: "/a.iso", disc2: "/b.iso" } }],
+    }));
+    expect(screen.getByRole("button", { name: "Prepare" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Choose files" })).not.toBeInTheDocument();
+  });
+
   it("plays a ready instance and can prepare it again", async () => {
     show(installed("ready"));
     api.startGame.mockResolvedValue(undefined);

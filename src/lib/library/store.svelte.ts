@@ -158,6 +158,14 @@ export class LibraryStore {
     return this.installationOf(gameId)?.instances.find((i) => i.id === id)?.state ?? "notPrepared";
   }
 
+  /** Every file the game requires has a path saved for this instance (chosen in its settings, or kept from a build). */
+  filesChosen(gameId: string, platform: Platform): boolean {
+    const installation = this.installationOf(gameId);
+    const id = instanceId(platform.platform);
+    const chosen = installation?.instances.find((i) => i.id === id)?.inputs ?? {};
+    return installation !== undefined && installation.inputs.every((input) => input.optional || chosen[input.id] !== undefined);
+  }
+
   /** The sidebar icon: download, settings once installed, play when an instance is ready. */
   gameState(gameId: string): GameState {
     const installation = this.installationOf(gameId);
@@ -243,9 +251,8 @@ export class LibraryStore {
   }
 
   /**
-   * Prepares an instance from the player's files. A rebuild first tries what the instance
-   * already has (the files it kept or was given before); only if a file is missing are they
-   * asked for.
+   * Prepares an instance from the player's files. It first tries the files the instance already has (kept
+   * from an earlier build, or chosen in the game's settings); only if one is missing are they asked for.
    */
   async prepare(game: Game, platform: Platform) {
     const installation = this.installationOf(game.id);
@@ -260,7 +267,7 @@ export class LibraryStore {
         () => t("shell.library.ready", { game: game.name }),
       );
 
-    if (this.instanceState(game.id, platform) === "needsRebuild") {
+    if (this.instanceState(game.id, platform) === "needsRebuild" || this.filesChosen(game.id, platform)) {
       await run({});
       if (!this.status?.text.startsWith("Missing file")) return;
     }
