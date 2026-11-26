@@ -22,7 +22,6 @@
   /** The icons the launcher uses, by name: each one is a Lucide icon (https://lucide.dev, ISC license). */
   const icons = {
     download: Download,
-    settings: SlidersHorizontal,
     trash: Trash,
     play: Play,
     "chevron-down": ChevronDown,

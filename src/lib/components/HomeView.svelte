@@ -287,7 +287,7 @@
                   onsettings();
                 }}
               >
-                <Icon name="settings" size={16} />{t("game.home.settings")}
+                <Icon name="gear" size={16} />{t("game.home.settings")}
               </button>
             </li>
             {#if hasBuild}
