@@ -1,0 +1,49 @@
+name: Release PR
+
+# Reads the conventional commits merged into main and keeps one "release" pull request up to date
+# with the next version (package.json, package-lock.json, tauri.conf.json, Cargo.toml, Cargo.lock,
+# the RPM spec) and CHANGELOG.md. Merging that pull request tags the merge commit (a draft release
+# holds the tag) and builds and publishes the release through release.yml. Nothing is tagged until
+# the maintainer merges it. See docs/releasing.md.
+#
+# The repository variable RELEASE_CHANNEL picks the kind of version: `rc` (0.2.0-rc.1, 0.2.0-rc.2…)
+# or, unset or `stable`, a final version (a pending rc graduates to 0.2.0). Run this workflow by hand
+# after changing it, to rewrite the open release pull request.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-please
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      release_created: ${{ steps.rp.outputs.release_created }}
+      tag_name: ${{ steps.rp.outputs.tag_name }}
+    steps:
+      - id: rp
+        uses: googleapis/release-please-action@v5
+        with:
+          config-file: ${{ vars.RELEASE_CHANNEL == 'rc' && 'release-please-config.rc.json' || 'release-please-config.json' }}
+          manifest-file: .release-please-manifest.json
+
+  release:
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    permissions:
+      contents: write
+    uses: ./.github/workflows/release.yml
+    with:
+      tag: ${{ needs.release-please.outputs.tag_name }}
+    secrets: inherit

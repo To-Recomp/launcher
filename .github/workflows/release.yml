@@ -4,8 +4,17 @@ name: Release
 # updater's latest.json. On a pull request touching the packaging: build only, publish nothing.
 # Tags with a `-` (v0.2.0-rc.1) are published as pre-releases; the updater only follows
 # `releases/latest`, which never points at a pre-release.
+#
+# release-please.yml calls this workflow (workflow_call) with the tag it just created: a tag made
+# with the default GITHUB_TOKEN doesn't start the `push` trigger. Pushing a tag by hand still works.
 
 on:
+  workflow_call:
+    inputs:
+      tag:
+        description: The tag to build and publish (v0.2.0)
+        type: string
+        required: true
   push:
     tags: ["v*"]
   pull_request:
@@ -20,7 +29,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-${{ inputs.tag || github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -37,16 +46,19 @@ jobs:
       TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
       UPDATER_PUBKEY: ${{ vars.TAURI_UPDATER_PUBKEY }}
       APPIMAGE_EXTRACT_AND_RUN: "1"
+      TAG: ${{ inputs.tag || github.ref_name }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag }}   # empty on a tag push or a pull request: the event's own ref
 
       - name: Check the tag matches the app version
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: github.event_name != 'pull_request'
         shell: bash
         run: |
           version=$(jq -r .version src-tauri/tauri.conf.json)
-          if [ "$GITHUB_REF_NAME" != "v$version" ]; then
-            echo "::error::Tag $GITHUB_REF_NAME doesn't match version $version in src-tauri/tauri.conf.json"
+          if [ "$TAG" != "v$version" ]; then
+            echo "::error::Tag $TAG doesn't match version $version in src-tauri/tauri.conf.json"
             exit 1
           fi
 
@@ -139,14 +151,17 @@ jobs:
           if-no-files-found: error
 
   publish:
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: ${{ inputs.tag }}   # empty on a tag push: the pushed tag
           fetch-depth: 0   # the whole history and the tags: the description lists every commit since the last release
       - uses: actions/setup-node@v7
         with:
@@ -159,8 +174,8 @@ jobs:
 
       - name: latest.json for the updater
         run: |
-          version="${GITHUB_REF_NAME#v}"
-          if node scripts/make-latest-json.mjs --version "$version" --tag "$GITHUB_REF_NAME" \
+          version="${TAG#v}"
+          if node scripts/make-latest-json.mjs --version "$version" --tag "$TAG" \
               --repo "$GITHUB_REPOSITORY" --dir release-assets > latest.json; then
             mv latest.json release-assets/latest.json
           else
@@ -179,12 +194,18 @@ jobs:
           cat SHA256SUMS
 
       - name: Release description
-        run: node scripts/release-notes.mjs --tag "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" > release-notes.md
+        run: node scripts/release-notes.mjs --tag "$TAG" --repo "$GITHUB_REPOSITORY" > release-notes.md
 
       - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          flags=(--title "To Recomp Launcher $GITHUB_REF_NAME" --notes-file release-notes.md)
-          case "$GITHUB_REF_NAME" in *-*) flags+=(--prerelease) ;; esac
-          gh release create "$GITHUB_REF_NAME" release-assets/* "${flags[@]}"
+          flags=(--title "To Recomp Launcher $TAG" --notes-file release-notes.md)
+          case "$TAG" in *-*) flags+=(--prerelease) ;; *) flags+=(--latest) ;; esac
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            # release-please already created the draft (and the tag): fill it, then publish it.
+            gh release upload "$TAG" release-assets/* --clobber
+            gh release edit "$TAG" "${flags[@]}" --draft=false
+          else
+            gh release create "$TAG" release-assets/* "${flags[@]}"
+          fi

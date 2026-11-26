@@ -1,0 +1,23 @@
+name: PR title
+
+# The title of a pull request becomes the squashed commit on main, and release-please derives the
+# next version from it: feat → minor, fix → patch, `!` or a BREAKING CHANGE footer → breaking.
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  title:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+      - env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: node scripts/check-pr-title.mjs "$TITLE"

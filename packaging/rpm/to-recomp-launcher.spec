@@ -4,9 +4,18 @@
 
 %global debug_package %{nil}
 
+# release-please keeps the line between the markers equal to the app version (package.json,
+# tauri.conf.json, Cargo.toml). A pre-release 1.2.3-rc.1 is packaged as Version 1.2.3, Release
+# 0.rc.1 (it sorts before 1.2.3-1).
+# x-release-please-start-version
+%global upstream_version 0.1.0
+# x-release-please-end
+%global rpm_version %(echo %{upstream_version} | cut -d- -f1)
+%global rpm_release %(echo %{upstream_version} | awk -F- 'NF > 1 { print "0." $2; next } { print 1 }')
+
 Name:           to-recomp-launcher
-Version:        0.1.0
-Release:        1%{?dist}
+Version:        %{rpm_version}
+Release:        %{rpm_release}%{?dist}
 Summary:        Install, prepare, configure and launch the Tales of recompilations
 License:        GPL-3.0-only
 URL:            https://github.com/To-Recomp/launcher
@@ -66,6 +75,10 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/org.torecomp.launcher
 %{_datadir}/icons/hicolor/*/apps/org.torecomp.launcher.png
 
 %changelog
+* Thu Nov 26 2026 To Recomp maintainers <noreply@users.noreply.github.com> - %{version}-%{release}
+- Built from the release tag. The changes of every version are in CHANGELOG.md and on the GitHub
+  release page; this entry follows the version so no per-release edit of the spec is needed.
+
 * Thu Nov 26 2026 To Recomp maintainers <noreply@users.noreply.github.com> - 0.1.0-1
 - First stable release (0.1.0): install, prepare, configure and launch the Tales of recompilations from
   one launcher. Games update from their releases, saves can be backed up, restored and cleaned, and the

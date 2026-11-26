@@ -103,13 +103,12 @@ mod tests {
         let spec = include_str!("../../packaging/rpm/to-recomp-launcher.spec");
         let spec_version = spec
             .lines()
-            .find_map(|line| line.strip_prefix("Version:"))
-            .expect("Version: in the RPM spec")
+            .find_map(|line| line.strip_prefix("%global upstream_version"))
+            .expect("%global upstream_version in the RPM spec")
             .trim();
-        // A pre-release 1.2.3-rc.1 is packaged as 1.2.3 with a `~rc.1` Release part, so the
-        // spec only has to carry the numeric part.
-        let numeric = env!("CARGO_PKG_VERSION").split('-').next().unwrap();
-        assert_eq!(spec_version, numeric);
+        // release-please updates this line; the spec derives Version and Release from it
+        // (1.2.3-rc.1 becomes Version 1.2.3, Release 0.rc.1).
+        assert_eq!(spec_version, env!("CARGO_PKG_VERSION"));
     }
 
     #[test]
