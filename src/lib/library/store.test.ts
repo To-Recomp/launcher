@@ -317,9 +317,24 @@ describe("LibraryStore actions", () => {
     api.prepareInstance.mockRejectedValueOnce("Missing file: Label disc2.").mockResolvedValueOnce({ state: "ready" });
     api.pickInput.mockImplementation(async (input) => `/discs/${input.id}.iso`);
     await store.prepare(game, platform);
-    expect(api.pickInput).toHaveBeenCalledTimes(2);
-    expect(api.prepareInstance).toHaveBeenLastCalledWith("tos", "GameCube", { disc1: "/discs/disc1.iso", disc2: "/discs/disc2.iso" });
+    expect(api.pickInput).toHaveBeenCalledTimes(1);
+    expect(api.pickInput).toHaveBeenCalledWith(expect.objectContaining({ id: "disc2" }));
+    expect(api.prepareInstance).toHaveBeenLastCalledWith("tos", "GameCube", { disc2: "/discs/disc2.iso" });
     expect(store.status?.tone).toBe("success");
+  });
+
+  it("asks only for the file with no path, and for one that has gone missing since", async () => {
+    const store = new LibraryStore();
+    api.librarySnapshot.mockResolvedValue([
+      installation(null, { instances: [{ id: "gamecube", platform: "GameCube", state: "notPrepared", inputs: { disc1: "/discs/gone.iso" } }] }),
+    ]);
+    await store.refresh();
+    api.pickInput.mockImplementation(async (input) => `/discs/${input.id}.iso`);
+    api.prepareInstance.mockRejectedValueOnce("Missing file: Label disc1.").mockResolvedValueOnce({ state: "ready" });
+    // disc2 has no path: asked first; disc1's path no longer exists: the preparation names it.
+    await store.prepare(game, platform);
+    expect(api.pickInput.mock.calls.map(([input]) => input.id)).toEqual(["disc2", "disc1"]);
+    expect(api.prepareInstance).toHaveBeenLastCalledWith("tos", "GameCube", { disc2: "/discs/disc2.iso", disc1: "/discs/disc1.iso" });
   });
 
   it("starts the game and reports a failure to start", async () => {

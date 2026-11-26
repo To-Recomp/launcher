@@ -11,6 +11,7 @@ import {
   installJob,
   instanceId,
   prepareJob,
+  type InputView,
   type InstallationView,
   type InstanceState,
   type ProgressEvent,
@@ -251,8 +252,9 @@ export class LibraryStore {
   }
 
   /**
-   * Prepares an instance from the player's files. It first tries the files the instance already has (kept
-   * from an earlier build, or chosen in the game's settings); only if one is missing are they asked for.
+   * Prepares an instance from the player's files. It uses the files the instance already has (kept from an
+   * earlier build, or chosen in the game's settings) and asks only for the ones it hasn't: those with no path
+   * saved, and the ones the preparation then finds gone. A rebuild first tries without asking for anything.
    */
   async prepare(game: Game, platform: Platform) {
     const installation = this.installationOf(game.id);
@@ -266,21 +268,29 @@ export class LibraryStore {
         () => api.prepareInstance(game.id, platform.platform, inputs),
         () => t("shell.library.ready", { game: game.name }),
       );
-
-    if (this.instanceState(game.id, platform) === "needsRebuild" || this.filesChosen(game.id, platform)) {
-      await run({});
-      if (!this.status?.text.startsWith("Missing file")) return;
-    }
-    const inputs: Record<string, string> = {};
-    for (const input of installation.inputs.filter((i) => !i.optional)) {
+    const ask = async (input: InputView, inputs: Record<string, string>) => {
       const picked = await api.pickInput(input);
-      if (!picked) {
-        this.status = { tone: "info", text: t("shell.library.nothingChanged") };
-        return;
+      if (picked) inputs[input.id] = picked;
+      else this.status = { tone: "info", text: t("shell.library.nothingChanged") };
+      return picked !== null;
+    };
+
+    const id = instanceId(platform.platform);
+    const saved = installation.instances.find((i) => i.id === id)?.inputs ?? {};
+    const inputs: Record<string, string> = {};
+    if (this.instanceState(game.id, platform) !== "needsRebuild") {
+      for (const input of installation.inputs.filter((i) => !i.optional && saved[i.id] === undefined)) {
+        if (!(await ask(input, inputs))) return;
       }
-      inputs[input.id] = picked;
     }
-    await run(inputs);
+    // A file that is gone is only found out by the preparation, which names it: ask for that one and go on.
+    for (;;) {
+      await run(inputs);
+      const named = this.status?.text.match(/^Missing file: (.*)\.$/)?.[1];
+      const input = installation.inputs.find((i) => i.label === named);
+      if (!input || inputs[input.id] !== undefined) return;
+      if (!(await ask(input, inputs))) return;
+    }
   }
 
   /**
