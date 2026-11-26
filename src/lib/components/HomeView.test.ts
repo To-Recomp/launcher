@@ -326,6 +326,20 @@ describe("HomeView availability", () => {
   });
 });
 
+describe("HomeView platform selector state", () => {
+  it.each([
+    ["ready", "Ready"],
+    ["needsRebuild", "Needs a rebuild"],
+    ["notPrepared", "Not prepared"],
+    [null, "Not prepared"],
+  ] as const)("says where the console's instance stands once the game is installed: %s", async (state, text) => {
+    show(installed(state));
+    await fireEvent.click(screen.getByRole("combobox", { name: "Platform" }));
+    expect(screen.getByRole("option", { name: /PS1/ })).toHaveTextContent(text);
+    expect(screen.getByRole("option", { name: /PS1/ })).not.toHaveAttribute("aria-disabled");
+  });
+});
+
 describe("HomeView diagnostic file", () => {
   it("offers Create diagnostic file after a failure of this game only, when nothing is running", async () => {
     const library = show(installed("ready"));
