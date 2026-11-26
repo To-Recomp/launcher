@@ -31,16 +31,53 @@ ZIP, tarball and RPM installs are updated by downloading or with `dnf`.
 A pull request that touches the packaging runs the same builds without publishing, and the
 Linux/Windows artifacts can be downloaded from the run.
 
-## Cutting a release
+## Version numbers and cutting a release
 
-1. Set the version in `package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml` (then
-   `cargo update -p to-recomp-launcher` for `Cargo.lock`) and `Version:` of
-   `packaging/rpm/to-recomp-launcher.spec` (numeric part only, plus a `%changelog` entry).
-   A Rust test fails if they disagree.
-2. Merge, then tag the merge commit: `git tag vX.Y.Z && git push origin vX.Y.Z`. The workflow
-   fails if the tag differs from the version in `tauri.conf.json`.
-3. Check the release page. A pre-release never reaches users of the updater, which follows
-   `releases/latest`.
+Nobody edits a version by hand. [release-please](https://github.com/googleapis/release-please)
+(`.github/workflows/release-please.yml`, configured by `release-please-config.json`,
+`release-please-config.rc.json` and `.release-please-manifest.json`) reads the conventional commits
+merged into `main` (the squashed pull request titles, see `CONTRIBUTING.md`) and keeps one pull
+request titled `chore(main): release X.Y.Z` open:
+
+| Commits since the last release | Next version (from 0.1.0) |
+| --- | --- |
+| `fix:`, `perf:` | 0.1.1 |
+| `feat:` | 0.2.0 |
+| `feat!:` / `BREAKING CHANGE:` (below 1.0, `bump-minor-pre-major`) | 0.2.0 |
+| `docs:`, `chore:`, `ci:`, `test:`… only | no release PR |
+
+The pull request rewrites the version in `package.json`, `package-lock.json`,
+`src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, `src-tauri/Cargo.lock` and the
+`%global upstream_version` line of the RPM spec (between its `x-release-please` markers; the spec
+derives `Version` and `Release` from it: `0.2.0-rc.1` is packaged as Version `0.2.0`, Release
+`0.rc.1`), and adds the entries to `CHANGELOG.md`. The `%changelog` of the spec follows the
+version by itself.
+
+**Releasing**: review that pull request, merge it (squash; add a `Signed-off-by` line to the commit
+message, the bot can't). Release-please then tags the merge commit `vX.Y.Z` (a draft release holds
+the tag) and calls `release.yml`, which builds, then fills and publishes the release. The workflow
+fails if the tag differs from the version in `tauri.conf.json`. Check the release page: a
+pre-release never reaches users of the updater, which follows `releases/latest`. Until the pull
+request is merged, no tag exists and nothing is published.
+
+**Release candidates**: set the repository variable `RELEASE_CHANNEL` to `rc`
+(`gh variable set RELEASE_CHANNEL --body rc --repo To-Recomp/launcher`) and run the *Release PR*
+workflow: the pull request now proposes `0.2.0-rc.1`; each further merge gives `rc.2`, `rc.3`… The
+tag is published as a pre-release. To graduate, remove the variable (or set it to `stable`) and
+run the workflow again: the pending pull request becomes `0.2.0`, and the notes of a stable release
+cover its candidates. To force an exact version (a first `1.0.0`), put `Release-As: 1.0.0` in the
+body of a commit.
+
+**Limits**: the pull request is opened with the default `GITHUB_TOKEN`, so GitHub doesn't run `ci`
+or `dco` on it (the `dco` check wouldn't pass on the bot's commits anyway); the checks already ran
+on every change merged before it. The `rc` and `stable` configs differ only by `prerelease`
+(`scripts/release-please-config.test.ts` checks it). The Cargo.lock path uses `@.name.value`
+because release-please's TOML values are wrapped objects (checked against release-please 17.6.0,
+the version bundled in `release-please-action` v5).
+
+Pushing a `vX.Y.Z` tag by hand still builds and publishes a release (the flow before
+release-please), but then versions are yours to keep in step: a Rust test fails if the files
+disagree.
 
 ## Updater signing keys
 
