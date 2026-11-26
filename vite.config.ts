@@ -1,9 +1,13 @@
 import { defineConfig } from "vitest/config";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
+import { version } from "./package.json";
+
+// The version the screens show is package.json's: no second copy to keep in step at each release.
 
 // Tauri expects a fixed dev port and must not clear the terminal.
 export default defineConfig(({ mode }) => ({
   plugins: [svelte()],
+  define: { __APP_VERSION__: JSON.stringify(version) },
   clearScreen: false,
   server: { port: 1420, strictPort: true },
   resolve: mode === "test" ? { conditions: ["browser"] } : undefined,

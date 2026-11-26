@@ -2,7 +2,8 @@
 
 import { t } from "./i18n/index.svelte";
 
-export const LAUNCHER_VERSION = "0.1.0";
+/** The launcher's version, as package.json says (release candidates keep their suffix). */
+export const LAUNCHER_VERSION = __APP_VERSION__;
 
 /** Where the launcher's own bug reports go. */
 export const LAUNCHER_REPOSITORY = "To-Recomp/launcher";
