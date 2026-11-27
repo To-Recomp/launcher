@@ -21,8 +21,8 @@ use tauri::{Emitter, Manager};
 
 use crate::settings::manifest::{Input, Manifest};
 use crate::settings::Location;
-pub use release::CANCELLED;
-use run::{Context, Progress, RunError};
+pub use release::{CANCELLED, NEEDS_CONFIRMATION};
+use run::{Context, Notice, Progress, RunError};
 use store::{InstallationRecord, InstanceState, Library};
 
 const DEFAULT_API: &str = "https://api.github.com";
@@ -321,11 +321,18 @@ fn validate_inputs(manifest: &Manifest, picked: &BTreeMap<String, PathBuf>) -> R
 
 /// Runs the release's prepare step for one instance, once the player gave their files; with
 /// `keeps_copy` a rebuild after an update needs none.
+///
+/// When the step finds the discs are not the tested ones (a `warn`, or an unsupported release,
+/// told right after its verification) it is stopped there and this answers `NEEDS_CONFIRMATION`,
+/// with what it said kept in the instance. The player then decides: running again with
+/// `acknowledged` goes on (the step's `--resume` skips what is done). The same discs are not
+/// asked about twice.
 pub fn prepare(
     env: &Env,
     game_id: &str,
     platform: &str,
     picked: BTreeMap<String, PathBuf>,
+    acknowledged: bool,
     cancel: &AtomicBool,
     progress: &mut dyn FnMut(Progress),
 ) -> Result<InstanceView, String> {
@@ -352,7 +359,21 @@ pub fn prepare(
         .map(|(k, v)| (k.clone(), PathBuf::from(v)))
         .filter(|(_, p)| p.exists())
         .collect();
+    let new_files = !picked.is_empty();
     inputs.extend(picked);
+    let earlier_notes = std::mem::take(&mut instance.prepare_notes);
+    // The step doesn't say again what a verification it resumes found: with the same files (going on
+    // after the player's answer, asking again after a refusal, a rebuild) it starts from what it said.
+    // Choosing another file clears it (`set_input`), and new files in this very call start afresh.
+    let mut notes = if acknowledged || !new_files {
+        earlier_notes.clone()
+    } else {
+        store::PrepareNotes::default()
+    };
+    // What the step had said when it told the release: what the player is asked about.
+    let mut told: Option<store::PrepareNotes> = None;
+    let mut held = false;
+    let hold = AtomicBool::new(false);
 
     fs::create_dir_all(&location.data)
         .map_err(|e| format!("Can't create {}: {e}", location.data.display()))?;
@@ -388,12 +409,41 @@ pub fn prepare(
                 .unwrap_or_else(|| "Preparing the game".into()),
             ..Progress::default()
         });
-        run::run_prepare(&launch, &release_dir, &tmp, &log, cancel, progress).map_err(
-            |e| match e {
-                RunError::Cancelled => CANCELLED.to_string(),
-                RunError::Failed(message) => message,
-            },
-        )?;
+        let ran = run::run_prepare(&launch, &release_dir, &tmp, &log, cancel, &hold, &mut |p| {
+            if let Some(notice) = &p.notice {
+                notes.record(notice);
+                if matches!(notice, Notice::Release(_)) && told.is_none() {
+                    told = Some(notes.clone());
+                    let agreed = acknowledged || instance.accepted_notes.as_ref() == Some(&notes);
+                    if notes.needs_attention() && !agreed {
+                        held = true;
+                        hold.store(true, Ordering::Relaxed);
+                    }
+                }
+            }
+            progress(p);
+        });
+        let held = held && matches!(ran, Err(RunError::Cancelled));
+        // What the step said about the files is worth keeping when it fails too, but a failure
+        // that said nothing doesn't create an instance. A step stopped to ask the player keeps
+        // the files too, so that going on doesn't ask for them again.
+        if ran.is_err() && (held || notes != earlier_notes) {
+            instance.prepare_notes = notes.clone();
+            if held {
+                instance.inputs = inputs
+                    .iter()
+                    .map(|(k, v)| (k.clone(), v.to_string_lossy().into_owned()))
+                    .collect();
+            }
+            library.save_instance_record(game_id, &id, &instance)?;
+        }
+        if held {
+            return Err(NEEDS_CONFIRMATION.to_string());
+        }
+        ran.map_err(|e| match e {
+            RunError::Cancelled => CANCELLED.to_string(),
+            RunError::Failed(message) => message,
+        })?;
     } else if let Some(missing) = manifest
         .inputs
         .iter()
@@ -411,6 +461,8 @@ pub fn prepare(
         .collect();
     instance.prepared_release = Some(record.tag.clone());
     instance.inputs_changed = false;
+    instance.prepare_notes = notes;
+    instance.accepted_notes = told.filter(store::PrepareNotes::needs_attention);
     library.save_instance_record(game_id, &id, &instance)?;
 
     let state = store::instance_state(&manifest, &record, &instance, &location);
@@ -464,6 +516,9 @@ pub fn set_input(
         if instance.prepared_release.is_some() {
             instance.inputs_changed = true;
         }
+        // What the step said was about the other file.
+        instance.prepare_notes = store::PrepareNotes::default();
+        instance.accepted_notes = None;
         library.save_instance_record(game_id, &id, &instance)?;
     }
     Ok(InstanceView {
@@ -592,6 +647,8 @@ pub fn remove_build(env: &Env, game_id: &str, platform: &str) -> Result<(), Stri
                 inputs: chosen,
                 prepared_release: None,
                 inputs_changed: false,
+                prepare_notes: store::PrepareNotes::default(),
+                accepted_notes: None,
             },
         )?;
         keep.push(dir.join("instance.json"));
@@ -817,6 +874,7 @@ pub fn prepare_instance(
     game_id: String,
     platform: String,
     inputs: BTreeMap<String, String>,
+    acknowledged: bool,
 ) -> Result<InstanceView, String> {
     let env = app_env(&app)?;
     let key = format!("prepare:{game_id}/{}", store::instance_id(&platform));
@@ -830,6 +888,7 @@ pub fn prepare_instance(
         &game_id,
         &platform,
         picked,
+        acknowledged,
         &guard.cancel,
         &mut reporter(&app, &key),
     )

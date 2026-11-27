@@ -21,7 +21,7 @@ const diagnostics = vi.hoisted(() => ({ buildReport: vi.fn(), pendingPanic: vi.f
 vi.mock("../diagnostics/api", () => diagnostics);
 
 import { LibraryStore } from "./store.svelte";
-import { CANCELLED, instanceId, type InstallationView, type InstanceState, type StageEvent } from "./types";
+import { CANCELLED, NEEDS_CONFIRMATION, instanceId, type InstallationView, type InstanceState, type ProgressEvent, type StageEvent } from "./types";
 
 const platform: Platform = { platform: "GameCube", regions: ["France (PAL)", "Japan"], state: "playable", maturity: "beta", releaseYear: null, year: 2003 };
 const game: Game = { id: "tos", icon: "S", name: "Tales of Symphonia", repository: "To-Recomp/tos-recomp", year: 2003, state: "not-installed", platforms: [platform] };
@@ -36,7 +36,7 @@ function installation(state: InstanceState | null, extra: Partial<InstallationVi
   };
 }
 
-let progressListener: (e: { job: string; fraction: number | null; message: string; stage?: StageEvent | null }) => void;
+let progressListener: (e: ProgressEvent) => void;
 let exitListener: (e: { job: string; code: number | null }) => Promise<void> | void;
 
 beforeEach(() => {
@@ -162,6 +162,32 @@ describe("LibraryStore state", () => {
     ]);
   });
 
+  it("asks the player when the step stopped on discs that are not the tested ones, and goes on or not as told", async () => {
+    const store = new LibraryStore();
+    api.librarySnapshot.mockResolvedValue([installation("needsRebuild")]);
+    await store.start();
+
+    api.prepareInstance.mockRejectedValueOnce(NEEDS_CONFIRMATION);
+    await store.prepare(game, platform);
+    expect(api.prepareInstance).toHaveBeenLastCalledWith("tos", "GameCube", {}, false);
+    expect(store.confirmation).toEqual({ gameId: "tos", platform });
+    expect(store.status).toBeNull(); // a question, not a failure
+    expect(store.failure).toBeNull();
+
+    api.prepareInstance.mockResolvedValueOnce({ id: "gamecube", platform: "GameCube", state: "ready", inputs: {} });
+    await store.proceed(game, platform);
+    expect(api.prepareInstance).toHaveBeenLastCalledWith("tos", "GameCube", {}, true);
+    expect(store.confirmation).toBeNull();
+    expect(store.status?.tone).toBe("success");
+
+    api.prepareInstance.mockRejectedValueOnce(NEEDS_CONFIRMATION);
+    await store.prepare(game, platform);
+    store.decline();
+    expect(store.confirmation).toBeNull();
+    expect(store.status).toEqual({ tone: "info", text: "Cancelled." });
+    expect(api.prepareInstance).toHaveBeenCalledTimes(3);
+  });
+
   it("keeps a chosen file without building anything, and does nothing for the file already in use", async () => {
     const store = new LibraryStore();
     api.librarySnapshot.mockResolvedValue([installation("ready", { instances: [{ id: "gamecube", platform: "GameCube", state: "ready", inputs: { disc1: "/old/disc1.iso" } }] })]);
@@ -268,7 +294,7 @@ describe("LibraryStore actions", () => {
     api.prepareInstance.mockResolvedValue({ id: "x", platform: "GameCube", state: "ready" });
     await store.prepare(game, platform);
     expect(api.pickInput).toHaveBeenCalledTimes(2);
-    expect(api.prepareInstance).toHaveBeenCalledWith("tos", "GameCube", { disc1: "/discs/disc1.iso", disc2: "/discs/disc2.iso" });
+    expect(api.prepareInstance).toHaveBeenCalledWith("tos", "GameCube", { disc1: "/discs/disc1.iso", disc2: "/discs/disc2.iso" }, false);
     expect(store.status).toEqual({ tone: "success", text: "Tales of Symphonia is ready to play." });
   });
 
@@ -293,7 +319,7 @@ describe("LibraryStore actions", () => {
     api.prepareInstance.mockResolvedValueOnce({ state: "ready" });
     await store.prepare(game, platform);
     expect(api.pickInput).not.toHaveBeenCalled();
-    expect(api.prepareInstance).toHaveBeenCalledWith("tos", "GameCube", {});
+    expect(api.prepareInstance).toHaveBeenCalledWith("tos", "GameCube", {}, false);
   });
 
   it("does not count a game as having its files while one required file has no path", async () => {
@@ -311,7 +337,7 @@ describe("LibraryStore actions", () => {
     await store.refresh();
     api.prepareInstance.mockResolvedValueOnce({ state: "ready" });
     await store.prepare(game, platform);
-    expect(api.prepareInstance).toHaveBeenCalledWith("tos", "GameCube", {});
+    expect(api.prepareInstance).toHaveBeenCalledWith("tos", "GameCube", {}, false);
     expect(api.pickInput).not.toHaveBeenCalled();
 
     api.prepareInstance.mockRejectedValueOnce("Missing file: Label disc2.").mockResolvedValueOnce({ state: "ready" });
@@ -319,7 +345,7 @@ describe("LibraryStore actions", () => {
     await store.prepare(game, platform);
     expect(api.pickInput).toHaveBeenCalledTimes(1);
     expect(api.pickInput).toHaveBeenCalledWith(expect.objectContaining({ id: "disc2" }));
-    expect(api.prepareInstance).toHaveBeenLastCalledWith("tos", "GameCube", { disc2: "/discs/disc2.iso" });
+    expect(api.prepareInstance).toHaveBeenLastCalledWith("tos", "GameCube", { disc2: "/discs/disc2.iso" }, false);
     expect(store.status?.tone).toBe("success");
   });
 
@@ -334,7 +360,7 @@ describe("LibraryStore actions", () => {
     // disc2 has no path: asked first; disc1's path no longer exists: the preparation names it.
     await store.prepare(game, platform);
     expect(api.pickInput.mock.calls.map(([input]) => input.id)).toEqual(["disc2", "disc1"]);
-    expect(api.prepareInstance).toHaveBeenLastCalledWith("tos", "GameCube", { disc2: "/discs/disc2.iso", disc1: "/discs/disc1.iso" });
+    expect(api.prepareInstance).toHaveBeenLastCalledWith("tos", "GameCube", { disc2: "/discs/disc2.iso", disc1: "/discs/disc1.iso" }, false);
   });
 
   it("starts the game and reports a failure to start", async () => {

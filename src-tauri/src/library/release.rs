@@ -13,6 +13,9 @@ use sha2::{Digest, Sha256};
 use super::github_cache::{Cache, Reply};
 
 pub const CANCELLED: &str = "Cancelled.";
+/// What `prepare` answers when the discs are not the tested ones: the step was stopped after its
+/// verification, and the player decides whether to go on (`acknowledged`).
+pub const NEEDS_CONFIRMATION: &str = "Needs confirmation.";
 
 #[derive(Debug, Deserialize)]
 struct ApiRelease {

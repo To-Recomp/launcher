@@ -66,6 +66,10 @@ export interface TaskView {
 /** What the backend rejects with when the player cancels. */
 export const CANCELLED = "Cancelled.";
 
+/** What a preparation rejects with when it stopped after its verification to ask the player to go on (the discs are not the tested ones). */
+export const NEEDS_CONFIRMATION = "Needs confirmation.";
+
+
 /** `"GameCube"` -> `gamecube`, `"Xbox Series X|S"` -> `xbox-series-x-s`; mirrors the backend. */
 export function instanceId(platform: string): string {
   const out = platform

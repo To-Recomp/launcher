@@ -237,7 +237,30 @@ fn discs(dir: &Path, one: &str, two: &str) -> BTreeMap<String, PathBuf> {
 }
 
 fn do_prepare(s: &Setup, picked: BTreeMap<String, PathBuf>) -> Result<InstanceView, String> {
-    prepare(&s.env, GAME, "GameCube", picked, &NO_CANCEL, &mut |_| {})
+    prepare(
+        &s.env,
+        GAME,
+        "GameCube",
+        picked,
+        false,
+        &NO_CANCEL,
+        &mut |_| {},
+    )
+}
+
+fn do_prepare_acknowledged(
+    s: &Setup,
+    picked: BTreeMap<String, PathBuf>,
+) -> Result<InstanceView, String> {
+    prepare(
+        &s.env,
+        GAME,
+        "GameCube",
+        picked,
+        true,
+        &NO_CANCEL,
+        &mut |_| {},
+    )
 }
 
 fn installed_and_published(s: &Setup) {
@@ -516,6 +539,7 @@ fn prepares_once_then_the_game_is_ready_without_the_discs() {
         GAME,
         "GameCube",
         discs(inputs_dir.path(), "one", "two"),
+        false,
         &NO_CANCEL,
         &mut |p| events.push(p),
     )
@@ -616,6 +640,98 @@ fn a_failed_preparation_reports_why_and_leaves_the_instance_unprepared() {
 }
 
 #[test]
+fn discs_that_are_not_the_tested_ones_stop_the_step_after_its_verification_until_the_player_agrees()
+{
+    let s = setup();
+    installed_and_published(&s);
+    let dir = TempDir::new().unwrap();
+    let picked = || discs(dir.path(), "NOTES one", "two");
+    let expected = store::PrepareNotes {
+        release: Some(run::ReleaseFound {
+            id: "gqsf".into(),
+            status: "alpha".into(),
+            title: "Tales of Symphonia (France)".into(),
+        }),
+        warnings: vec!["first".into(), "second".into()],
+    };
+
+    // The step is stopped right after the release line: the player is asked, nothing is built.
+    let err = do_prepare(&s, picked()).unwrap_err();
+    assert_eq!(err, NEEDS_CONFIRMATION);
+    assert!(!instance_location(&s).data.join("built.bin").exists());
+    let kept = s.env.library.instances(GAME).unwrap();
+    assert_eq!(kept.len(), 1);
+    assert_eq!(kept[0].1.prepared_release, None);
+    assert_eq!(kept[0].1.prepare_notes.release, expected.release);
+    assert_eq!(kept[0].1.prepare_notes.warnings, ["first", "second"]);
+    // The files stay chosen: going on doesn't ask for them again.
+    assert_eq!(kept[0].1.inputs.len(), 2);
+
+    // Asking again after a refusal: the verification is resumed and says nothing again, the
+    // warnings are still there.
+    let err = do_prepare(&s, BTreeMap::new()).unwrap_err();
+    assert_eq!(err, NEEDS_CONFIRMATION);
+    let kept = s.env.library.instances(GAME).unwrap();
+    assert_eq!(kept[0].1.prepare_notes, expected);
+
+    // Agreeing runs the step again from the kept files and goes on to the end.
+    let view = do_prepare_acknowledged(&s, BTreeMap::new()).unwrap();
+    assert_eq!(view.state, InstanceState::Ready);
+    let record = || s.env.library.instances(GAME).unwrap().remove(0).1;
+    assert_eq!(record().prepare_notes, expected);
+
+    // The same discs are not asked about again, a rebuild for instance, and what was said is kept.
+    let again = do_prepare(&s, BTreeMap::new()).unwrap();
+    assert_eq!(again.state, InstanceState::Ready);
+    assert_eq!(record().prepare_notes, expected);
+
+    // Choosing another file forgets what was said about the old one, agreement included.
+    let other = file(dir.path(), "other.iso", "three");
+    set_input(&s.env, GAME, "GameCube", "disc2", other).unwrap();
+    assert_eq!(record().prepare_notes, store::PrepareNotes::default());
+    assert_eq!(record().accepted_notes, None);
+
+    // Other discs that say nothing clear the notes and the agreement.
+    do_prepare(&s, discs(dir.path(), "one", "two")).unwrap();
+    assert_eq!(record().prepare_notes, store::PrepareNotes::default());
+    assert_eq!(record().accepted_notes, None);
+}
+
+#[test]
+fn a_release_that_is_only_young_or_unsupported_without_warning_is_judged_by_its_status() {
+    let release = |status: &str| store::PrepareNotes {
+        release: Some(run::ReleaseFound {
+            id: "x".into(),
+            status: status.into(),
+            title: "X".into(),
+        }),
+        warnings: vec![],
+    };
+    for status in ["stable", "beta", "alpha"] {
+        assert!(!release(status).needs_attention(), "{status}");
+    }
+    assert!(release("unsupported").needs_attention());
+    let warned = store::PrepareNotes {
+        warnings: vec!["Disc 2 is not a verified dump".into()],
+        ..release("stable")
+    };
+    assert!(warned.needs_attention());
+    assert!(!store::PrepareNotes::default().needs_attention());
+}
+
+#[test]
+fn the_warnings_of_a_failed_preparation_are_kept() {
+    let s = setup();
+    installed_and_published(&s);
+    let dir = TempDir::new().unwrap();
+    do_prepare_acknowledged(&s, discs(dir.path(), "FAIL NOTES", "two")).unwrap_err();
+    let instances = s.env.library.instances(GAME).unwrap();
+    assert_eq!(instances.len(), 1);
+    assert_eq!(instances[0].1.prepared_release, None);
+    assert_eq!(instances[0].1.prepare_notes.warnings, ["first", "second"]);
+}
+
+#[test]
 fn a_preparation_can_be_cancelled_and_stops_the_program() {
     let s = setup();
     installed_and_published(&s);
@@ -624,7 +740,7 @@ fn a_preparation_can_be_cancelled_and_stops_the_program() {
     let cancel = AtomicBool::new(false);
 
     let started = Instant::now();
-    let result = prepare(&s.env, GAME, "GameCube", picked, &cancel, &mut |p| {
+    let result = prepare(&s.env, GAME, "GameCube", picked, false, &cancel, &mut |p| {
         if p.message == "Working" {
             cancel.store(true, Ordering::Relaxed);
         }
@@ -672,6 +788,7 @@ fn a_release_that_runs_as_it_is_only_records_the_players_files() {
         GAME,
         "PS1",
         BTreeMap::from([("game".into(), iso.clone())]),
+        false,
         &NO_CANCEL,
         &mut |_| {},
     )
@@ -1465,12 +1582,20 @@ fn real_tos_release_prepares_from_real_discs() {
         ("disc2".to_string(), var("TOS_DISC2")),
     ]);
     let mut last = String::new();
-    let view = prepare(&s.env, GAME, "GameCube", picked, &NO_CANCEL, &mut |p| {
-        if p.message != last {
-            println!("{:?} {}", p.fraction, p.message);
-            last = p.message;
-        }
-    })
+    let view = prepare(
+        &s.env,
+        GAME,
+        "GameCube",
+        picked,
+        false,
+        &NO_CANCEL,
+        &mut |p| {
+            if p.message != last {
+                println!("{:?} {}", p.fraction, p.message);
+                last = p.message;
+            }
+        },
+    )
     .unwrap();
     assert_eq!(view.state, InstanceState::Ready);
 }

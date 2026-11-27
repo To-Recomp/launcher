@@ -21,6 +21,19 @@
   and `stage-end <id> ok|skipped|failed|cancelled <seconds>`. The Home page then lists each task
   with its position, its own percentage and bar while it runs, and its duration once done, under
   the overall bar (which still follows `progress`). `tos-prepare` prints these lines.
+  A step can also say what it found about the player's files (the same extension):
+  `warn <text>` (about the discs or the build) and, right after its verification,
+  `release <id> <status> <title>` (`status` is `stable`, `beta`, `alpha` or `unsupported`).
+  When the discs are **not the tested ones**, that is when the step warned before telling the
+  release, or the release is `unsupported`, the launcher stops the step there (an `alpha` release
+  alone is no reason) and asks, in place of the steps and in one short alert: **Continue anyway**
+  runs the step again (its `--resume` skips the verification already done) and goes on to the end,
+  **Cancel** builds nothing more. Nothing is shown for the tested discs, and nothing is repeated
+  while the build goes on; the warnings are in `prepare.log`. The same discs are not asked about
+  twice (a rebuild after an update, for instance); other discs are. The launcher keeps what the
+  step said in `instance.json` (`prepare_notes`, since a resumed verification doesn't say it
+  again; `accepted_notes` is what the player agreed to); choosing another file forgets both.
+  `tos-prepare` prints these lines.
 - **Update detection:** each installed game asks for the release an install would fetch now
   (`latest_release_tag`, read from the same cached listing as the home page's notes) when the
   library changes or the game is opened, but at most every 15 minutes (a minute after a failure).

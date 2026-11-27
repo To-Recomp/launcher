@@ -97,6 +97,40 @@ describe("latest releases", () => {
   });
 });
 
+describe("discs that are not the tested ones", () => {
+  it("asks before going on, in place of the steps, and goes on only when told to", async () => {
+    const library = show(installed("needsRebuild"));
+    library.confirmation = { gameId: "toe", platform };
+    await waitFor(() => expect(screen.getByRole("alert")).toBeInTheDocument());
+    expect(screen.getByText("These discs are not the ones we tested")).toBeInTheDocument();
+    expect(screen.queryByText("Action status")).not.toBeInTheDocument();
+
+    api.prepareInstance.mockResolvedValue({ id: "ps1", platform: "PS1", state: "ready", inputs: {} });
+    api.librarySnapshot.mockResolvedValue([installed("ready")]);
+    await fireEvent.click(screen.getByRole("button", { name: "Continue anyway" }));
+    expect(api.prepareInstance).toHaveBeenCalledWith("toe", "PS1", {}, true);
+    await waitFor(() => expect(screen.queryByRole("alert")).not.toBeInTheDocument());
+    expect(screen.getByText("Action status")).toBeInTheDocument(); // nothing is repeated under the steps
+  });
+
+  it("builds nothing more when the player declines", async () => {
+    const library = show(installed("needsRebuild"));
+    library.confirmation = { gameId: "toe", platform };
+    await waitFor(() => expect(screen.getByRole("alert")).toBeInTheDocument());
+    await fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(api.prepareInstance).not.toHaveBeenCalled();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByText("Action status")).toBeInTheDocument();
+  });
+
+  it("is about one game only", async () => {
+    const library = show(installed("needsRebuild"));
+    library.confirmation = { gameId: "other", platform };
+    await Promise.resolve();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+});
+
 describe("HomeView actions", () => {
   it("offers Install for a game that isn't installed", async () => {
     show(null);
