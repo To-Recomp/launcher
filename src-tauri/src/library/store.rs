@@ -17,6 +17,7 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
+use super::run::{Notice, ReleaseFound};
 use crate::fs_util::write_atomically;
 use crate::settings::manifest::Manifest;
 use crate::settings::Instance;
@@ -41,6 +42,43 @@ pub struct InstanceRecord {
     /// and is to be made again (from these files, not from what the last build kept).
     #[serde(default)]
     pub inputs_changed: bool,
+    /// What the last preparation said about the player's files; replaced by the next one.
+    #[serde(default)]
+    pub prepare_notes: PrepareNotes,
+    /// What the player agreed to go on with (the discs are not the tested ones): the same again
+    /// isn't asked a second time, a rebuild for instance.
+    #[serde(default)]
+    pub accepted_notes: Option<PrepareNotes>,
+}
+
+/// The `release` and `warn` lines of a preparation, in the order printed.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+pub struct PrepareNotes {
+    pub release: Option<ReleaseFound>,
+    pub warnings: Vec<String>,
+}
+
+impl PrepareNotes {
+    /// The discs don't match the ones the release was tested with: the step warned, or found
+    /// them to be no known dump. A release that is only young (alpha) is not a reason.
+    pub fn needs_attention(&self) -> bool {
+        !self.warnings.is_empty()
+            || self
+                .release
+                .as_ref()
+                .is_some_and(|found| found.status == "unsupported")
+    }
+
+    pub fn record(&mut self, notice: &Notice) {
+        match notice {
+            Notice::Release(found) => self.release = Some(found.clone()),
+            Notice::Warn { text } => {
+                if !self.warnings.contains(text) {
+                    self.warnings.push(text.clone());
+                }
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]

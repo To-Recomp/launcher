@@ -4,7 +4,8 @@
 //!   --prepare --data D --disc=FILE...   builds D/built.bin from the discs and keeps their
 //!                                       content in D/extracted.bin; with no disc it rebuilds
 //!                                       from D/extracted.bin. A disc containing FAIL makes it
-//!                                       fail, HANG makes it never end.
+//!                                       fail, HANG makes it never end; NOTES makes it
+//!                                       print two `warn` lines and a `release` line, then wait.
 //!   --play --data D [--exit N]          records its arguments and environment in D/played.txt
 
 use std::fs;
@@ -47,6 +48,18 @@ fn main() {
                 .collect::<Vec<_>>()
                 .join("+")
         };
+        if content.contains("NOTES") {
+            // As `tos-prepare` does: the warnings of the verification (not repeated when a run resumes
+            // it), then the release it found.
+            if !data.join("verified").exists() {
+                fs::write(data.join("verified"), "").unwrap();
+                println!("warn first");
+                println!("warn second");
+            }
+            println!("release gqsf alpha Tales of Symphonia (France)");
+            // Time for the launcher to stop the step here, as it does when the discs are not the tested ones.
+            thread::sleep(Duration::from_millis(1500));
+        }
         if content.contains("FAIL") {
             eprintln!("disc is unreadable");
             exit(7);

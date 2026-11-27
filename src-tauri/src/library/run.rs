@@ -10,7 +10,7 @@ use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::settings::manifest::Manifest;
 use crate::settings::Instance;
@@ -22,6 +22,27 @@ pub struct Progress {
     pub message: String,
     /// A line of the step's own list of tasks (`stage-start`, `stage-progress`, `stage-end`).
     pub stage: Option<Stage>,
+    /// A `release` or `warn` line of the step: told to the player, never blocking.
+    pub notice: Option<Notice>,
+}
+
+/// The release the step found the player's files to be (`release gqsf alpha Tales of Symphonia (France)`).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ReleaseFound {
+    pub id: String,
+    /// `stable`, `beta`, `alpha` or `unsupported`, as the step says it.
+    pub status: String,
+    pub title: String,
+}
+
+/// What a step tells the player about their files, besides its progress.
+#[derive(Debug, Clone, PartialEq)]
+pub enum Notice {
+    Release(ReleaseFound),
+    /// `warn The disc 2 is not a verified dump`
+    Warn {
+        text: String,
+    },
 }
 
 /// One task of the step's list, as the step reports it.
@@ -174,7 +195,7 @@ pub fn parse_progress(line: &str) -> Option<Progress> {
     Some(Progress {
         fraction: Some(fraction.clamp(0.0, 1.0)),
         message: message.trim().to_string(),
-        stage: None,
+        ..Progress::default()
     })
 }
 
@@ -224,9 +245,40 @@ pub fn parse_stage(line: &str) -> Option<Progress> {
     })
 }
 
+/// `release <id> <status> <title>` and `warn <text>`: what the step found about the player's files.
+pub fn parse_notice(line: &str) -> Option<Progress> {
+    let line = line.trim();
+    let (kind, rest) = line.split_once(' ')?;
+    let notice = match kind {
+        "release" => {
+            let (id, rest) = rest.trim_start().split_once(' ')?;
+            let (status, title) = rest
+                .trim_start()
+                .split_once(' ')
+                .unwrap_or((rest.trim(), ""));
+            let title = title.trim();
+            Notice::Release(ReleaseFound {
+                id: id.to_string(),
+                status: status.to_string(),
+                title: if title.is_empty() { id } else { title }.to_string(),
+            })
+        }
+        "warn" if !rest.trim().is_empty() => Notice::Warn {
+            text: rest.trim().to_string(),
+        },
+        _ => return None,
+    };
+    Some(Progress {
+        notice: Some(notice),
+        ..Progress::default()
+    })
+}
+
 /// What a line of a step's output reports, if anything.
 pub fn parse_line(line: &str) -> Option<Progress> {
-    parse_progress(line).or_else(|| parse_stage(line))
+    parse_progress(line)
+        .or_else(|| parse_stage(line))
+        .or_else(|| parse_notice(line))
 }
 
 /// `result failed 3 This disc is not a known dump`: the step's own explanation of a failure.
@@ -297,6 +349,7 @@ pub fn run_prepare(
     tmp: &Path,
     log_path: &Path,
     cancel: &AtomicBool,
+    stop: &AtomicBool,
     on_progress: &mut dyn FnMut(Progress),
 ) -> Result<(), RunError> {
     let fail = |m: String| RunError::Failed(m);
@@ -317,7 +370,7 @@ pub fn run_prepare(
     for name in ["TMPDIR", "TEMP", "TMP"] {
         process.env(name, tmp);
     }
-    let result = run_to_end(process, &mut log, cancel, on_progress);
+    let result = run_to_end(process, &mut log, cancel, stop, on_progress);
     let _ = fs::remove_dir_all(tmp);
     match &result {
         Ok(()) => log_line(&mut log, "-- finished"),
@@ -347,6 +400,7 @@ fn run_to_end(
     mut process: Command,
     log: &mut File,
     cancel: &AtomicBool,
+    stop: &AtomicBool,
     on_progress: &mut dyn FnMut(Progress),
 ) -> Result<(), RunError> {
     process.stdout(Stdio::piped()).stderr(Stdio::piped());
@@ -374,7 +428,7 @@ fn run_to_end(
         }
     };
     loop {
-        if cancel.load(Ordering::Relaxed) {
+        if cancel.load(Ordering::Relaxed) || stop.load(Ordering::Relaxed) {
             kill_tree(&mut child);
             return Err(RunError::Cancelled);
         }
@@ -469,7 +523,7 @@ mod tests {
             Some(Progress {
                 fraction: Some(0.4),
                 message: "Unpacking menu art".into(),
-                stage: None,
+                ..Progress::default()
             })
         );
         assert_eq!(
@@ -524,7 +578,40 @@ mod tests {
         );
         assert_eq!(parse_line("stage-start extract soon x"), None);
         assert_eq!(parse_line("stage-end verify ok slowly"), None);
-        assert_eq!(parse_line("warn something"), None);
+    }
+
+    #[test]
+    fn parses_the_release_and_warning_lines_of_a_step() {
+        let notice = |line| parse_line(line).and_then(|p| p.notice);
+        assert_eq!(
+            notice("release gqsf alpha Tales of Symphonia (France)"),
+            Some(Notice::Release(ReleaseFound {
+                id: "gqsf".into(),
+                status: "alpha".into(),
+                title: "Tales of Symphonia (France)".into()
+            }))
+        );
+        // No title: the id stands in for it.
+        assert_eq!(
+            notice("release gqsf unsupported"),
+            Some(Notice::Release(ReleaseFound {
+                id: "gqsf".into(),
+                status: "unsupported".into(),
+                title: "gqsf".into()
+            }))
+        );
+        assert_eq!(
+            notice("warn  Disc 2 is not a verified dump "),
+            Some(Notice::Warn {
+                text: "Disc 2 is not a verified dump".into()
+            })
+        );
+        assert_eq!(notice("warn"), None);
+        assert_eq!(notice("warn   "), None);
+        assert_eq!(notice("release gqsf"), None);
+        assert_eq!(notice("a warn b"), None);
+        // Notices carry no fraction: they must not move the bar.
+        assert_eq!(parse_line("warn x").unwrap().fraction, None);
     }
 
     #[test]

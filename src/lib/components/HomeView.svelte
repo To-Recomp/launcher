@@ -98,6 +98,9 @@
   const duration = (seconds: number) =>
     seconds < 10 ? `${seconds.toFixed(1)} s` : seconds < 60 ? `${Math.round(seconds)} s` : `${Math.floor(seconds / 60)} min ${Math.round(seconds % 60)} s`;
   const busy = $derived(activeJob !== undefined);
+  /** The preparation stopped after its verification and waits for the player to go on or not. */
+  const pending = $derived(library.confirmation?.gameId === game.id && library.confirmation.platform.platform === platform?.platform);
+
 
   // The live log: the preparation's log re-read every second while it runs, kept scrolled to the end
   // unless the player scrolled up to read.
@@ -327,6 +330,19 @@
     {/if}
   </div>
 
+  {#if pending}
+    <div class="status warn" role="alert">
+      <span class="status-icon"><Icon name="alert" size={20} /></span>
+      <div class="status-body">
+        <strong>{t("game.home.confirm.title")}</strong>
+        <p>{t("game.home.confirm.body")}</p>
+      </div>
+      <div class="status-actions">
+        <button class="proceed" onclick={() => platform && library.proceed(game, platform)}>{t("game.home.confirm.continue")}</button>
+        <button onclick={() => library.decline()}>{t("game.home.cancel")}</button>
+      </div>
+    </div>
+  {:else}
   <div class="status {tone}" role="status">
     <span class="status-icon"><Icon name={tone === "error" ? "alert" : tone === "success" ? "check" : "info"} size={20} /></span>
     <div class="status-body">
@@ -394,6 +410,7 @@
       {/if}
     </div>
   </div>
+  {/if}
   {#if library.log !== null}
     <div class="log-box">
       <pre class="log" aria-label={t("game.home.log")} bind:this={logElement}>{library.log}</pre>
@@ -540,6 +557,8 @@
   .status.info { --tint: var(--color-accent); }
   .status.success { --tint: var(--color-success); }
   .status.error { --tint: var(--color-error); }
+  .status.warn { --tint: rgb(214 150 30); }
+  .status-actions .proceed { border-color: var(--tint); background: var(--tint); color: #1a1208; font-weight: 600; }
   .status:not(.idle) { background: color-mix(in srgb, var(--tint) 12%, transparent); }
   .status-icon { color: var(--tint); }
   .status-body { flex: 1; min-width: 0; }

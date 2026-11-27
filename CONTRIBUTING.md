@@ -9,3 +9,4 @@ Thanks for helping. Short rules:
 - **No game data, ever**: no ISOs, ROMs, extracted files, textures, audio, or code translated from a game binary. The `.gitignore` blocks common formats, but you are responsible for what you commit.
 - **No code from incompatible licenses**: do not copy code under non-commercial or otherwise GPL v3-incompatible terms. Do not read or derive from PolyForm Noncommercial projects (for example snesrecomp) when working on the SNES recompiler.
 - **Behavior**: see `CODE_OF_CONDUCT.md`.
+- **Looking at the real window**: `scripts/visual-fixture.sh` builds a throw-away library (a fake game, no game data) and prints the environment that points the launcher at it, to drive the built app by hand or with `xdotool`; its header says how. `scripts/visual-real.sh` does the same around an installed release and your own discs (real data, kept out of git; delete the folder afterwards).

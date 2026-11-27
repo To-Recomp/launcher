@@ -7,6 +7,7 @@ import { rememberPlayed } from "./lastPlayed";
 import * as api from "./api";
 import {
   CANCELLED,
+  NEEDS_CONFIRMATION,
   gameJob,
   installJob,
   instanceId,
@@ -54,6 +55,8 @@ export class LibraryStore {
   progress = $state<Record<string, ProgressEvent>>({});
   /** The tasks a running step has reported, by job key, in the order they started. */
   tasks = $state<Record<string, TaskView[]>>({});
+  /** The preparation stopped after its verification: the discs are not the tested ones and the player is asked to go on. */
+  confirmation = $state<{ gameId: string; platform: Platform } | null>(null);
   status = $state<Status | null>(null);
   /** What choosing a file said (kept, same file, refused): shown by the settings, where the choice is made. */
   inputNotice = $state<Status | null>(null);
@@ -215,6 +218,7 @@ export class LibraryStore {
   ): Promise<T | null> {
     this.progress[job] = { job, fraction: null, message: doing };
     delete this.tasks[job];
+    this.confirmation = null;
     this.status = null;
     this.failure = null;
     this.log = null;
@@ -227,6 +231,8 @@ export class LibraryStore {
       const message = errorMessage(e);
       if (message === CANCELLED) {
         this.status = { tone: "info", text: t("shell.library.cancelled") };
+      } else if (message === NEEDS_CONFIRMATION && target.platform) {
+        this.confirmation = { gameId: target.game.id, platform: target.platform };
       } else {
         this.status = { tone: "error", text: message };
         const context = job.startsWith("install:") ? "install" : "prepare";
@@ -256,7 +262,7 @@ export class LibraryStore {
    * earlier build, or chosen in the game's settings) and asks only for the ones it hasn't: those with no path
    * saved, and the ones the preparation then finds gone. A rebuild first tries without asking for anything.
    */
-  async prepare(game: Game, platform: Platform) {
+  async prepare(game: Game, platform: Platform, acknowledged = false) {
     const installation = this.installationOf(game.id);
     if (!installation) return;
     const job = prepareJob(game.id, instanceId(platform.platform));
@@ -265,7 +271,7 @@ export class LibraryStore {
         job,
         { game, platform },
         installation.prepareLabel ?? t("shell.library.preparing"),
-        () => api.prepareInstance(game.id, platform.platform, inputs),
+        () => api.prepareInstance(game.id, platform.platform, inputs, acknowledged),
         () => t("shell.library.ready", { game: game.name }),
       );
     const ask = async (input: InputView, inputs: Record<string, string>) => {
@@ -291,6 +297,17 @@ export class LibraryStore {
       if (!input || inputs[input.id] !== undefined) return;
       if (!(await ask(input, inputs))) return;
     }
+  }
+
+  /** The player agrees to go on with discs that are not the tested ones: the preparation runs again and doesn't stop this time. */
+  proceed(game: Game, platform: Platform) {
+    return this.prepare(game, platform, true);
+  }
+
+  /** The player doesn't go on: nothing more is built. */
+  decline() {
+    this.confirmation = null;
+    this.status = { tone: "info", text: t("shell.library.cancelled") };
   }
 
   /**

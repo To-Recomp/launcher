@@ -16,8 +16,9 @@ export const latestReleaseTag = (repository: string) => invoke<string>("latest_r
 export const setInstanceInput = (gameId: string, platform: string, inputId: string, path: string) =>
   invoke<InstanceView>("set_instance_input", { gameId, platform, inputId, path });
 
-export const prepareInstance = (gameId: string, platform: string, inputs: Record<string, string>) =>
-  invoke<InstanceView>("prepare_instance", { gameId, platform, inputs });
+/** `acknowledged`: the player agreed to go on with discs that are not the tested ones. */
+export const prepareInstance = (gameId: string, platform: string, inputs: Record<string, string>, acknowledged = false) =>
+  invoke<InstanceView>("prepare_instance", { gameId, platform, inputs, acknowledged });
 
 export const startGame = (gameId: string, platform: string) => invoke<void>("start_game", { gameId, platform });
 
